@@ -1,0 +1,105 @@
+import React from 'react';
+import { Home, Search, Flame, User, Bell, Menu, MessageSquare, Zap } from 'lucide-react';
+
+interface LayoutProps {
+  children: React.ReactNode;
+  currentPage: string;
+  onNavigate: (page: string) => void;
+  onOpenPweza: () => void;
+}
+
+export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, onOpenPweza }) => {
+  return (
+    <div className="min-h-screen bg-br-bg text-white font-sans flex flex-col md:flex-row">
+      
+      {/* DESKTOP SIDEBAR (Hidden on Mobile) */}
+      <aside className="hidden md:flex flex-col w-[280px] h-screen fixed left-0 top-0 border-r border-br-border bg-br-bg z-50">
+        <div className="p-6 flex items-center gap-3 cursor-pointer border-b border-br-border/50" onClick={() => onNavigate('home')}>
+          <div className="w-10 h-10 bg-white flex items-center justify-center rounded shadow-lg">
+            <span className="font-condensed font-black text-black text-2xl italic tracking-tighter">BR</span>
+          </div>
+          <h1 className="font-condensed font-black text-3xl italic tracking-tighter text-white">SHEENA</h1>
+        </div>
+
+        <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
+          <SidebarLink icon={<Home size={20} />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
+          <SidebarLink icon={<Zap size={20} />} label="Scores" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
+          <SidebarLink icon={<Flame size={20} />} label="Trending" active={currentPage === 'trending'} onClick={() => onNavigate('trending')} />
+          <SidebarLink icon={<Search size={20} />} label="Explore" active={currentPage === 'explore'} onClick={() => onNavigate('explore')} />
+          
+          <div className="my-6 border-t border-br-border/50"></div>
+          <div className="px-4 mb-2 text-xs font-bold text-br-muted uppercase tracking-widest">My Teams</div>
+          <TeamRow name="Arsenal" />
+          <TeamRow name="Lakers" />
+          <TeamRow name="Real Madrid" />
+        </nav>
+
+        <div className="p-4 border-t border-br-border">
+            <button onClick={onOpenPweza} className="w-full bg-sheena-primary hover:bg-indigo-500 text-white font-condensed font-bold text-lg uppercase py-3 rounded flex items-center justify-center gap-2 transition-colors">
+                <MessageSquare size={20} />
+                Ask Pweza AI
+            </button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 md:ml-[280px] min-h-screen relative pb-[80px] md:pb-0">
+        {/* MOBILE HEADER */}
+        <header className="md:hidden sticky top-0 z-40 bg-br-bg/95 backdrop-blur border-b border-br-border h-[60px] flex items-center justify-between px-4">
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-white flex items-center justify-center rounded-sm">
+                    <span className="font-condensed font-black text-black text-xl italic tracking-tighter leading-none">S</span>
+                </div>
+                <span className="font-condensed font-black text-2xl italic tracking-tighter">SHEENA</span>
+            </div>
+            <div className="flex items-center gap-5">
+                <Search size={24} className="text-white" />
+                <div className="w-8 h-8 rounded-full bg-br-card overflow-hidden border border-br-border">
+                    <img src="https://ui-avatars.com/api/?name=User&background=random" className="w-full h-full" />
+                </div>
+            </div>
+        </header>
+
+        {children}
+      </main>
+
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-br-bg border-t border-br-border z-50 flex items-center justify-around px-2 pb-safe">
+         <NavTab icon={<Home size={24} />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
+         <NavTab icon={<Zap size={24} />} label="Scores" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
+         
+         {/* Center Pweza Button */}
+         <div className="relative -top-5">
+             <button onClick={onOpenPweza} className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)] active:scale-95 transition-transform">
+                 <MessageSquare size={24} className="text-black fill-black" />
+             </button>
+         </div>
+
+         <NavTab icon={<Flame size={24} />} label="Trending" active={currentPage === 'trending'} onClick={() => onNavigate('trending')} />
+         <NavTab icon={<User size={24} />} label="Account" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
+      </nav>
+
+    </div>
+  );
+};
+
+const SidebarLink = ({ icon, label, active, onClick }: any) => (
+    <div onClick={onClick} className={`flex items-center gap-4 px-4 py-3 rounded cursor-pointer transition-colors ${active ? 'bg-br-surface text-white' : 'text-br-muted hover:bg-br-surface/50 hover:text-white'}`}>
+        <span className={active ? 'text-white' : 'text-br-muted'}>{icon}</span>
+        <span className="font-condensed font-bold text-lg uppercase tracking-wide">{label}</span>
+    </div>
+);
+
+const TeamRow = ({ name }: { name: string }) => (
+    <div className="flex items-center gap-3 px-4 py-2 hover:bg-br-surface/50 cursor-pointer rounded">
+        <div className="w-6 h-6 rounded-full bg-white/10"></div>
+        <span className="font-condensed font-medium text-lg text-br-muted hover:text-white">{name}</span>
+    </div>
+);
+
+const NavTab = ({ icon, label, active, onClick }: any) => (
+    <div onClick={onClick} className="flex flex-col items-center justify-center w-16 h-full gap-1 cursor-pointer">
+        <div className={`${active ? 'text-white' : 'text-br-muted'} transition-colors`}>{icon}</div>
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${active ? 'text-white' : 'text-br-muted'}`}>{label}</span>
+    </div>
+);
