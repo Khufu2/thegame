@@ -1,11 +1,6 @@
-
-
-
-
-
 import React, { useState, useMemo } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
-import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren } from 'lucide-react';
+import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren, Radar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface FeedProps {
@@ -50,35 +45,48 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   const navigate = useNavigate();
 
   // 1. FILTERING LOGIC
-  const { filteredItems, topPicks, valuePicks, featuredMatch } = useMemo(() => {
+  const { filteredStreamItems, topPicks, valuePicks, featuredMatch } = useMemo(() => {
     const isAll = activeLeague === "All" || activeLeague === "For You";
     
-    // Filter the mixed feed
-    const fItems = items.filter(item => {
-        if (isAll) return true;
-        // Check Item Type
-        if ('league' in item) { // Match or SystemAlert
-             return item.league === activeLeague;
-        } else if ('type' in item) { // NewsStory
-             const s = item as NewsStory;
-             return s.tags?.some(t => t === activeLeague) || s.source.includes(activeLeague);
-        }
-        return false;
-    });
-
-    // Extract Logic for Top Section (Picks/Hero)
-    // We want to pull specific high-value matches out of the stream for the top rail
+    // Get Matches for this view
     const allMatches = matches.filter(m => isAll || m.league === activeLeague);
+    
+    // 1. Featured (Live or First)
     const featured = allMatches.find(m => m.status === MatchStatus.LIVE) || allMatches[0];
     
-    const predictions = allMatches
+    // 2. Sort remaining by confidence
+    const sortedPredictions = allMatches
         .filter(m => m.prediction && m.id !== featured?.id)
         .sort((a, b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0));
 
+    // 3. Slice Tiers
+    const top = sortedPredictions.slice(0, 4); // Top 4 for Rail
+    const value = sortedPredictions.slice(4, 10); // Next 6 for Grid
+    
+    // 4. Filter the main mixed stream
+    // We filter OUT the matches that are already shown in featured, top, or value to avoid duplication
+    // UNLESS we want them to repeat. For a cleaner UI, let's remove duplicates from the stream.
+    const shownMatchIds = new Set([featured?.id, ...top.map(m => m.id), ...value.map(m => m.id)]);
+    
+    const fItems = items.filter(item => {
+        // League Filter
+        let matchesLeague = false;
+        if ('league' in item) matchesLeague = isAll || item.league === activeLeague;
+        else if ('type' in item) matchesLeague = isAll || (item as NewsStory).tags?.some(t => t === activeLeague) || (item as NewsStory).source.includes(activeLeague) || false;
+        
+        if (!matchesLeague) return false;
+
+        // Dedup Logic: If it's a match, check if it's already shown above
+        if ('homeTeam' in item) {
+            return !shownMatchIds.has((item as Match).id);
+        }
+        return true;
+    });
+
     return { 
-        filteredItems: fItems, 
-        topPicks: predictions.slice(0, 4),
-        valuePicks: predictions.slice(4, 8),
+        filteredStreamItems: fItems, 
+        topPicks: top,
+        valuePicks: value,
         featuredMatch: featured
     };
   }, [activeLeague, items, matches]);
@@ -193,7 +201,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
             </section>
         )}
 
-        {/* 4. PREMIUM PREDICTIONS (THE LOCKS) */}
+        {/* 4. PREMIUM PREDICTIONS (THE LOCKS - RAIL) */}
         {topPicks.length > 0 && (
         <section className="py-2 space-y-4">
              <div className="flex items-center justify-between px-4">
@@ -212,9 +220,26 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
         </section>
         )}
 
-        {/* 5. THE ENDLESS STREAM (MIXED CONTENT) */}
+        {/* 5. NEW: VALUE RADAR (THE GRID - TIER 2) */}
+        {valuePicks.length > 0 && (
+            <section className="px-4 space-y-3">
+                 <div className="flex items-center gap-2">
+                    <Radar size={16} className="text-[#00FFB2]" />
+                    <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
+                        Value Radar
+                    </h2>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    {valuePicks.map(match => (
+                        <CompactPredictionCard key={match.id} match={match} onClick={() => handleMatchClick(match.id)} />
+                    ))}
+                </div>
+            </section>
+        )}
+
+        {/* 6. THE ENDLESS STREAM (MIXED CONTENT) */}
         <section className="px-4 space-y-4 pb-8">
-            <div className="flex items-center justify-between border-t border-gray-200 md:border-white/10 pt-6 mt-2">
+            <div className="flex items-center justify-between border-t border-gray-200 md:border-white/10 pt-6 mt-4">
                  <div className="flex items-center gap-2">
                     <Activity size={16} className="text-sheena-primary" />
                     <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
@@ -228,7 +253,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
             </div>
 
             <div className="flex flex-col gap-4">
-                {filteredItems.map((item) => {
+                {filteredStreamItems.map((item) => {
                     // CASE: SYSTEM ALERT (WAR ROOM)
                     if ('alertType' in item) {
                          return <SystemAlertCard key={item.id} alert={item as SystemAlert} />;
@@ -246,7 +271,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                          return <StandardNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />
                     }
                     
-                    // CASE: MATCH
+                    // CASE: MATCH (Residual matches not in Top/Value)
                     if ('homeTeam' in item) {
                         return (
                             <SmartPredictionCard 
@@ -528,6 +553,39 @@ const PremiumPredictionCard: React.FC<{ match: Match; onOpenPweza?: () => void; 
             >
                 <span className="text-sm">🐙</span>
             </button>
+        </div>
+    )
+}
+
+// --- COMPACT PREDICTION CARD (FOR GRID) ---
+const CompactPredictionCard: React.FC<{ match: Match; onClick: () => void }> = ({ match, onClick }) => {
+    return (
+        <div onClick={onClick} className="bg-white md:bg-[#1A1A1A] border border-gray-200 md:border-white/10 rounded-lg p-3 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
+             <div className="flex items-center justify-between mb-2">
+                 <span className="text-[9px] font-black uppercase text-gray-400">{match.league}</span>
+                 <span className="text-[9px] font-bold text-gray-400">{match.time}</span>
+             </div>
+             
+             <div className="flex items-center justify-between mb-3">
+                 <div className="flex flex-col gap-1.5">
+                     <div className="flex items-center gap-1.5">
+                         <img src={match.homeTeam.logo} className="w-4 h-4 object-contain" />
+                         <span className="font-condensed font-bold text-sm text-black md:text-white leading-none truncate max-w-[80px]">{match.homeTeam.name}</span>
+                     </div>
+                     <div className="flex items-center gap-1.5">
+                         <img src={match.awayTeam.logo} className="w-4 h-4 object-contain" />
+                         <span className="font-condensed font-bold text-sm text-black md:text-white leading-none truncate max-w-[80px]">{match.awayTeam.name}</span>
+                     </div>
+                 </div>
+                 {/* Quick Pick Badge */}
+                 {match.prediction && (
+                     <div className={`flex flex-col items-end ${match.prediction.isValuePick ? 'text-green-500' : 'text-indigo-500'}`}>
+                         <span className="text-[10px] font-bold uppercase">Pick</span>
+                         <span className="font-black text-sm leading-none">{match.prediction.outcome === 'HOME' ? '1' : match.prediction.outcome === 'AWAY' ? '2' : 'X'}</span>
+                         {match.prediction.potentialReturn && <span className="text-[9px] font-mono opacity-80">{match.prediction.potentialReturn}</span>}
+                     </div>
+                 )}
+             </div>
         </div>
     )
 }

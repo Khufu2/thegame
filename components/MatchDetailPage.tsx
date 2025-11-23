@@ -8,9 +8,10 @@ import { useNavigate } from 'react-router-dom';
 interface MatchDetailPageProps {
   match: Match;
   onOpenPweza: () => void;
+  onAddToSlip?: () => void;
 }
 
-export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenPweza }) => {
+export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenPweza, onAddToSlip }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('STREAM');
   const [betSlipStatus, setBetSlipStatus] = useState<'IDLE' | 'CONFIRM' | 'ADDED'>('IDLE');
@@ -27,6 +28,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
         setBetSlipStatus('CONFIRM');
     } else if (betSlipStatus === 'CONFIRM') {
         setBetSlipStatus('ADDED');
+        if (onAddToSlip) onAddToSlip();
         setTimeout(() => {
             setBetSlipStatus('IDLE');
         }, 3000);
@@ -79,7 +81,15 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                       </div>
                       <div className="text-center">
                           <h2 className="font-condensed font-black text-2xl uppercase leading-none mb-1">{match.homeTeam.name}</h2>
-                          <span className="text-[11px] font-bold text-gray-500">{match.homeTeam.record}</span>
+                          <span className="text-[11px] font-bold text-gray-500 block mb-1.5">{match.homeTeam.record}</span>
+                          {/* FORM INDICATORS */}
+                          {match.homeTeam.form && (
+                              <div className="flex items-center justify-center gap-1">
+                                  {match.homeTeam.form.map((r, i) => (
+                                      <div key={i} className={`w-1.5 h-1.5 rounded-full ${r === 'W' ? 'bg-[#00FFB2] shadow-[0_0_5px_rgba(0,255,178,0.4)]' : r === 'D' ? 'bg-gray-500' : 'bg-red-500'}`}></div>
+                                  ))}
+                              </div>
+                          )}
                       </div>
                   </div>
 
@@ -113,7 +123,15 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                       </div>
                       <div className="text-center">
                           <h2 className="font-condensed font-black text-2xl uppercase leading-none mb-1">{match.awayTeam.name}</h2>
-                          <span className="text-[11px] font-bold text-gray-500">{match.awayTeam.record}</span>
+                          <span className="text-[11px] font-bold text-gray-500 block mb-1.5">{match.awayTeam.record}</span>
+                          {/* FORM INDICATORS */}
+                          {match.awayTeam.form && (
+                              <div className="flex items-center justify-center gap-1">
+                                  {match.awayTeam.form.map((r, i) => (
+                                      <div key={i} className={`w-1.5 h-1.5 rounded-full ${r === 'W' ? 'bg-[#00FFB2] shadow-[0_0_5px_rgba(0,255,178,0.4)]' : r === 'D' ? 'bg-gray-500' : 'bg-red-500'}`}></div>
+                                  ))}
+                              </div>
+                          )}
                       </div>
                   </div>
               </div>

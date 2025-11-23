@@ -1,12 +1,14 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Feed } from './components/Feed';
 import { Pweza } from './components/Pweza';
 import { ArticlePage } from './components/ArticlePage';
 import { MatchDetailPage } from './components/MatchDetailPage';
-import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from './types';
+import { ScoresPage } from './components/ScoresPage';
+import { BetSlipPage } from './components/BetSlipPage';
+import { ProfilePage } from './components/ProfilePage';
+import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem, BetSlipItem, UserProfile } from './types';
 import { HashRouter, Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 const generateMockData = () => {
@@ -595,6 +597,33 @@ const AppContent = () => {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [allNews, setAllNews] = useState<NewsStory[]>([]);
+  const [betSlip, setBetSlip] = useState<BetSlipItem[]>([]);
+  
+  // NEW: USER PROFILE STATE
+  const [user, setUser] = useState<UserProfile>({
+      id: 'u1',
+      name: 'Sheena Fan',
+      avatar: 'https://ui-avatars.com/api/?name=Sheena+Fan&background=6366F1&color=fff',
+      isPro: false,
+      stats: {
+          betsPlaced: 42,
+          wins: 26,
+          losses: 16,
+          winRate: 62,
+          netProfit: 1450
+      },
+      preferences: {
+          favoriteLeagues: ['NFL', 'NBA'],
+          favoriteTeams: ['t5', 'nba1'],
+          notifications: {
+              gameStart: true,
+              scoreUpdates: true,
+              lineMoves: false,
+              breakingNews: true
+          }
+      }
+  });
+  
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -604,30 +633,21 @@ const AppContent = () => {
     setAllNews(news);
     
     // Interleave content to create "Endless Stream" feel
-    // Pattern: [Hero News] -> [Match] -> [Alert] -> [News] -> [Match] -> [Highlight] -> [Match] -> [Alert]
     const mixedFeed: FeedItem[] = [];
-    
-    // Add Hero first
     const hero = news.find(n => n.isHero);
     if (hero) mixedFeed.push(hero);
 
     const remainingNews = news.filter(n => !n.isHero);
     const predictions = matches.sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0));
 
-    // Simple mix logic
     let mIdx = 0;
     let nIdx = 0;
     let aIdx = 0;
 
     while (mIdx < predictions.length || nIdx < remainingNews.length) {
-        // Add 2 matches
         if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
         if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
-        
-        // Add 1 Alert
         if (aIdx < alerts.length) mixedFeed.push(alerts[aIdx++]);
-
-        // Add 1 News
         if (nIdx < remainingNews.length) mixedFeed.push(remainingNews[nIdx++]);
     }
 
@@ -635,6 +655,43 @@ const AppContent = () => {
   }, []);
 
   const currentPage = location.pathname === '/' ? 'home' : location.pathname.replace('/', '');
+
+  // BET SLIP LOGIC
+  const addToSlip = (match: Match) => {
+      if (!match.prediction) return;
+      const existing = betSlip.find(b => b.matchId === match.id);
+      if (existing) return;
+
+      const oddVal = match.prediction.outcome === 'HOME' ? match.prediction.odds?.home 
+                     : match.prediction.outcome === 'AWAY' ? match.prediction.odds?.away 
+                     : match.prediction.odds?.draw;
+
+      const newItem: BetSlipItem = {
+          id: Date.now().toString(),
+          matchId: match.id,
+          matchUp: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
+          selection: match.prediction.outcome === 'HOME' ? match.homeTeam.name : match.prediction.outcome === 'AWAY' ? match.awayTeam.name : 'Draw',
+          outcome: match.prediction.outcome,
+          odds: oddVal || 1.91, // Fallback odds
+          confidence: match.prediction.confidence,
+          timestamp: Date.now()
+      };
+      setBetSlip(prev => [...prev, newItem]);
+  };
+
+  const removeFromSlip = (id: string) => {
+      setBetSlip(prev => prev.filter(item => item.id !== id));
+  };
+  
+  const clearSlip = () => setBetSlip([]);
+
+  const addRandomPick = () => {
+      const candidates = matches.filter(m => m.prediction && !betSlip.find(b => b.matchId === m.id));
+      if (candidates.length > 0) {
+          const random = candidates[Math.floor(Math.random() * candidates.length)];
+          addToSlip(random);
+      }
+  };
   
   const ArticleRouteWrapper = () => {
       const { id } = useParams();
@@ -650,7 +707,7 @@ const AppContent = () => {
       const match = matches.find(m => m.id === id);
       if (!match) return <div className="p-20 text-center">Match not found</div>;
       
-      return <MatchDetailPage match={match} onOpenPweza={() => setIsPwezaOpen(true)} />;
+      return <MatchDetailPage match={match} onOpenPweza={() => setIsPwezaOpen(true)} onAddToSlip={() => addToSlip(match)} />;
   }
 
   const handleOpenPweza = () => setIsPwezaOpen(true);
@@ -663,7 +720,18 @@ const AppContent = () => {
     >
       <Routes>
         <Route path="/" element={<Feed items={feedItems} matches={matches} onArticleClick={(id) => navigate(`/article/${id}`)} onOpenPweza={handleOpenPweza} />} />
-        <Route path="/scores" element={<Feed items={matches} matches={matches} onArticleClick={(id) => navigate(`/article/${id}`)} onOpenPweza={handleOpenPweza} />} />
+        <Route path="/scores" element={<ScoresPage matches={matches} onOpenPweza={handleOpenPweza} />} />
+        <Route path="/slip" element={
+            <BetSlipPage 
+                slipItems={betSlip} 
+                onRemoveItem={removeFromSlip} 
+                onClearSlip={clearSlip} 
+                matches={matches}
+                onAddRandomPick={addRandomPick}
+                onOpenPweza={handleOpenPweza}
+            />
+        } />
+        <Route path="/profile" element={<ProfilePage user={user} betHistory={betSlip} />} />
         <Route path="/trending" element={<Feed items={feedItems.filter(i => 'type' in i)} matches={matches} onArticleClick={(id) => navigate(`/article/${id}`)} onOpenPweza={handleOpenPweza} />} />
         <Route path="/article/:id" element={<ArticleRouteWrapper />} />
         <Route path="/match/:id" element={<MatchRouteWrapper />} />

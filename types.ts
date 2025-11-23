@@ -171,6 +171,20 @@ export interface SystemAlert {
   relatedMatchId?: string;
 }
 
+export interface BetSlipItem {
+    id: string;
+    matchId: string;
+    matchUp: string; // e.g. "Arsenal vs Chelsea"
+    selection: string; // e.g. "Arsenal" or "Over 2.5"
+    odds: number; // Decimal format e.g. 1.95
+    outcome: 'HOME' | 'DRAW' | 'AWAY';
+    timestamp: number;
+    confidence?: number;
+    status?: 'PENDING' | 'WON' | 'LOST'; // For history tracking
+    wager?: number;
+    payout?: number;
+}
+
 export type FeedItem = Match | NewsStory | SystemAlert;
 
 export interface ChatMessage {
@@ -178,4 +192,31 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: number;
+}
+
+// --- USER PROFILE TYPES ---
+export interface UserPreferences {
+    favoriteLeagues: string[];
+    favoriteTeams: string[]; // Team IDs
+    notifications: {
+        gameStart: boolean;
+        scoreUpdates: boolean;
+        lineMoves: boolean; // Premium feature?
+        breakingNews: boolean;
+    };
+}
+
+export interface UserProfile {
+    id: string;
+    name: string;
+    avatar: string;
+    isPro: boolean;
+    stats: {
+        betsPlaced: number;
+        wins: number;
+        losses: number;
+        winRate: number; // Percentage
+        netProfit: number; // Virtual currency/tracking
+    };
+    preferences: UserPreferences;
 }

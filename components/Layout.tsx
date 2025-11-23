@@ -24,7 +24,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
         <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
           <SidebarLink icon={<Home size={20} />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
           <SidebarLink icon={<Zap size={20} />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
-          <SidebarLink icon={<Flame size={20} />} label="Predictions" active={currentPage === 'trending'} onClick={() => onNavigate('trending')} />
+          <SidebarLink icon={<FileText size={20} />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
           <SidebarLink icon={<Search size={20} />} label="Explore" active={currentPage === 'explore'} onClick={() => onNavigate('explore')} />
           
           <div className="my-6 border-t border-br-border/50"></div>
@@ -35,9 +35,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
         </nav>
 
         <div className="p-4 border-t border-br-border">
-            <button onClick={onOpenPweza} className="w-full bg-sheena-primary hover:bg-indigo-500 text-white font-condensed font-bold text-lg uppercase py-3 rounded flex items-center justify-center gap-2 transition-colors">
-                <Bot size={20} />
-                Ask Pweza AI
+            <button onClick={onOpenPweza} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-condensed font-bold text-lg uppercase py-3 rounded flex items-center justify-center gap-2 transition-colors">
+                <span className="text-xl">🐙</span>
+                Ask Pweza
             </button>
         </div>
       </aside>
@@ -51,11 +51,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
                 <span className="font-condensed font-black text-xl tracking-tighter text-black uppercase italic leading-none pt-1">Sheena</span>
             </div>
             <div className="flex items-center gap-3">
-                <button onClick={onOpenPweza} className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/20 active:scale-95 transition-transform">
-                    <Bot size={14} />
+                <button onClick={onOpenPweza} className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-transform">
+                    <span className="text-lg">🐙</span>
                 </button>
                 <div className="relative">
-                    <Bell size={20} className="text-blue-600" fill="currentColor" fillOpacity={0.1} />
+                    <Bell size={20} className="text-indigo-600" fill="currentColor" fillOpacity={0.1} />
                     <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-full border border-[#F2F2F2]"></span>
                 </div>
             </div>
@@ -64,18 +64,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
         {children}
       </main>
 
-      {/* MOBILE BOTTOM NAV - Compact & Sleek */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[60px] bg-white/80 backdrop-blur-2xl border-t border-gray-200/50 z-50 flex items-center justify-between px-6 pb-safe shadow-[0_-5px_30px_rgba(0,0,0,0.02)]">
+      {/* MOBILE BOTTOM NAV - Balanced 4 Items, No Floating Button */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[60px] bg-white/90 backdrop-blur-2xl border-t border-gray-200/50 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-5px_30px_rgba(0,0,0,0.02)]">
          <NavTab icon={<Home />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
          <NavTab icon={<Zap />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
-         
-         <div className="relative -top-5">
-             <button onClick={onOpenPweza} className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-blue-600/30 active:scale-95 transition-transform border-[3px] border-[#F2F2F2]">
-                 <Bot size={22} />
-             </button>
-         </div>
-
-         <NavTab icon={<FileText />} label="Slip" active={currentPage === 'trending'} onClick={() => onNavigate('trending')} />
+         <NavTab icon={<FileText />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
          <NavTab icon={<User />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
       </nav>
 
@@ -98,10 +91,10 @@ const TeamRow = ({ name }: { name: string }) => (
 );
 
 const NavTab = ({ icon, label, active, onClick }: any) => (
-    <div onClick={onClick} className="flex flex-col items-center justify-center gap-0.5 cursor-pointer group w-14 pt-1">
-        <div className={`${active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} transition-colors`}>
-            {React.cloneElement(icon, { size: 20, strokeWidth: active ? 2.5 : 2, fill: active ? "currentColor" : "none", fillOpacity: 0.1 })}
+    <div onClick={onClick} className="flex flex-col items-center justify-center gap-1 cursor-pointer w-16 pt-1">
+        <div className={`${active ? 'text-indigo-600 transform scale-110' : 'text-gray-400'} transition-all duration-200`}>
+            {React.cloneElement(icon, { size: 22, strokeWidth: active ? 2.5 : 2, fill: active ? "currentColor" : "none", fillOpacity: 0.1 })}
         </div>
-        <span className={`text-[9px] font-bold tracking-tight uppercase ${active ? 'text-blue-600' : 'text-gray-400'}`}>{label}</span>
+        <span className={`text-[10px] font-bold tracking-tight uppercase ${active ? 'text-indigo-600' : 'text-gray-400'}`}>{label}</span>
     </div>
 );
