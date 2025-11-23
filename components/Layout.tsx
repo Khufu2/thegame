@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Search, Flame, User, Bell, Menu, MessageSquare, Zap } from 'lucide-react';
+import { Home, Search, Flame, User, Bell, Menu, MessageSquare, Zap, Bot, FileText, LayoutGrid } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,7 +10,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, onOpenPweza }) => {
   return (
-    <div className="min-h-screen bg-br-bg text-white font-sans flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#F2F2F2] md:bg-br-bg text-black md:text-white font-sans flex flex-col md:flex-row">
       
       {/* DESKTOP SIDEBAR (Hidden on Mobile) */}
       <aside className="hidden md:flex flex-col w-[280px] h-screen fixed left-0 top-0 border-r border-br-border bg-br-bg z-50">
@@ -23,8 +23,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
 
         <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
           <SidebarLink icon={<Home size={20} />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
-          <SidebarLink icon={<Zap size={20} />} label="Scores" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
-          <SidebarLink icon={<Flame size={20} />} label="Trending" active={currentPage === 'trending'} onClick={() => onNavigate('trending')} />
+          <SidebarLink icon={<Zap size={20} />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
+          <SidebarLink icon={<Flame size={20} />} label="Predictions" active={currentPage === 'trending'} onClick={() => onNavigate('trending')} />
           <SidebarLink icon={<Search size={20} />} label="Explore" active={currentPage === 'explore'} onClick={() => onNavigate('explore')} />
           
           <div className="my-6 border-t border-br-border/50"></div>
@@ -36,26 +36,27 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
 
         <div className="p-4 border-t border-br-border">
             <button onClick={onOpenPweza} className="w-full bg-sheena-primary hover:bg-indigo-500 text-white font-condensed font-bold text-lg uppercase py-3 rounded flex items-center justify-center gap-2 transition-colors">
-                <MessageSquare size={20} />
+                <Bot size={20} />
                 Ask Pweza AI
             </button>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 md:ml-[280px] min-h-screen relative pb-[80px] md:pb-0">
-        {/* MOBILE HEADER */}
-        <header className="md:hidden sticky top-0 z-40 bg-br-bg/95 backdrop-blur border-b border-br-border h-[60px] flex items-center justify-between px-4">
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white flex items-center justify-center rounded-sm">
-                    <span className="font-condensed font-black text-black text-xl italic tracking-tighter leading-none">S</span>
-                </div>
-                <span className="font-condensed font-black text-2xl italic tracking-tighter">SHEENA</span>
+      <main className="flex-1 md:ml-[280px] min-h-screen relative pb-[70px] md:pb-0">
+        
+        {/* MOBILE HEADER - Compact (44px standard iOS) */}
+        <header className="md:hidden sticky top-0 z-50 bg-[#F2F2F2]/95 backdrop-blur-xl h-[44px] flex items-center justify-between px-4 border-b border-gray-200/50 shadow-sm">
+            <div className="flex items-center gap-2">
+                <span className="font-condensed font-black text-xl tracking-tighter text-black uppercase italic leading-none pt-1">Sheena</span>
             </div>
-            <div className="flex items-center gap-5">
-                <Search size={24} className="text-white" />
-                <div className="w-8 h-8 rounded-full bg-br-card overflow-hidden border border-br-border">
-                    <img src="https://ui-avatars.com/api/?name=User&background=random" className="w-full h-full" />
+            <div className="flex items-center gap-3">
+                <button onClick={onOpenPweza} className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/20 active:scale-95 transition-transform">
+                    <Bot size={14} />
+                </button>
+                <div className="relative">
+                    <Bell size={20} className="text-blue-600" fill="currentColor" fillOpacity={0.1} />
+                    <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-full border border-[#F2F2F2]"></span>
                 </div>
             </div>
         </header>
@@ -63,20 +64,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
         {children}
       </main>
 
-      {/* MOBILE BOTTOM NAV */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-br-bg border-t border-br-border z-50 flex items-center justify-around px-2 pb-safe">
-         <NavTab icon={<Home size={24} />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
-         <NavTab icon={<Zap size={24} />} label="Scores" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
+      {/* MOBILE BOTTOM NAV - Compact & Sleek */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[60px] bg-white/80 backdrop-blur-2xl border-t border-gray-200/50 z-50 flex items-center justify-between px-6 pb-safe shadow-[0_-5px_30px_rgba(0,0,0,0.02)]">
+         <NavTab icon={<Home />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
+         <NavTab icon={<Zap />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
          
-         {/* Center Pweza Button */}
          <div className="relative -top-5">
-             <button onClick={onOpenPweza} className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)] active:scale-95 transition-transform">
-                 <MessageSquare size={24} className="text-black fill-black" />
+             <button onClick={onOpenPweza} className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-blue-600/30 active:scale-95 transition-transform border-[3px] border-[#F2F2F2]">
+                 <Bot size={22} />
              </button>
          </div>
 
-         <NavTab icon={<Flame size={24} />} label="Trending" active={currentPage === 'trending'} onClick={() => onNavigate('trending')} />
-         <NavTab icon={<User size={24} />} label="Account" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
+         <NavTab icon={<FileText />} label="Slip" active={currentPage === 'trending'} onClick={() => onNavigate('trending')} />
+         <NavTab icon={<User />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
       </nav>
 
     </div>
@@ -98,8 +98,10 @@ const TeamRow = ({ name }: { name: string }) => (
 );
 
 const NavTab = ({ icon, label, active, onClick }: any) => (
-    <div onClick={onClick} className="flex flex-col items-center justify-center w-16 h-full gap-1 cursor-pointer">
-        <div className={`${active ? 'text-white' : 'text-br-muted'} transition-colors`}>{icon}</div>
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${active ? 'text-white' : 'text-br-muted'}`}>{label}</span>
+    <div onClick={onClick} className="flex flex-col items-center justify-center gap-0.5 cursor-pointer group w-14 pt-1">
+        <div className={`${active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} transition-colors`}>
+            {React.cloneElement(icon, { size: 20, strokeWidth: active ? 2.5 : 2, fill: active ? "currentColor" : "none", fillOpacity: 0.1 })}
+        </div>
+        <span className={`text-[9px] font-bold tracking-tight uppercase ${active ? 'text-blue-600' : 'text-gray-400'}`}>{label}</span>
     </div>
 );
