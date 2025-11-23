@@ -1,14 +1,16 @@
 
+
 import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
-import { NewsStory, SystemAlert, ArticleBlock } from '../types';
-import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle } from 'lucide-react';
+import { NewsStory, SystemAlert, ArticleBlock, MatchStatus } from '../types';
+import { generateMatchNews } from '../services/newsAgentService';
+import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const AdminPage: React.FC = () => {
-    const { addNewsStory, addSystemAlert, user } = useSports();
+    const { addNewsStory, addSystemAlert, user, matches } = useSports();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM'>('NEWS');
+    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT'>('NEWS');
 
     // --- NEWS STATE ---
     const [newsTitle, setNewsTitle] = useState('');
@@ -23,6 +25,12 @@ export const AdminPage: React.FC = () => {
     const [alertData, setAlertData] = useState('');
     const [alertLeague, setAlertLeague] = useState('NFL');
     const [alertType, setAlertType] = useState<SystemAlert['alertType']>('SHARP_MONEY');
+
+    // --- AI AGENT STATE ---
+    const [selectedMatchId, setSelectedMatchId] = useState('');
+    const [aiTone, setAiTone] = useState<'HYPE' | 'RECAP' | 'ANALYTICAL' | 'RUMOR'>('RECAP');
+    const [aiLanguage, setAiLanguage] = useState<'ENGLISH' | 'SWAHILI'>('ENGLISH');
+    const [isGenerating, setIsGenerating] = useState(false);
 
     if (!user?.isAdmin) {
         return (
@@ -93,6 +101,25 @@ export const AdminPage: React.FC = () => {
         navigate('/');
     };
 
+    const handleAIGeneration = async () => {
+        const match = matches.find(m => m.id === selectedMatchId);
+        if (!match) return;
+
+        setIsGenerating(true);
+        const result = await generateMatchNews(match, aiTone, aiLanguage);
+        setIsGenerating(false);
+
+        if (result) {
+            setNewsTitle(result.title);
+            setNewsSummary(result.summary);
+            setBlocks(result.blocks);
+            setNewsTag(match.league);
+            setActiveTab('NEWS'); // Switch to editor to review
+        } else {
+            window.alert("Failed to generate article. Check API Key or try again.");
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#050505] text-white pb-24 font-sans">
             
@@ -106,11 +133,83 @@ export const AdminPage: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                     <button onClick={() => setActiveTab('NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded ${activeTab === 'NEWS' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>News Desk</button>
+                    <button onClick={() => setActiveTab('AI_AGENT')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 ${activeTab === 'AI_AGENT' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-white'}`}><Wand2 size={12}/> AI Agent</button>
                     <button onClick={() => setActiveTab('WAR_ROOM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded ${activeTab === 'WAR_ROOM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>War Room</button>
                 </div>
             </div>
 
             <div className="max-w-[1000px] mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                {/* --- AI AGENT WORKFLOW --- */}
+                {activeTab === 'AI_AGENT' && (
+                     <div className="col-span-2 max-w-[600px] mx-auto w-full">
+                         <div className="bg-[#121212] border border-indigo-500/50 rounded-xl p-6 shadow-2xl shadow-indigo-900/20">
+                             <div className="flex items-center gap-3 mb-6">
+                                 <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center">
+                                     <Wand2 size={20} className="text-white" />
+                                 </div>
+                                 <div>
+                                     <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">Sheena Agent</h3>
+                                     <p className="text-xs text-indigo-400">Automated Content Generation</p>
+                                 </div>
+                             </div>
+
+                             <div className="space-y-4">
+                                 <div>
+                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Select Match</label>
+                                     <select 
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                        value={selectedMatchId}
+                                        onChange={(e) => setSelectedMatchId(e.target.value)}
+                                     >
+                                         <option value="">-- Choose a Game --</option>
+                                         {matches.map(m => (
+                                             <option key={m.id} value={m.id}>
+                                                 {m.homeTeam.name} vs {m.awayTeam.name} ({m.status})
+                                             </option>
+                                         ))}
+                                     </select>
+                                 </div>
+
+                                 <div className="grid grid-cols-2 gap-4">
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Narrative Tone</label>
+                                         <select 
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                            value={aiTone}
+                                            onChange={(e) => setAiTone(e.target.value as any)}
+                                         >
+                                             <option value="RECAP">Standard Recap</option>
+                                             <option value="HYPE">Hype / Viral</option>
+                                             <option value="ANALYTICAL">Analytical / Deep Dive</option>
+                                             <option value="RUMOR">Rumor / Speculation</option>
+                                         </select>
+                                     </div>
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Language</label>
+                                         <select 
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                            value={aiLanguage}
+                                            onChange={(e) => setAiLanguage(e.target.value as any)}
+                                         >
+                                             <option value="ENGLISH">English (US)</option>
+                                             <option value="SWAHILI">Swahili / Sheng</option>
+                                         </select>
+                                     </div>
+                                 </div>
+
+                                 <button 
+                                     onClick={handleAIGeneration}
+                                     disabled={!selectedMatchId || isGenerating}
+                                     className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-condensed font-black text-xl uppercase rounded flex items-center justify-center gap-2 mt-4"
+                                 >
+                                     {isGenerating ? <RefreshCw className="animate-spin" /> : <Wand2 />}
+                                     {isGenerating ? 'Generating...' : 'Generate Article'}
+                                 </button>
+                             </div>
+                         </div>
+                     </div>
+                )}
 
                 {/* --- NEWS EDITOR --- */}
                 {activeTab === 'NEWS' && (
@@ -213,7 +312,7 @@ export const AdminPage: React.FC = () => {
                                             )}
                                         </div>
                                     ))}
-                                    {blocks.length === 0 && <div className="text-center text-gray-600 text-xs py-4">No content blocks added.</div>}
+                                    {blocks.length === 0 && <div className="text-center text-gray-600 text-xs py-4">No content blocks added. Use AI Agent or add manually.</div>}
                                 </div>
                             </div>
                         </div>

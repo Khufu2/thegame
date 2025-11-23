@@ -103,6 +103,11 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                    {match.time}
                                </span>
                            </>
+                       ) : match.status === MatchStatus.FINISHED ? (
+                           <>
+                                <span className="font-condensed font-black text-5xl tracking-tighter tabular-nums leading-none text-white">{match.score?.home}-{match.score?.away}</span>
+                                <span className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mt-2">Final</span>
+                           </>
                        ) : (
                            <>
                                <span className="font-condensed font-black text-4xl text-[#333] tracking-tighter select-none">VS</span>
@@ -141,6 +146,9 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
           <div className="flex px-2 border-t border-[#2C2C2C] overflow-x-auto no-scrollbar">
               <TabButton label="Stream" active={activeTab === 'STREAM'} onClick={() => setActiveTab('STREAM')} />
               <TabButton label="Stats" active={activeTab === 'STATS'} onClick={() => setActiveTab('STATS')} />
+              {match.status === MatchStatus.FINISHED && match.boxScore && (
+                 <TabButton label="Box Score" active={activeTab === 'BOXSCORE'} onClick={() => setActiveTab('BOXSCORE')} />
+              )}
               <TabButton label="Lineups" active={activeTab === 'PLAYERS'} onClick={() => setActiveTab('PLAYERS')} />
               <TabButton label="Table" active={activeTab === 'TABLE'} onClick={() => setActiveTab('TABLE')} />
               <TabButton label="Odds" active={activeTab === 'ODDS'} onClick={() => setActiveTab('ODDS')} />
@@ -150,7 +158,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
       {/* 2. MAIN CONTENT STREAM */}
       <div className="max-w-[600px] mx-auto animate-in fade-in duration-500">
           
-          {/* TAB: STREAM (The Bleacher Report Style Feed) */}
+          {/* TAB: STREAM */}
           {activeTab === 'STREAM' && (
               <div className="flex flex-col">
                   
@@ -266,6 +274,71 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                           </div>
                       )}
                   </div>
+              </div>
+          )}
+
+          {/* TAB: BOX SCORE (NEW) */}
+          {activeTab === 'BOXSCORE' && match.boxScore && (
+              <div className="p-4 space-y-6">
+                   {/* Home Team */}
+                   <div className="bg-[#121212] border border-[#2C2C2C] rounded-lg overflow-hidden">
+                       <div className="px-4 py-3 bg-[#1E1E1E] border-b border-[#2C2C2C] flex items-center gap-2">
+                           <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" />
+                           <h3 className="font-condensed font-bold text-sm uppercase text-white">{match.homeTeam.name}</h3>
+                       </div>
+                       <table className="w-full text-right text-sm">
+                           <thead>
+                               <tr className="text-[10px] text-gray-500 uppercase border-b border-[#2C2C2C]">
+                                   <th className="text-left px-3 py-2 font-bold w-1/3">Player</th>
+                                   {match.boxScore.headers.map(h => <th key={h} className="px-2 py-2 font-bold">{h}</th>)}
+                               </tr>
+                           </thead>
+                           <tbody>
+                               {match.boxScore.home.map((p, i) => (
+                                   <tr key={p.id} className={`border-b border-[#2C2C2C] hover:bg-white/5 ${i % 2 === 0 ? 'bg-black/20' : ''}`}>
+                                       <td className="text-left px-3 py-2">
+                                           <span className="block font-bold text-white text-xs">{p.name}</span>
+                                       </td>
+                                       {match.boxScore!.headers.map(h => (
+                                           <td key={h} className="px-2 py-2 text-gray-300 font-mono">
+                                               {h === 'MIN' ? p.minutes : p.stats[h] || 0}
+                                           </td>
+                                       ))}
+                                   </tr>
+                               ))}
+                           </tbody>
+                       </table>
+                   </div>
+
+                   {/* Away Team */}
+                   <div className="bg-[#121212] border border-[#2C2C2C] rounded-lg overflow-hidden">
+                       <div className="px-4 py-3 bg-[#1E1E1E] border-b border-[#2C2C2C] flex items-center gap-2">
+                           <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" />
+                           <h3 className="font-condensed font-bold text-sm uppercase text-white">{match.awayTeam.name}</h3>
+                       </div>
+                       <table className="w-full text-right text-sm">
+                           <thead>
+                               <tr className="text-[10px] text-gray-500 uppercase border-b border-[#2C2C2C]">
+                                   <th className="text-left px-3 py-2 font-bold w-1/3">Player</th>
+                                   {match.boxScore.headers.map(h => <th key={h} className="px-2 py-2 font-bold">{h}</th>)}
+                               </tr>
+                           </thead>
+                           <tbody>
+                               {match.boxScore.away.map((p, i) => (
+                                   <tr key={p.id} className={`border-b border-[#2C2C2C] hover:bg-white/5 ${i % 2 === 0 ? 'bg-black/20' : ''}`}>
+                                       <td className="text-left px-3 py-2">
+                                           <span className="block font-bold text-white text-xs">{p.name}</span>
+                                       </td>
+                                       {match.boxScore!.headers.map(h => (
+                                           <td key={h} className="px-2 py-2 text-gray-300 font-mono">
+                                               {h === 'MIN' ? p.minutes : p.stats[h] || 0}
+                                           </td>
+                                       ))}
+                                   </tr>
+                               ))}
+                           </tbody>
+                       </table>
+                   </div>
               </div>
           )}
 

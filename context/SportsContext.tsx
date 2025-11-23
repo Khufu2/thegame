@@ -123,9 +123,9 @@ const generateMockData = () => {
         logo: 'https://upload.wikimedia.org/wikipedia/en/0/01/Golden_State_Warriors_logo.svg',
         record: '20-16',
       },
-      status: MatchStatus.LIVE,
-      time: 'Q3 8:42',
-      score: { home: 89, away: 86 },
+      status: MatchStatus.FINISHED,
+      time: 'Final',
+      score: { home: 112, away: 108 },
       stats: {
           possession: { home: 48, away: 42 },
           shots: { home: 48, away: 42 },
@@ -155,6 +155,18 @@ const generateMockData = () => {
           homeTicketPercent: 78,
           lineMovement: 'STABLE',
           publicConsensus: 'Public heavy on Lakers'
+      },
+      boxScore: {
+          headers: ['MIN', 'PTS', 'REB', 'AST'],
+          home: [
+              { id: 'lbj', name: 'L. James', minutes: '36', stats: { PTS: 28, REB: 11, AST: 8 } },
+              { id: 'ad', name: 'A. Davis', minutes: '34', stats: { PTS: 22, REB: 14, AST: 2 } },
+              { id: 'ar', name: 'A. Reaves', minutes: '30', stats: { PTS: 18, REB: 3, AST: 5 } }
+          ],
+          away: [
+              { id: 'sc', name: 'S. Curry', minutes: '38', stats: { PTS: 32, REB: 5, AST: 6 } },
+              { id: 'kt', name: 'K. Thompson', minutes: '32', stats: { PTS: 15, REB: 4, AST: 2 } }
+          ]
       }
     },
      {

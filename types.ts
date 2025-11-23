@@ -45,6 +45,19 @@ export interface Player {
   stats?: { label: string; value: string | number }[]; // e.g. [{label: 'G', value: 1}, {label: 'A', value: 1}]
 }
 
+export interface BoxScorePlayer {
+    id: string;
+    name: string;
+    minutes?: string;
+    stats: Record<string, string | number>; // Dynamic: { PTS: 24, AST: 5 } or { G: 1, A: 0 }
+}
+
+export interface BoxScore {
+    headers: string[]; // ['MIN', 'PTS', 'REB', 'AST']
+    home: BoxScorePlayer[];
+    away: BoxScorePlayer[];
+}
+
 export interface MatchStats {
   possession?: { home: number; away: number };
   shots?: { home: number; away: number };
@@ -151,6 +164,7 @@ export interface Match {
   // Robustness Features
   standings?: Standing[]; // Contextual table
   bettingTrends?: BettingTrends;
+  boxScore?: BoxScore; // NEW: Detailed Box Score
 }
 
 // --- RICH CONTENT BLOCKS ---
