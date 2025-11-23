@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Home, Search, Flame, User, Bell, Menu, MessageSquare, Zap, Bot, FileText, LayoutGrid } from 'lucide-react';
+import { Home, Search, Zap, User, Bell } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,7 +25,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
         <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
           <SidebarLink icon={<Home size={20} />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
           <SidebarLink icon={<Zap size={20} />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
-          <SidebarLink icon={<FileText size={20} />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
+          <SidebarLink icon={<User size={20} />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
           <SidebarLink icon={<Search size={20} />} label="Explore" active={currentPage === 'explore'} onClick={() => onNavigate('explore')} />
           
           <div className="my-6 border-t border-br-border/50"></div>
@@ -68,8 +69,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[60px] bg-white/90 backdrop-blur-2xl border-t border-gray-200/50 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-5px_30px_rgba(0,0,0,0.02)]">
          <NavTab icon={<Home />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
          <NavTab icon={<Zap />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
-         <NavTab icon={<FileText />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
-         <NavTab icon={<User />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
+         <NavTab icon={<User />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
+         <NavTab icon={<Search />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
       </nav>
 
     </div>

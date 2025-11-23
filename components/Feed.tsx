@@ -1,6 +1,8 @@
+
+
 import React, { useState, useMemo } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
-import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren, Radar } from 'lucide-react';
+import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren, Radar, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface FeedProps {
@@ -8,6 +10,7 @@ interface FeedProps {
   matches: Match[]; // Still passed for Live Rail/Filtering
   onArticleClick?: (id: string) => void;
   onOpenPweza?: () => void;
+  onTailBet?: (matchId: string) => void;
 }
 
 const LEAGUES = ["All", "NFL", "NBA", "EPL", "LaLiga", "Serie A", "UFC"];
@@ -40,7 +43,7 @@ const WeatherIcon = ({ condition, size = 14 }: { condition?: string, size?: numb
     return <Sun size={size} className="text-yellow-500" />;
 }
 
-export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOpenPweza }) => {
+export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOpenPweza, onTailBet }) => {
   const [activeLeague, setActiveLeague] = useState("All");
   const navigate = useNavigate();
 
@@ -256,7 +259,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                 {filteredStreamItems.map((item) => {
                     // CASE: SYSTEM ALERT (WAR ROOM)
                     if ('alertType' in item) {
-                         return <SystemAlertCard key={item.id} alert={item as SystemAlert} />;
+                         return <WarRoomIntelCard key={item.id} alert={item as SystemAlert} onTail={() => onTailBet?.(item.relatedMatchId || '')} />;
                     }
                     
                     // CASE: NEWS STORY
@@ -655,43 +658,73 @@ const SmartPredictionCard: React.FC<{ match: Match; onOpenPweza?: () => void; on
     )
 }
 
-// --- SYSTEM ALERT CARD (WAR ROOM INTELLIGENCE) ---
-const SystemAlertCard: React.FC<{ alert: SystemAlert }> = ({ alert }) => {
+// --- WAR ROOM INTELLIGENCE CARD (REPLACES SYSTEM ALERT) ---
+const WarRoomIntelCard: React.FC<{ alert: SystemAlert; onTail?: () => void }> = ({ alert, onTail }) => {
     return (
-        <div className="relative overflow-hidden bg-[#0A0A0A] border border-[#00FFB2]/30 rounded-xl p-4 shadow-[0_0_20px_-10px_rgba(0,255,178,0.2)]">
-            {/* Scanline Effect */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] pointer-events-none z-0 opacity-20"></div>
+        <div className="relative overflow-hidden bg-[#0A0A0A] border border-[#00FFB2]/30 rounded-xl shadow-[0_0_20px_-10px_rgba(0,255,178,0.2)] group">
             
-            <div className="relative z-10 flex items-start gap-4">
-                <div className="mt-1">
-                    {alert.alertType === 'SHARP_MONEY' && <div className="w-10 h-10 rounded bg-[#00FFB2]/10 border border-[#00FFB2] flex items-center justify-center text-[#00FFB2]"><DollarSign size={20} /></div>}
-                    {alert.alertType === 'LINE_MOVE' && <div className="w-10 h-10 rounded bg-orange-500/10 border border-orange-500 flex items-center justify-center text-orange-500"><TrendingUp size={20} /></div>}
-                    {alert.alertType === 'TRENDING_PROP' && <div className="w-10 h-10 rounded bg-blue-500/10 border border-blue-500 flex items-center justify-center text-blue-500"><Flame size={20} /></div>}
+            {/* Header: Terminal Style */}
+            <div className="bg-[#00FFB2]/5 px-4 py-2 flex items-center justify-between border-b border-[#00FFB2]/10">
+                <div className="flex items-center gap-2">
+                     <Terminal size={14} className="text-[#00FFB2]" />
+                     <span className="font-mono text-[10px] font-bold text-[#00FFB2] uppercase tracking-wider">War Room Intel</span>
                 </div>
-                
-                <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                        <span className="font-mono text-xs text-[#00FFB2] uppercase tracking-widest flex items-center gap-2">
-                             <Terminal size={10} />
-                             System Alert
-                        </span>
-                        <span className="font-mono text-[10px] text-gray-500">{alert.timestamp}</span>
+                <div className="flex items-center gap-2">
+                     <div className="w-1.5 h-1.5 rounded-full bg-[#00FFB2] animate-pulse"></div>
+                     <span className="font-mono text-[10px] text-[#00FFB2]/70">{alert.timestamp}</span>
+                </div>
+            </div>
+            
+            <div className="p-5 relative z-10">
+                <div className="flex items-start gap-4">
+                    <div className="mt-1">
+                        {alert.alertType === 'SHARP_MONEY' && (
+                            <div className="w-12 h-12 rounded bg-[#00FFB2]/10 border border-[#00FFB2] flex items-center justify-center text-[#00FFB2] shadow-[0_0_15px_-5px_#00FFB2]">
+                                <DollarSign size={24} />
+                            </div>
+                        )}
+                        {alert.alertType === 'LINE_MOVE' && (
+                            <div className="w-12 h-12 rounded bg-orange-500/10 border border-orange-500 flex items-center justify-center text-orange-500">
+                                <TrendingUp size={24} />
+                            </div>
+                        )}
+                        {alert.alertType === 'TRENDING_PROP' && (
+                            <div className="w-12 h-12 rounded bg-blue-500/10 border border-blue-500 flex items-center justify-center text-blue-500">
+                                <Flame size={24} />
+                            </div>
+                        )}
                     </div>
                     
-                    <h3 className="font-condensed font-black text-xl text-white uppercase leading-none mb-1.5">
-                        {alert.title}
-                    </h3>
-                    
-                    <p className="font-mono text-xs text-gray-400 leading-relaxed mb-3">
-                        {alert.description}
-                    </p>
+                    <div className="flex-1">
+                        <h3 className="font-condensed font-black text-2xl text-white uppercase leading-none mb-2">
+                            {alert.title}
+                        </h3>
+                        <p className="font-mono text-xs text-gray-400 leading-relaxed mb-4 border-l-2 border-[#00FFB2]/20 pl-3">
+                            {alert.description}
+                        </p>
 
-                    <div className="inline-flex items-center gap-2 px-2 py-1 bg-white/5 border border-white/10 rounded">
-                        <Activity size={12} className="text-white" />
-                        <span className="font-mono text-xs font-bold text-white">{alert.dataPoint}</span>
+                        <div className="flex items-center justify-between">
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded">
+                                <Activity size={12} className="text-white" />
+                                <span className="font-mono text-xs font-bold text-white">{alert.dataPoint}</span>
+                            </div>
+                            
+                            {/* Actionable Tail Button */}
+                            {alert.actionableBet && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onTail?.() }}
+                                    className="flex items-center gap-2 bg-[#00FFB2] hover:bg-[#00E09E] text-black px-4 py-1.5 rounded font-condensed font-bold uppercase text-sm transition-colors active:scale-95"
+                                >
+                                    Tail Bet <Plus size={14} />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            {/* Scanline Overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] pointer-events-none z-0 opacity-20"></div>
         </div>
     )
 }

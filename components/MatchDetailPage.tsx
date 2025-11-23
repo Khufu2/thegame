@@ -1,8 +1,8 @@
 
 
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle } from 'lucide-react';
-import { Match, MatchStatus, Player, TimelineEvent, Standing } from '../types';
+import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain } from 'lucide-react';
+import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 interface MatchDetailPageProps {
@@ -188,12 +188,18 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                     <div className="p-4 border-b border-[#2C2C2C] bg-gradient-to-b from-[#1E1E1E] to-[#121212]">
                         <div className="flex items-center gap-2 mb-4">
                              <div className="w-6 h-6 rounded bg-indigo-600 flex items-center justify-center">
-                                 <Trophy size={14} className="text-white" />
+                                 <Brain size={14} className="text-white" />
                              </div>
-                             <span className="font-condensed font-black text-xl uppercase italic tracking-tight text-white">Sheena's Edge</span>
+                             <span className="font-condensed font-black text-xl uppercase italic tracking-tight text-white">Neural Breakdown</span>
+                             {match.prediction.modelEdge && (
+                                 <div className="ml-auto flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/30">
+                                     <TrendingUp size={12} className="text-green-500" />
+                                     <span className="text-xs font-bold text-green-500">+{match.prediction.modelEdge}% Edge</span>
+                                 </div>
+                             )}
                         </div>
 
-                        <div className="mb-4">
+                        <div className="mb-6">
                             <h3 className="font-condensed font-black text-3xl uppercase leading-[0.9] mb-2 text-white">
                                 {match.prediction.outcome === 'HOME' ? match.homeTeam.name : match.prediction.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'} 
                                 <span className="text-indigo-500 ml-2">to Win</span>
@@ -203,22 +209,25 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                             </p>
                         </div>
 
-                        {/* Stats Row */}
-                        <div className="flex items-center gap-4 mb-5 overflow-x-auto no-scrollbar">
-                            {match.prediction.potentialReturn && (
-                                <div className="px-3 py-1.5 bg-[#2C2C2C] rounded text-xs font-bold uppercase text-green-400 whitespace-nowrap">
-                                    Value: {match.prediction.potentialReturn}
+                        {/* FACTOR GRID (NEW) */}
+                        {match.prediction.factors && (
+                            <div className="bg-[#121212] rounded-lg border border-[#2C2C2C] p-3 mb-5">
+                                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 border-b border-[#2C2C2C] pb-2">Why the AI thinks this</div>
+                                <div className="space-y-3">
+                                    {match.prediction.factors.map((factor, idx) => (
+                                        <FactorRow key={idx} factor={factor} />
+                                    ))}
                                 </div>
-                            )}
-                            <div className="px-3 py-1.5 bg-[#2C2C2C] rounded text-xs font-bold uppercase text-indigo-400 whitespace-nowrap">
-                                Conf: {match.prediction.confidence}%
                             </div>
-                            {match.prediction.odds && (
-                                <div className="px-3 py-1.5 bg-[#2C2C2C] rounded text-xs font-bold uppercase text-gray-300 whitespace-nowrap">
-                                    Odds: {match.prediction.outcome === 'HOME' ? match.prediction.odds.home : match.prediction.outcome === 'AWAY' ? match.prediction.odds.away : match.prediction.odds.draw}
-                                </div>
-                            )}
-                        </div>
+                        )}
+
+                        {/* System Record */}
+                        {match.prediction.systemRecord && (
+                            <div className="flex items-center gap-2 mb-5 text-xs text-gray-500">
+                                <Trophy size={12} />
+                                <span className="font-mono">System Record: {match.prediction.systemRecord}</span>
+                            </div>
+                        )}
 
                         {/* Action Buttons */}
                         <div className="grid grid-cols-2 gap-3">
@@ -406,6 +415,23 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
     </div>
   );
 };
+
+// --- NEW FACTOR ROW COMPONENT ---
+const FactorRow: React.FC<{ factor: PredictionFactor }> = ({ factor }) => (
+    <div className="flex items-start gap-3 p-2 hover:bg-[#1E1E1E] rounded transition-colors">
+        <div className={`mt-1 font-mono font-bold text-xs w-8 text-right ${factor.type === 'POSITIVE' ? 'text-green-400' : factor.type === 'NEGATIVE' ? 'text-red-400' : 'text-gray-400'}`}>
+            {factor.weight > 0 ? '+' : ''}{factor.weight}%
+        </div>
+        <div className="flex-1">
+            <span className={`block text-xs font-bold uppercase mb-0.5 ${factor.type === 'POSITIVE' ? 'text-green-400' : factor.type === 'NEGATIVE' ? 'text-red-400' : 'text-white'}`}>
+                {factor.label}
+            </span>
+            <span className="text-[11px] text-gray-400 leading-tight block">
+                {factor.description}
+            </span>
+        </div>
+    </div>
+);
 
 // --- SUB COMPONENTS FOR THE "STREAM" ---
 

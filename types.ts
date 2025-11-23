@@ -1,5 +1,4 @@
 
-
 export enum MatchStatus {
   SCHEDULED = 'SCHEDULED',
   LIVE = 'LIVE',
@@ -86,6 +85,13 @@ export interface TimelineEvent {
   likes?: number;
 }
 
+export interface PredictionFactor {
+    label: string; // e.g. "Home Form", "Sharp Money", "Injury Impact"
+    weight: number; // e.g. +15 or -5 (Impact on score)
+    description: string; // "Arsenal averaged 2.8 goals at home"
+    type: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+}
+
 export interface Prediction {
   outcome: 'HOME' | 'DRAW' | 'AWAY';
   confidence: number; // 0-100
@@ -99,6 +105,11 @@ export interface Prediction {
   weather?: string;
   sentiment?: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
   probability?: { home: number; draw: number; away: number }; // Visual bars
+  
+  // New Deep Data
+  factors?: PredictionFactor[]; // The "Brain" breakdown
+  modelEdge?: number; // e.g. 5.2% edge over bookies
+  systemRecord?: string; // e.g. "8-2 L10"
   
   // New Betting/Engagement Fields
   isValuePick?: boolean;
@@ -169,6 +180,8 @@ export interface SystemAlert {
   league: string;
   timestamp: string;
   relatedMatchId?: string;
+  signalStrength?: 'HIGH' | 'MEDIUM' | 'LOW';
+  actionableBet?: string; // e.g. "Bet Arsenal -0.5"
 }
 
 export interface BetSlipItem {
@@ -204,11 +217,13 @@ export interface UserPreferences {
         lineMoves: boolean; // Premium feature?
         breakingNews: boolean;
     };
+    hasCompletedOnboarding: boolean;
 }
 
 export interface UserProfile {
     id: string;
     name: string;
+    email: string;
     avatar: string;
     isPro: boolean;
     stats: {
@@ -219,4 +234,28 @@ export interface UserProfile {
         netProfit: number; // Virtual currency/tracking
     };
     preferences: UserPreferences;
+}
+
+export type AuthState = 'UNAUTHENTICATED' | 'ONBOARDING' | 'AUTHENTICATED';
+
+// --- CONTEXT TYPE ---
+export interface SportsContextType {
+    user: UserProfile | null;
+    authState: AuthState;
+    login: (email: string) => void;
+    logout: () => void;
+    completeOnboarding: (prefs: { leagues: string[], teams: string[] }) => void;
+    
+    matches: Match[];
+    news: NewsStory[];
+    feedItems: FeedItem[];
+    betSlip: BetSlipItem[];
+    
+    addToSlip: (match: Match) => void;
+    removeFromSlip: (id: string) => void;
+    clearSlip: () => void;
+    addRandomPick: () => void;
+    
+    isPwezaOpen: boolean;
+    setIsPwezaOpen: (open: boolean) => void;
 }
