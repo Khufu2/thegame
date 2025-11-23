@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
     SportsContextType, 
@@ -14,9 +15,7 @@ import {
 
 // Mock Data Generators (Moved from App.tsx)
 const generateMockData = () => {
-   // ... (We will copy the mock data generation logic here for now)
-   // For brevity in the diff, I will rely on the fact that I can move the exact logic from App.tsx
-   // In a real scenario, this would call an API service.
+   // ... Matches and Alerts remain similar to before ...
     const matches: Match[] = [
     {
       id: 'm1',
@@ -245,7 +244,6 @@ const generateMockData = () => {
           { rank: 9, teamId: 't6', teamName: 'Chelsea', logo: 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg', played: 21, won: 8, drawn: 6, lost: 7, points: 30, form: ['L','D','W','L','L'] },
       ]
     },
-    // ... Additional matches can be pasted here from App.tsx ...
   ];
   
   const news: NewsStory[] = [
@@ -262,10 +260,25 @@ const generateMockData = () => {
       isHero: true,
       authorAvatar: 'https://ui-avatars.com/api/?name=Fabrizio',
       tags: ['Transfers', 'La Liga', 'EPL'],
-      body: [
-        "Reports emerging from Catalonia suggest Barcelona and Liverpool have opened preliminary discussions.",
-        "QUERY:The deal could reshape the midfield for both European giants.",
-        "Financial fair play regulations are believed to be a driving factor for the Catalan club."
+      // RICH CONTENT BLOCKS
+      contentBlocks: [
+          { type: 'TEXT', content: "Reports emerging from Catalonia suggest Barcelona and Liverpool have opened preliminary discussions regarding a potential blockbuster midfield swap." },
+          { 
+              type: 'TWEET', 
+              id: 'tw1', 
+              author: 'Fabrizio Romano', 
+              handle: '@FabrizioRomano', 
+              text: "🚨 EXCLUSIVE: Liverpool have made contact with Frenkie de Jong's camp. Barcelona is open to sell due to FFP. Klopp is a huge admirer. 🔴🇳🇱 #LFC",
+              url: 'twitter.com/fab/status/123' 
+          },
+          { type: 'TEXT', content: "The financial fair play regulations are believed to be a driving factor for the Catalan club, who need to offload salary mass before the summer window opens." },
+          { 
+              type: 'QUOTE', 
+              text: "We are always looking for market opportunities. If a world-class player becomes available, we have to be in the conversation.", 
+              author: 'Jurgen Klopp', 
+              role: 'Liverpool Manager' 
+          },
+          { type: 'TEXT', content: "However, the player's high wages remain a stumbling block for the Reds structure." }
       ],
       relatedIds: ['n3']
     },
@@ -278,7 +291,16 @@ const generateMockData = () => {
         source: "NBA Highlights",
         timestamp: "5h",
         likes: 5000,
-        comments: 200
+        comments: 200,
+        contentBlocks: [
+             { type: 'TEXT', content: "A wild night in the NBA saw three games go to overtime and a buzzer beater in Miami." },
+             { 
+                 type: 'VIDEO', 
+                 url: '', 
+                 thumbnail: 'https://images.unsplash.com/photo-1546519638-68e109498ee2?q=80&w=2000&auto=format&fit=crop', 
+                 title: 'Top 10 Plays of the Night' 
+             }
+        ]
     }
   ];
 
@@ -313,43 +335,60 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [betSlip, setBetSlip] = useState<BetSlipItem[]>([]);
     const [isPwezaOpen, setIsPwezaOpen] = useState(false);
 
+    // Function to rebuild the feed based on current data
+    const rebuildFeed = (currentMatches: Match[], currentNews: NewsStory[], currentAlerts: SystemAlert[]) => {
+        const mixedFeed: FeedItem[] = [];
+        
+        // Find Hero
+        const hero = currentNews.find(n => n.isHero);
+        if (hero) mixedFeed.push(hero);
+
+        const remainingNews = currentNews.filter(n => !n.isHero);
+        // Prioritize Live matches or High Confidence
+        const predictions = currentMatches.sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0));
+
+        let mIdx = 0;
+        let nIdx = 0;
+        let aIdx = 0;
+
+        // Simple interleaving logic for the stream
+        while (mIdx < predictions.length || nIdx < remainingNews.length || aIdx < currentAlerts.length) {
+            // Pattern: Match -> News -> Alert -> Match ...
+            if (aIdx < currentAlerts.length) mixedFeed.push(currentAlerts[aIdx++]);
+            if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
+            if (nIdx < remainingNews.length) mixedFeed.push(remainingNews[nIdx++]);
+            if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
+        }
+        setFeedItems(mixedFeed);
+    };
+
     // Initial Data Load
     useEffect(() => {
         const { matches, news, alerts } = generateMockData();
         setMatches(matches);
         setNews(news);
         setAlerts(alerts);
-        
-        // Build Feed
-        const mixedFeed: FeedItem[] = [];
-        const hero = news.find(n => n.isHero);
-        if (hero) mixedFeed.push(hero);
-
-        const remainingNews = news.filter(n => !n.isHero);
-        const predictions = matches.sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0));
-
-        let mIdx = 0;
-        let nIdx = 0;
-        let aIdx = 0;
-
-        while (mIdx < predictions.length || nIdx < remainingNews.length) {
-            if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
-            if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
-            if (aIdx < alerts.length) mixedFeed.push(alerts[aIdx++]);
-            if (nIdx < remainingNews.length) mixedFeed.push(remainingNews[nIdx++]);
-        }
-        setFeedItems(mixedFeed);
+        rebuildFeed(matches, news, alerts);
     }, []);
 
+    // Rebuild feed whenever underlying data changes
+    useEffect(() => {
+        if (matches.length > 0) {
+            rebuildFeed(matches, news, alerts);
+        }
+    }, [matches, news, alerts]);
+
     const login = (email: string) => {
-        // Mock Login
+        // Mock Login with ADMIN capability if email contains 'admin'
+        const isAdmin = email.includes('admin');
         const mockUser: UserProfile = {
             id: 'u1',
             name: email.split('@')[0] || 'User',
             email: email,
             avatar: `https://ui-avatars.com/api/?name=${email}&background=6366F1&color=fff`,
-            isPro: false,
-            stats: { betsPlaced: 0, wins: 0, losses: 0, winRate: 0, netProfit: 0 },
+            isPro: true,
+            isAdmin: isAdmin,
+            stats: { betsPlaced: 12, wins: 8, losses: 4, winRate: 66, netProfit: 120.50 },
             preferences: {
                 favoriteLeagues: [],
                 favoriteTeams: [],
@@ -416,6 +455,15 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     };
 
+    // --- CMS ACTIONS ---
+    const addNewsStory = (story: NewsStory) => {
+        setNews(prev => [story, ...prev]);
+    };
+
+    const addSystemAlert = (alert: SystemAlert) => {
+        setAlerts(prev => [alert, ...prev]);
+    };
+
     return (
         <SportsContext.Provider value={{
             user,
@@ -431,6 +479,8 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             removeFromSlip,
             clearSlip,
             addRandomPick,
+            addNewsStory,
+            addSystemAlert,
             isPwezaOpen,
             setIsPwezaOpen
         }}>

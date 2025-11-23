@@ -1,6 +1,7 @@
+
 import React, { useEffect } from 'react';
-import { ArrowLeft, Share2, MessageSquare, Bookmark, MoreHorizontal, Flame, Twitter, ThumbsUp } from 'lucide-react';
-import { NewsStory } from '../types';
+import { ArrowLeft, Share2, MessageSquare, Bookmark, Flame, Twitter, ThumbsUp, Quote, Play } from 'lucide-react';
+import { NewsStory, ArticleBlock } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 interface ArticlePageProps {
@@ -75,26 +76,21 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
             </button>
         </div>
 
-        {/* BODY CONTENT */}
+        {/* BODY CONTENT RENDERER */}
         <article className="prose dark:prose-invert prose-lg max-w-none">
-            {story.body ? (
-                story.body.map((paragraph, idx) => {
-                    if (paragraph.startsWith('QUERY:')) {
-                        // Mock pull quote
-                        return (
-                            <blockquote key={idx} className="border-l-4 border-[#6366F1] pl-4 my-8 italic text-xl font-condensed font-bold text-gray-900 dark:text-white">
-                                "{paragraph.replace('QUERY:', '')}"
-                            </blockquote>
-                        )
-                    }
-                    return (
-                        <p key={idx} className="mb-6 font-sans text-[17px] leading-[1.6] text-gray-800 dark:text-[#D1D1D1]">
-                            {paragraph}
-                        </p>
-                    )
-                })
+            {story.contentBlocks ? (
+                story.contentBlocks.map((block, idx) => (
+                    <ContentBlockRenderer key={idx} block={block} />
+                ))
+            ) : story.body ? (
+                // Fallback for old string[] body
+                story.body.map((paragraph, idx) => (
+                     <p key={idx} className="mb-6 font-sans text-[17px] leading-[1.6] text-gray-800 dark:text-[#D1D1D1]">
+                         {paragraph}
+                     </p>
+                ))
             ) : (
-                <p className="font-sans text-lg text-gray-500 italic">Full story content loading...</p>
+                <p className="font-sans text-lg text-gray-500 italic">Content loading...</p>
             )}
         </article>
 
@@ -105,9 +101,6 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
                     {tag}
                 </span>
             ))}
-            <span className="px-3 py-1.5 bg-gray-100 dark:bg-[#1E1E1E] text-gray-600 dark:text-[#A1A1A1] text-xs font-bold uppercase tracking-wide rounded border border-gray-200 dark:border-[#2C2C2C]">
-                Breaking News
-            </span>
         </div>
 
         {/* RELATED STORIES */}
@@ -162,3 +155,86 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
     </div>
   );
 };
+
+// --- RICH CONTENT BLOCK RENDERER ---
+const ContentBlockRenderer: React.FC<{ block: ArticleBlock }> = ({ block }) => {
+    switch (block.type) {
+        case 'TEXT':
+            return (
+                <p className="mb-6 font-sans text-[17px] leading-[1.6] text-gray-800 dark:text-[#D1D1D1]">
+                    {block.content}
+                </p>
+            );
+        
+        case 'IMAGE':
+            return (
+                <figure className="my-8">
+                    <img src={block.url} alt={block.caption} className="w-full rounded-lg" />
+                    {block.caption && (
+                        <figcaption className="mt-2 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">
+                            {block.caption}
+                        </figcaption>
+                    )}
+                </figure>
+            );
+
+        case 'QUOTE':
+            return (
+                <blockquote className="border-l-4 border-indigo-600 pl-6 my-10 relative">
+                    <Quote size={32} className="text-indigo-600/20 absolute -top-4 -left-2 fill-indigo-600" />
+                    <p className="font-condensed font-bold text-2xl italic text-gray-900 dark:text-white mb-2 leading-tight">
+                        "{block.text}"
+                    </p>
+                    <footer className="text-sm font-bold text-gray-500 uppercase tracking-wide">
+                        — {block.author}{block.role && `, ${block.role}`}
+                    </footer>
+                </blockquote>
+            );
+
+        case 'TWEET':
+            return (
+                <div className="my-8 mx-auto max-w-[500px] border border-gray-200 dark:border-[#2C2C2C] rounded-xl p-4 bg-white dark:bg-[#151515] shadow-sm hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                             <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+                                 <img src={block.avatar || `https://ui-avatars.com/api/?name=${block.author}`} className="w-full h-full object-cover" />
+                             </div>
+                             <div className="leading-tight">
+                                 <span className="block font-bold text-sm text-black dark:text-white">{block.author}</span>
+                                 <span className="text-xs text-gray-500">{block.handle}</span>
+                             </div>
+                        </div>
+                        <Twitter size={18} className="text-[#1DA1F2] fill-[#1DA1F2]" />
+                    </div>
+                    <p className="text-[15px] leading-normal text-black dark:text-gray-200 mb-2 whitespace-pre-wrap">
+                        {block.text}
+                    </p>
+                    {block.url && (
+                        <span className="text-xs text-[#1DA1F2] hover:underline cursor-pointer truncate block">
+                            {block.url}
+                        </span>
+                    )}
+                </div>
+            );
+        
+        case 'VIDEO':
+            return (
+                <div className="my-8 relative group cursor-pointer rounded-xl overflow-hidden aspect-video bg-black">
+                    <img src={block.thumbnail} className="w-full h-full object-cover opacity-80" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/40 group-hover:scale-110 transition-transform">
+                            <Play size={32} className="text-white fill-white ml-2" />
+                        </div>
+                    </div>
+                    {block.title && (
+                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                            <span className="text-white font-bold text-sm">{block.title}</span>
+                        </div>
+                    )}
+                </div>
+            );
+
+        default:
+            return null;
+    }
+}

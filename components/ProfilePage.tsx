@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { UserProfile, BetSlipItem, Match } from '../types';
-import { Settings, Award, TrendingUp, Shield, Crown, ChevronRight, LogOut, Bell, Heart, CreditCard, Plus, Check } from 'lucide-react';
+import { Settings, Award, TrendingUp, Shield, Crown, ChevronRight, LogOut, Bell, Heart, CreditCard, Plus, Check, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface ProfilePageProps {
   user: UserProfile;
@@ -17,6 +18,7 @@ const SUGGESTED_TEAMS = [
 ];
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SQUAD' | 'HISTORY'>('OVERVIEW');
   const [favorites, setFavorites] = useState<string[]>(user.preferences.favoriteLeagues);
   const [followedTeams, setFollowedTeams] = useState<string[]>(user.preferences.favoriteTeams);
@@ -108,6 +110,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
             {activeTab === 'OVERVIEW' && (
                 <div className="space-y-6">
                     
+                    {/* ADMIN BUTTON */}
+                    {user.isAdmin && (
+                        <button 
+                            onClick={() => navigate('/admin')}
+                            className="w-full py-4 bg-red-900/20 border border-red-500/50 rounded-lg flex items-center justify-center gap-2 text-red-500 font-condensed font-black uppercase hover:bg-red-900/30 transition-colors"
+                        >
+                            <Lock size={18} /> Access Command Center
+                        </button>
+                    )}
+
                     {/* SHEENA+ UPSELL CARD */}
                     {!user.isPro && (
                         <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-900 to-black border border-indigo-500/50 p-6 shadow-lg shadow-indigo-900/20">

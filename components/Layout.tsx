@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, Search, Zap, User, Bell } from 'lucide-react';
+import { Home, Search, Zap, User, Ticket } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,9 +24,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
 
         <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
           <SidebarLink icon={<Home size={20} />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
-          <SidebarLink icon={<Zap size={20} />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
-          <SidebarLink icon={<User size={20} />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
           <SidebarLink icon={<Search size={20} />} label="Explore" active={currentPage === 'explore'} onClick={() => onNavigate('explore')} />
+          <SidebarLink icon={<Zap size={20} />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
+          <SidebarLink icon={<Ticket size={20} />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
+          <SidebarLink icon={<User size={20} />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
           
           <div className="my-6 border-t border-br-border/50"></div>
           <div className="px-4 mb-2 text-xs font-bold text-br-muted uppercase tracking-widest">My Teams</div>
@@ -55,22 +56,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
                 <button onClick={onOpenPweza} className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-transform">
                     <span className="text-lg">🐙</span>
                 </button>
-                <div className="relative">
-                    <Bell size={20} className="text-indigo-600" fill="currentColor" fillOpacity={0.1} />
-                    <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-full border border-[#F2F2F2]"></span>
-                </div>
             </div>
         </header>
 
         {children}
       </main>
 
-      {/* MOBILE BOTTOM NAV - Balanced 4 Items, No Floating Button */}
+      {/* MOBILE BOTTOM NAV - 5 Items */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[60px] bg-white/90 backdrop-blur-2xl border-t border-gray-200/50 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-5px_30px_rgba(0,0,0,0.02)]">
          <NavTab icon={<Home />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
+         <NavTab icon={<Search />} label="Explore" active={currentPage === 'explore'} onClick={() => onNavigate('explore')} />
          <NavTab icon={<Zap />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
-         <NavTab icon={<User />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
-         <NavTab icon={<Search />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
+         <NavTab icon={<Ticket />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
+         <NavTab icon={<User />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
       </nav>
 
     </div>
@@ -92,10 +90,10 @@ const TeamRow = ({ name }: { name: string }) => (
 );
 
 const NavTab = ({ icon, label, active, onClick }: any) => (
-    <div onClick={onClick} className="flex flex-col items-center justify-center gap-1 cursor-pointer w-16 pt-1">
+    <div onClick={onClick} className="flex flex-col items-center justify-center gap-1 cursor-pointer w-14 pt-1">
         <div className={`${active ? 'text-indigo-600 transform scale-110' : 'text-gray-400'} transition-all duration-200`}>
             {React.cloneElement(icon, { size: 22, strokeWidth: active ? 2.5 : 2, fill: active ? "currentColor" : "none", fillOpacity: 0.1 })}
         </div>
-        <span className={`text-[10px] font-bold tracking-tight uppercase ${active ? 'text-indigo-600' : 'text-gray-400'}`}>{label}</span>
+        <span className={`text-[9px] font-bold tracking-tight uppercase ${active ? 'text-indigo-600' : 'text-gray-400'}`}>{label}</span>
     </div>
 );

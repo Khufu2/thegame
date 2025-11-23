@@ -10,6 +10,8 @@ import { BetSlipPage } from './components/BetSlipPage';
 import { ProfilePage } from './components/ProfilePage';
 import { AuthPage } from './components/AuthPage';
 import { Onboarding } from './components/Onboarding';
+import { ExplorePage } from './components/ExplorePage'; 
+import { AdminPage } from './components/AdminPage'; // Added import
 import { SportsProvider, useSports } from './context/SportsContext';
 import { HashRouter, Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 
@@ -88,7 +90,9 @@ const AppContent = () => {
                 onOpenPweza={handleOpenPweza}
             />
         } />
+        <Route path="/explore" element={<ExplorePage />} />
         <Route path="/profile" element={user ? <ProfilePage user={user} betHistory={betSlip} /> : null} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/article/:id" element={<ArticleRouteWrapper />} />
         <Route path="/match/:id" element={<MatchRouteWrapper />} />
         <Route path="*" element={<div className="p-20 text-center text-[#A1A1A1] font-condensed font-bold text-xl">COMING SOON</div>} />

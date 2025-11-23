@@ -1,4 +1,5 @@
 
+
 export enum MatchStatus {
   SCHEDULED = 'SCHEDULED',
   LIVE = 'LIVE',
@@ -152,6 +153,14 @@ export interface Match {
   bettingTrends?: BettingTrends;
 }
 
+// --- RICH CONTENT BLOCKS ---
+export type ArticleBlock = 
+  | { type: 'TEXT'; content: string }
+  | { type: 'IMAGE'; url: string; caption?: string }
+  | { type: 'TWEET'; id: string; url?: string; author: string; handle: string; text: string; avatar?: string }
+  | { type: 'QUOTE'; text: string; author: string; role?: string }
+  | { type: 'VIDEO'; url: string; thumbnail: string; title?: string };
+
 export interface NewsStory {
   id: string;
   type: 'NEWS' | 'HIGHLIGHT' | 'RUMOR' | 'SOCIAL';
@@ -165,8 +174,13 @@ export interface NewsStory {
   comments: number;
   isHero?: boolean;
   tags?: string[];
-  body?: string[]; // Array of paragraphs/html for the full article
+  
+  // UPDATED: Rich Content
+  contentBlocks?: ArticleBlock[]; 
   relatedIds?: string[]; // IDs of related stories
+  
+  // Legacy support (optional)
+  body?: string[]; 
 }
 
 // NEW: System Intelligence Alerts for the Feed
@@ -234,6 +248,7 @@ export interface UserProfile {
         netProfit: number; // Virtual currency/tracking
     };
     preferences: UserPreferences;
+    isAdmin?: boolean; // For CMS access
 }
 
 export type AuthState = 'UNAUTHENTICATED' | 'ONBOARDING' | 'AUTHENTICATED';
@@ -255,6 +270,10 @@ export interface SportsContextType {
     removeFromSlip: (id: string) => void;
     clearSlip: () => void;
     addRandomPick: () => void;
+    
+    // Admin / CMS Actions
+    addNewsStory: (story: NewsStory) => void;
+    addSystemAlert: (alert: SystemAlert) => void;
     
     isPwezaOpen: boolean;
     setIsPwezaOpen: (open: boolean) => void;
