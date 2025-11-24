@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
 import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren, Radar, Plus } from 'lucide-react';
@@ -9,7 +10,7 @@ interface FeedProps {
   items: FeedItem[];
   matches: Match[]; // Still passed for Live Rail/Filtering
   onArticleClick?: (id: string) => void;
-  onOpenPweza?: () => void;
+  onOpenPweza?: (prompt?: string) => void;
   onTailBet?: (matchId: string) => void;
 }
 
@@ -132,6 +133,11 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
       navigate(`/match/${id}`);
   };
 
+  const openPwezaForMatch = (match: Match) => {
+      const prompt = `Give me a quick 50-word sharp betting insight for ${match.homeTeam.name} vs ${match.awayTeam.name}. Focus on value and key stats.`;
+      onOpenPweza?.(prompt);
+  };
+
   return (
     <div className="min-h-screen bg-[#F2F2F2] md:bg-br-bg md:max-w-[1000px] md:mx-auto pb-24 overflow-x-hidden">
       
@@ -218,7 +224,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                     
                     <div className="flex justify-center pb-5 mt-2 relative z-10">
                         <button 
-                            onClick={(e) => { e.stopPropagation(); onOpenPweza?.(); }}
+                            onClick={(e) => { e.stopPropagation(); openPwezaForMatch(featuredMatch); }}
                             className="group relative flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-full transition-all active:scale-95"
                         >
                             <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30 text-lg">
@@ -251,7 +257,12 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
             </div>
              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-4">
                 {topPicks.map(match => (
-                    <PremiumPredictionCard key={match.id} match={match} onClick={() => handleMatchClick(match.id)} onOpenPweza={onOpenPweza} />
+                    <PremiumPredictionCard 
+                        key={match.id} 
+                        match={match} 
+                        onClick={() => handleMatchClick(match.id)} 
+                        onOpenPweza={() => openPwezaForMatch(match)} 
+                    />
                 ))}
              </div>
         </section>
@@ -298,7 +309,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                                 key={(item as Match).id} 
                                 match={item as Match} 
                                 onClick={() => handleMatchClick((item as Match).id)} 
-                                onOpenPweza={onOpenPweza} 
+                                onOpenPweza={() => openPwezaForMatch(item as Match)} 
                             />
                         );
                     } 

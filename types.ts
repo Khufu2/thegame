@@ -45,6 +45,25 @@ export interface Player {
   stats?: { label: string; value: string | number }[]; // e.g. [{label: 'G', value: 1}, {label: 'A', value: 1}]
 }
 
+// NEW: Lineup Types for Visual Pitch
+export interface LineupPlayer {
+    id: string;
+    name: string;
+    number: number;
+    position: string; // 'GK', 'CB', 'CM', 'ST' etc
+    avatar: string;
+    rating?: number;
+    isCaptain?: boolean;
+    events?: { type: 'GOAL' | 'CARD' | 'SUB_OUT' | 'SUB_IN'; minute: string }[];
+}
+  
+export interface TeamLineup {
+    formation: string; // "4-3-3"
+    starting: LineupPlayer[];
+    subs: LineupPlayer[];
+    coach: string;
+}
+
 export interface BoxScorePlayer {
     id: string;
     name: string;
@@ -59,13 +78,39 @@ export interface BoxScore {
 }
 
 export interface MatchStats {
+  // General
   possession?: { home: number; away: number };
+  expectedGoals?: { home: number; away: number }; // xG
+  
+  // Attack
   shots?: { home: number; away: number };
   shotsOnTarget?: { home: number; away: number };
+  shotsOffTarget?: { home: number; away: number };
+  shotsBlocked?: { home: number; away: number };
+  shotsInsideBox?: { home: number; away: number };
+  shotsOutsideBox?: { home: number; away: number };
+  bigChances?: { home: number; away: number };
+  hitWoodwork?: { home: number; away: number };
+  
+  // Distribution
+  passAccuracy?: { home: number; away: number };
+  passes?: { home: number; away: number }; // Total Passes
+  passesCompleted?: { home: number; away: number };
+  longBalls?: { home: number; away: number }; // % Success or count
+  crosses?: { home: number; away: number }; // % Success or count
+  
+  // Defense
+  tackles?: { home: number; away: number };
+  interceptions?: { home: number; away: number };
+  clearances?: { home: number; away: number };
+  saves?: { home: number; away: number };
+  
+  // Discipline & Other
   corners?: { home: number; away: number };
   fouls?: { home: number; away: number };
   yellowCards?: { home: number; away: number };
-  passAccuracy?: { home: number; away: number };
+  redCards?: { home: number; away: number };
+  offsides?: { home: number; away: number };
 }
 
 export interface MatchVideo {
@@ -92,6 +137,7 @@ export interface TimelineEvent {
   minute: string; // "67'" or "Pre-Match"
   teamId?: string; // ID of the team involved
   player?: string; // Name of main actor
+  subPlayer?: string; // For Subs
   description: string; // Text content or commentary
   mediaUrl?: string; // Video or Image URL
   source?: string; // e.g. "@BRFootball" or "Official Feed"
@@ -157,7 +203,8 @@ export interface Match {
   referee?: string;
   attendance?: string;
   stats?: MatchStats;
-  keyPlayers?: { home: Player[]; away: Player[] };
+  keyPlayers?: { home: Player[]; away: Player[] }; // Deprecated favor of lineups for Lineup View
+  lineups?: { home: TeamLineup; away: TeamLineup }; // NEW: Full Lineups
   videos?: MatchVideo[];
   timeline?: TimelineEvent[]; // New Social/Match Feed
   
@@ -290,5 +337,6 @@ export interface SportsContextType {
     addSystemAlert: (alert: SystemAlert) => void;
     
     isPwezaOpen: boolean;
-    setIsPwezaOpen: (open: boolean) => void;
+    pwezaPrompt: string | null;
+    setIsPwezaOpen: (open: boolean, prompt?: string) => void;
 }

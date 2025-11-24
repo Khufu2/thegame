@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Match, MatchStatus } from '../types';
 import { ChevronLeft, ChevronRight, Calendar, Star, Search, Filter, Circle, Clock, ChevronDown } from 'lucide-react';
@@ -5,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 interface ScoresPageProps {
   matches: Match[];
-  onOpenPweza: () => void;
+  onOpenPweza: (prompt?: string) => void;
 }
 
 const DATES = [
@@ -44,6 +45,11 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
   }, [matches, filter]);
 
   const leagueKeys = Object.keys(groupedMatches);
+
+  const handlePwezaClick = (match: Match) => {
+      const prompt = `Give me a quick 50-word sharp betting insight for ${match.homeTeam.name} vs ${match.awayTeam.name}. Focus on value and key stats.`;
+      onOpenPweza(prompt);
+  };
 
   return (
     <div className="min-h-screen bg-black pb-24 text-white font-sans">
@@ -106,14 +112,15 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
                     league={league} 
                     matches={groupedMatches[league]} 
                     onMatchClick={(id) => navigate(`/match/${id}`)}
+                    onPwezaClick={handlePwezaClick}
                   />
               ))
           )}
       </div>
 
-      {/* Floating Pweza FAB */}
+      {/* Floating Pweza FAB (Mobile Fallback) */}
       <button 
-        onClick={onOpenPweza}
+        onClick={() => onOpenPweza()}
         className="fixed bottom-[80px] right-4 w-12 h-12 bg-indigo-600 hover:bg-indigo-500 rounded-full shadow-lg shadow-indigo-600/30 flex items-center justify-center z-30 transition-transform active:scale-95 md:hidden"
       >
           <span className="text-xl">🐙</span>
@@ -156,9 +163,10 @@ interface LeagueGroupProps {
   league: string;
   matches: Match[];
   onMatchClick: (id: string) => void;
+  onPwezaClick: (match: Match) => void;
 }
 
-const LeagueGroup: React.FC<LeagueGroupProps> = ({ league, matches, onMatchClick }) => {
+const LeagueGroup: React.FC<LeagueGroupProps> = ({ league, matches, onMatchClick, onPwezaClick }) => {
     return (
         <div className="mb-2">
             {/* Sticky League Header */}
@@ -179,6 +187,7 @@ const LeagueGroup: React.FC<LeagueGroupProps> = ({ league, matches, onMatchClick
                         match={match} 
                         isLast={idx === matches.length - 1} 
                         onClick={() => onMatchClick(match.id)}
+                        onPwezaClick={() => onPwezaClick(match)}
                     />
                 ))}
             </div>
@@ -190,9 +199,10 @@ interface ScoreRowProps {
   match: Match;
   isLast: boolean;
   onClick: () => void;
+  onPwezaClick: () => void;
 }
 
-const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick }) => {
+const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClick }) => {
     const isLive = match.status === MatchStatus.LIVE;
     const isWinnerHome = match.score && match.score.home > match.score.away;
     const isWinnerAway = match.score && match.score.away > match.score.home;
@@ -254,13 +264,11 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick }) => {
                  <button onClick={(e) => e.stopPropagation()} className="text-gray-600 hover:text-yellow-500 transition-colors">
                      <Star size={16} />
                  </button>
-                 {match.prediction && !isLive && (
-                     <div className="mt-1">
-                         <div className="w-6 h-1 bg-gray-800 rounded-full overflow-hidden">
-                             <div className={`h-full ${match.prediction.outcome === 'HOME' ? 'bg-indigo-500' : match.prediction.outcome === 'AWAY' ? 'bg-pink-500' : 'bg-gray-500'}`} style={{width: '70%'}}></div>
-                         </div>
-                     </div>
-                 )}
+                 
+                 {/* PWEZA BUTTON ADDED */}
+                 <button onClick={(e) => { e.stopPropagation(); onPwezaClick(); }} className="mt-2 w-6 h-6 rounded-full bg-indigo-600/20 hover:bg-indigo-600 flex items-center justify-center transition-colors group">
+                     <span className="text-xs group-hover:text-white">🐙</span>
+                 </button>
             </div>
 
         </div>

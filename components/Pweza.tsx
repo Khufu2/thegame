@@ -1,7 +1,10 @@
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../types';
 import { streamPwezaResponse } from '../services/pwezaService';
 import { X, Send, Bot, Sparkles, TrendingUp } from 'lucide-react';
+import { useSports } from '../context/SportsContext';
 
 interface PwezaProps {
   isOpen: boolean;
@@ -9,6 +12,7 @@ interface PwezaProps {
 }
 
 export const Pweza: React.FC<PwezaProps> = ({ isOpen, onClose }) => {
+  const { pwezaPrompt } = useSports();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'init', role: 'model', text: "I'm Pweza. Ready to analyze betting angles, stats, and predictions.", timestamp: Date.now() }
   ]);
@@ -16,9 +20,34 @@ export const Pweza: React.FC<PwezaProps> = ({ isOpen, onClose }) => {
   const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // AUTO TRIGGER FOR CONTEXT AWARENESS
+  useEffect(() => {
+      if (isOpen && pwezaPrompt && !isThinking) {
+          handleAutoSend(pwezaPrompt);
+      }
+  }, [isOpen, pwezaPrompt]);
+
   useEffect(() => {
     if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
+
+  const handleAutoSend = async (prompt: string) => {
+      setIsThinking(true);
+      // We DO NOT add the prompt to the UI messages array (Ghost Prompt)
+      // This makes it feel like Pweza just started talking about the topic.
+      
+      const history = messages.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+      
+      const modelMsgId = (Date.now() + 1).toString();
+      setMessages(prev => [...prev, { id: modelMsgId, role: 'model', text: '', timestamp: Date.now() }]);
+
+      let fullText = '';
+      await streamPwezaResponse(history, prompt, (chunk) => {
+        fullText += chunk;
+        setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: fullText } : m));
+      });
+      setIsThinking(false);
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -61,7 +90,9 @@ export const Pweza: React.FC<PwezaProps> = ({ isOpen, onClose }) => {
                  </div>
                  <div>
                      <h3 className="font-condensed font-black text-lg italic text-white tracking-tight leading-none">PWEZA AI</h3>
-                     <span className="text-[10px] font-bold text-br-muted uppercase tracking-wider">Sports Assistant</span>
+                     <span className="text-[10px] font-bold text-br-muted uppercase tracking-wider">
+                        {isThinking ? 'Thinking...' : 'Sports Assistant'}
+                     </span>
                  </div>
              </div>
              <button onClick={onClose} className="p-2 text-br-muted hover:text-white transition-colors">
@@ -88,7 +119,7 @@ export const Pweza: React.FC<PwezaProps> = ({ isOpen, onClose }) => {
 
          {/* INPUT AREA */}
          <div className="p-4 border-t border-br-border bg-br-card md:rounded-b-xl">
-            {messages.length < 3 && (
+            {messages.length < 3 && !pwezaPrompt && (
                 <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar">
                     <button onClick={() => setInput("Best value bet today?")} className="flex items-center gap-1 px-3 py-1.5 bg-br-surface border border-br-border rounded text-xs font-bold text-white whitespace-nowrap hover:bg-br-surface/70">
                         <Sparkles size={12} className="text-yellow-400" /> Value Bets

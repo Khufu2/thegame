@@ -11,7 +11,7 @@ import { ProfilePage } from './components/ProfilePage';
 import { AuthPage } from './components/AuthPage';
 import { Onboarding } from './components/Onboarding';
 import { ExplorePage } from './components/ExplorePage'; 
-import { AdminPage } from './components/AdminPage'; // Added import
+import { AdminPage } from './components/AdminPage';
 import { SportsProvider, useSports } from './context/SportsContext';
 import { HashRouter, Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 
@@ -53,15 +53,17 @@ const AppContent = () => {
       return <ArticlePage story={story} relatedStories={related} />;
   }
 
+  const handleOpenPweza = (prompt?: string) => {
+      setIsPwezaOpen(true, prompt);
+  };
+
   const MatchRouteWrapper = () => {
       const { id } = useParams();
       const match = matches.find(m => m.id === id);
       if (!match) return <div className="p-20 text-center text-white">Match not found</div>;
       
-      return <MatchDetailPage match={match} onOpenPweza={() => setIsPwezaOpen(true)} onAddToSlip={() => addToSlip(match)} />;
+      return <MatchDetailPage match={match} onOpenPweza={handleOpenPweza} onAddToSlip={() => addToSlip(match)} />;
   }
-
-  const handleOpenPweza = () => setIsPwezaOpen(true);
 
   const handleTailBet = (matchId: string) => {
       const match = matches.find(m => m.id === matchId);
@@ -75,7 +77,7 @@ const AppContent = () => {
     <Layout 
       currentPage={currentPage} 
       onNavigate={(page) => navigate(page === 'home' ? '/' : `/${page}`)}
-      onOpenPweza={handleOpenPweza}
+      onOpenPweza={() => handleOpenPweza()}
     >
       <Routes>
         <Route path="/" element={<Feed items={feedItems} matches={matches} onArticleClick={(id) => navigate(`/article/${id}`)} onOpenPweza={handleOpenPweza} onTailBet={handleTailBet} />} />
@@ -87,7 +89,7 @@ const AppContent = () => {
                 onClearSlip={clearSlip} 
                 matches={matches}
                 onAddRandomPick={addRandomPick}
-                onOpenPweza={handleOpenPweza}
+                onOpenPweza={() => handleOpenPweza()}
             />
         } />
         <Route path="/explore" element={<ExplorePage />} />

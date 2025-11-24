@@ -53,7 +53,7 @@ const generateMockData = () => {
       referee: 'Bill Vinovich',
       stats: {
           possession: { home: 55, away: 45 },
-          shots: { home: 340, away: 280 },
+          shots: { home: 340, away: 280 }, // NFL stats are weird in this context, keeping simplified
           corners: { home: 18, away: 12 },
           fouls: { home: 4, away: 6 },
       },
@@ -202,25 +202,96 @@ const generateMockData = () => {
       },
       referee: 'Michael Oliver',
       stats: {
+          // General
           possession: { home: 62, away: 38 },
-          shots: { home: 15, away: 6 },
-          shotsOnTarget: { home: 7, away: 2 },
+          expectedGoals: { home: 2.40, away: 0.60 },
+          
+          // Attack
+          shots: { home: 18, away: 6 },
+          shotsOnTarget: { home: 8, away: 2 },
+          shotsOffTarget: { home: 6, away: 3 },
+          shotsBlocked: { home: 4, away: 1 },
+          shotsInsideBox: { home: 14, away: 3 },
+          shotsOutsideBox: { home: 4, away: 3 },
+          bigChances: { home: 4, away: 0 },
+          hitWoodwork: { home: 1, away: 0 },
+
+          // Distribution
+          passes: { home: 580, away: 320 },
+          passesCompleted: { home: 510, away: 250 },
+          passAccuracy: { home: 88, away: 78 },
+          crosses: { home: 24, away: 9 },
+          longBalls: { home: 35, away: 42 },
+
+          // Defense
+          tackles: { home: 16, away: 24 },
+          interceptions: { home: 8, away: 12 },
+          clearances: { home: 10, away: 28 },
+          saves: { home: 1, away: 5 },
+
+          // Discipline
           corners: { home: 8, away: 3 },
-          fouls: { home: 9, away: 12 },
+          fouls: { home: 9, away: 14 },
           yellowCards: { home: 1, away: 3 },
-          passAccuracy: { home: 88, away: 79 }
+          redCards: { home: 0, away: 0 },
+          offsides: { home: 2, away: 1 }
       },
-      keyPlayers: {
-          home: [
-              { id: 'kp1', name: 'Bukayo Saka', avatar: 'https://ui-avatars.com/api/?name=Bukayo+Saka&background=EF0107&color=fff', number: 7, position: 'RW', stats: [{label: 'G', value: 12}, {label: 'A', value: 8}], rating: 8.8 },
-              { id: 'kp2', name: 'Martin Ødegaard', avatar: 'https://ui-avatars.com/api/?name=Martin+Odegaard&background=EF0107&color=fff', number: 8, position: 'CAM', stats: [{label: 'A', value: 10}], rating: 8.5 }
-          ],
-          away: [
-              { id: 'kp3', name: 'Cole Palmer', avatar: 'https://ui-avatars.com/api/?name=Cole+Palmer&background=034694&color=fff', number: 20, position: 'CAM', stats: [{label: 'G', value: 14}, {label: 'A', value: 9}], rating: 8.9 },
-              { id: 'kp4', name: 'Enzo Fernandez', avatar: 'https://ui-avatars.com/api/?name=Enzo+Fernandez&background=034694&color=fff', number: 8, position: 'CM', stats: [{label: 'P', value: '89%'}], rating: 7.2 }
-          ]
+      // NEW: Lineup Data for Pitch View
+      lineups: {
+          home: {
+              formation: "4-3-3",
+              coach: "Mikel Arteta",
+              starting: [
+                  { id: 'h1', name: 'Raya', number: 22, position: 'GK', avatar: '', rating: 7.2 },
+                  { id: 'h2', name: 'White', number: 4, position: 'DF', avatar: '', rating: 7.0 },
+                  { id: 'h3', name: 'Saliba', number: 2, position: 'DF', avatar: '', rating: 7.5 },
+                  { id: 'h4', name: 'Gabriel', number: 6, position: 'DF', avatar: '', rating: 7.6 },
+                  { id: 'h5', name: 'Zinchenko', number: 35, position: 'DF', avatar: '', rating: 6.8 },
+                  { id: 'h6', name: 'Rice', number: 41, position: 'MF', avatar: '', rating: 8.1 },
+                  { id: 'h7', name: 'Odegaard', number: 8, position: 'MF', avatar: '', rating: 8.5, isCaptain: true },
+                  { id: 'h8', name: 'Havertz', number: 29, position: 'MF', avatar: '', rating: 7.3 },
+                  { id: 'h9', name: 'Saka', number: 7, position: 'FW', avatar: '', rating: 8.8 },
+                  { id: 'h10', name: 'Jesus', number: 9, position: 'FW', avatar: '', rating: 7.1 },
+                  { id: 'h11', name: 'Martinelli', number: 11, position: 'FW', avatar: '', rating: 7.4 }
+              ],
+              subs: [
+                  { id: 'hs1', name: 'Ramsdale', number: 1, position: 'GK', avatar: '' },
+                  { id: 'hs2', name: 'Trossard', number: 19, position: 'FW', avatar: '' },
+                  { id: 'hs3', name: 'Jorginho', number: 20, position: 'MF', avatar: '' },
+                  { id: 'hs4', name: 'Smith Rowe', number: 10, position: 'MF', avatar: '' },
+              ]
+          },
+          away: {
+              formation: "4-2-3-1",
+              coach: "Mauricio Pochettino",
+              starting: [
+                  { id: 'a1', name: 'Petrovic', number: 28, position: 'GK', avatar: '', rating: 6.5 },
+                  { id: 'a2', name: 'Gusto', number: 27, position: 'DF', avatar: '', rating: 6.2 },
+                  { id: 'a3', name: 'Disasi', number: 2, position: 'DF', avatar: '', rating: 6.4 },
+                  { id: 'a4', name: 'Silva', number: 6, position: 'DF', avatar: '', rating: 6.7 },
+                  { id: 'a5', name: 'Chilwell', number: 21, position: 'DF', avatar: '', rating: 6.3 },
+                  { id: 'a6', name: 'Caicedo', number: 25, position: 'MF', avatar: '', rating: 7.0 },
+                  { id: 'a7', name: 'Enzo', number: 8, position: 'MF', avatar: '', rating: 7.2 },
+                  { id: 'a8', name: 'Palmer', number: 20, position: 'MF', avatar: '', rating: 8.9 },
+                  { id: 'a9', name: 'Gallagher', number: 23, position: 'MF', avatar: '', rating: 6.9, isCaptain: true },
+                  { id: 'a10', name: 'Sterling', number: 7, position: 'MF', avatar: '', rating: 6.5 },
+                  { id: 'a11', name: 'Jackson', number: 15, position: 'FW', avatar: '', rating: 6.6 }
+              ],
+              subs: [
+                   { id: 'as1', name: 'Sanchez', number: 1, position: 'GK', avatar: '' },
+                   { id: 'as2', name: 'Mudryk', number: 10, position: 'FW', avatar: '' },
+                   { id: 'as3', name: 'Madueke', number: 11, position: 'FW', avatar: '' }
+              ]
+          }
       },
       timeline: [
+           { id: 'tl_end', type: 'PERIOD', minute: "FT", description: "Match Ended 3-1", teamId: '' },
+           { id: 'tl_g3', type: 'GOAL', minute: "88'", player: "Leandro Trossard", description: "Trossard seals it! A calm finish through the keepers legs.", mediaUrl: "https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=500", teamId: 't5' },
+           { id: 'tl_s1', type: 'SUB', minute: "82'", description: "Substitution Arsenal. Trossard ON, Martinelli OFF.", player: "Trossard", subPlayer: "Martinelli", teamId: 't5' },
+           { id: 'tl_c1', type: 'CARD', minute: "74'", player: "Moises Caicedo", description: "Yellow Card for a late tackle on Odegaard.", teamId: 't6' },
+           { id: 'tl_g2', type: 'GOAL', minute: "67'", player: "Cole Palmer", description: "Goal! Palmer pulls one back with a stunning curler.", teamId: 't6' },
+           { id: 'tl_ht', type: 'PERIOD', minute: "HT", description: "Half Time 2-0", teamId: '' },
+           { id: 'tl_g1', type: 'GOAL', minute: "34'", player: "Bukayo Saka", description: "GOAL! Saka converts the penalty after being brought down.", teamId: 't5' },
            { id: 'tl_pre1', type: 'SOCIAL', minute: "Pre-Match", source: "@Arsenal", avatar: "https://ui-avatars.com/api/?name=AFC&background=EF0107&color=fff", description: "The boys have arrived at the Emirates. Huge atmosphere building! 🔴⚪️", mediaUrl: "https://images.unsplash.com/photo-1504198266287-1659872e6590?q=80&w=500&auto=format&fit=crop", likes: 25000 },
            { id: 'tl_pre2', type: 'INJURY', minute: "Pre-Match", description: "BREAKING: Reece James pulled out of warmups. Gusto expected to start.", source: "Sky Sports" }
       ],
@@ -346,6 +417,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
     const [betSlip, setBetSlip] = useState<BetSlipItem[]>([]);
     const [isPwezaOpen, setIsPwezaOpen] = useState(false);
+    const [pwezaPrompt, setPwezaPrompt] = useState<string | null>(null);
 
     // Function to rebuild the feed based on current data
     const rebuildFeed = (currentMatches: Match[], currentNews: NewsStory[], currentAlerts: SystemAlert[]) => {
@@ -476,6 +548,16 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setAlerts(prev => [alert, ...prev]);
     };
 
+    // --- PWEZA MANAGEMENT ---
+    const handleSetIsPwezaOpen = (open: boolean, prompt?: string) => {
+        setIsPwezaOpen(open);
+        if (open && prompt) {
+            setPwezaPrompt(prompt);
+        } else if (!open) {
+            setPwezaPrompt(null);
+        }
+    };
+
     return (
         <SportsContext.Provider value={{
             user,
@@ -494,7 +576,8 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             addNewsStory,
             addSystemAlert,
             isPwezaOpen,
-            setIsPwezaOpen
+            pwezaPrompt,
+            setIsPwezaOpen: handleSetIsPwezaOpen
         }}>
             {children}
         </SportsContext.Provider>
