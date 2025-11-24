@@ -1,6 +1,8 @@
 
+
 import React from 'react';
-import { Home, Search, Zap, User, Ticket } from 'lucide-react';
+import { Home, Search, Zap, User, Ticket, Zap as ZapIcon, TrendingUp, Goal } from 'lucide-react';
+import { useSports } from '../context/SportsContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,9 +12,30 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, onOpenPweza }) => {
+  const { flashAlert } = useSports();
+
   return (
     <div className="min-h-screen bg-[#F2F2F2] md:bg-br-bg text-black md:text-white font-sans flex flex-col md:flex-row">
       
+      {/* FLASH ALERT TOAST */}
+      {flashAlert && (
+          <div className="fixed top-4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[400px] z-[100] animate-in slide-in-from-top duration-300">
+              <div className="bg-black/90 backdrop-blur-xl text-white p-4 rounded-xl border border-white/10 shadow-2xl flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${flashAlert.type === 'MOMENTUM' ? 'bg-red-600 animate-pulse' : flashAlert.type === 'GOAL' ? 'bg-[#00FFB2]' : 'bg-indigo-600'}`}>
+                      {flashAlert.type === 'MOMENTUM' && <ZapIcon size={20} fill="currentColor" />}
+                      {flashAlert.type === 'VALUE' && <TrendingUp size={20} />}
+                      {flashAlert.type === 'GOAL' && <Goal size={20} />}
+                  </div>
+                  <div>
+                      <h4 className="font-condensed font-black text-sm uppercase tracking-wide">
+                          {flashAlert.type === 'MOMENTUM' ? 'Momentum Shift' : flashAlert.type === 'GOAL' ? 'Goal Alert' : 'Value Detected'}
+                      </h4>
+                      <p className="text-xs font-medium text-gray-200">{flashAlert.message}</p>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* DESKTOP SIDEBAR (Hidden on Mobile) */}
       <aside className="hidden md:flex flex-col w-[280px] h-screen fixed left-0 top-0 border-r border-br-border bg-br-bg z-50">
         <div className="p-6 flex items-center gap-3 cursor-pointer border-b border-br-border/50" onClick={() => onNavigate('home')}>

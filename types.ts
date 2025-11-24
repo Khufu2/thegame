@@ -177,6 +177,18 @@ export interface Prediction {
   riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
+export interface Comment {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  text: string;
+  timestamp: number;
+  isPro?: boolean;
+  likes: number;
+  teamSupport?: 'HOME' | 'AWAY';
+}
+
 export interface MatchContext {
   headline?: string;
   injuryReport?: string;
@@ -213,6 +225,7 @@ export interface Match {
   bettingTrends?: BettingTrends;
   boxScore?: BoxScore; // NEW: Detailed Box Score
   momentum?: { home: number; away: number }; // New: Live Pressure Index (0-100)
+  comments?: Comment[]; // NEW: Fan Community
 }
 
 // --- RICH CONTENT BLOCKS ---
@@ -258,6 +271,13 @@ export interface SystemAlert {
   relatedMatchId?: string;
   signalStrength?: 'HIGH' | 'MEDIUM' | 'LOW';
   actionableBet?: string; // e.g. "Bet Arsenal -0.5"
+}
+
+export interface FlashAlert {
+  id: string;
+  message: string;
+  type: 'MOMENTUM' | 'VALUE' | 'GOAL';
+  matchId?: string;
 }
 
 export interface BetSlipItem {
@@ -329,13 +349,18 @@ export interface SportsContextType {
     news: NewsStory[];
     feedItems: FeedItem[];
     betSlip: BetSlipItem[];
+    flashAlert: FlashAlert | null; // NEW
     
     addToSlip: (match: Match) => void;
     removeFromSlip: (id: string) => void;
     clearSlip: () => void;
     addRandomPick: () => void;
-    generateMkeka: (type: MkekaType) => void; // New
+    generateMkeka: (type: MkekaType) => void; 
     
+    // Community & Alerts
+    addComment: (matchId: string, text: string, teamSupport?: 'HOME' | 'AWAY') => void;
+    triggerFlashAlert: (alert: FlashAlert) => void;
+
     // Admin / CMS Actions
     addNewsStory: (story: NewsStory) => void;
     addSystemAlert: (alert: SystemAlert) => void;

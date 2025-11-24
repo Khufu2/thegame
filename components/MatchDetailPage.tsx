@@ -1,7 +1,8 @@
 
+
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera } from 'lucide-react';
-import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore } from '../types';
+import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera, Send, Crown, ThumbsUp } from 'lucide-react';
+import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore, Comment } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { ScoreShotModal } from './ScoreShotModal';
@@ -14,13 +15,14 @@ interface MatchDetailPageProps {
 
 export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenPweza, onAddToSlip }) => {
   const navigate = useNavigate();
-  const { betSlip } = useSports();
+  const { betSlip, addComment, user } = useSports();
   const [activeTab, setActiveTab] = useState('STREAM');
   const [betSlipStatus, setBetSlipStatus] = useState<'IDLE' | 'CONFIRM' | 'ADDED'>('IDLE');
   const [isShared, setIsShared] = useState(false);
   const [userVote, setUserVote] = useState<'HOME' | 'AWAY' | null>(null);
   const [pitchSide, setPitchSide] = useState<'HOME' | 'AWAY'>('HOME');
   const [showScoreShot, setShowScoreShot] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
 
   // Check if match is already in slip
   const existingBet = betSlip.find(b => b.matchId === match.id);
@@ -55,6 +57,12 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
   const handleShare = async () => {
       setShowScoreShot(true);
+  };
+
+  const handlePostComment = () => {
+      if (!commentInput.trim()) return;
+      addComment(match.id, commentInput, userVote || undefined);
+      setCommentInput('');
   };
 
   return (
@@ -160,7 +168,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
           {/* TABS SCROLL */}
           <div className="flex items-center gap-6 px-6 overflow-x-auto no-scrollbar border-t border-[#2C2C2C]">
-              {['STREAM', 'TIMELINE', 'BOX SCORE', 'STATS', 'LINEUPS', 'ODDS', 'TABLE'].map(tab => (
+              {['STREAM', 'TIMELINE', 'BOX SCORE', 'STATS', 'LINEUPS', 'ODDS', 'TABLE', 'COMMUNITY'].map(tab => (
                   <button 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -451,6 +459,66 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                   ) : (
                       <div className="py-20 text-center text-gray-500">Standings not available</div>
                   )}
+              </div>
+          )}
+
+          {/* TAB: COMMUNITY (Banter) */}
+          {activeTab === 'COMMUNITY' && (
+              <div className="animate-in fade-in flex flex-col h-[600px] relative">
+                  
+                  {/* COMMENTS LIST */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+                      {(match.comments && match.comments.length > 0) ? (
+                          match.comments.map(comment => (
+                              <div key={comment.id} className="flex gap-3">
+                                   <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden shrink-0 border border-[#333]">
+                                       <img src={comment.userAvatar} className="w-full h-full object-cover" />
+                                   </div>
+                                   <div className="flex-1">
+                                       <div className="flex items-center gap-2 mb-1">
+                                           <span className="text-sm font-bold text-white">{comment.userName}</span>
+                                           {comment.isPro && <Crown size={12} className="text-yellow-400 fill-yellow-400" />}
+                                           <span className="text-[10px] text-gray-500">{new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                           {comment.teamSupport && (
+                                               <span className={`text-[9px] px-1.5 rounded uppercase font-black ${comment.teamSupport === 'HOME' ? 'bg-indigo-600/20 text-indigo-400' : 'bg-red-600/20 text-red-400'}`}>
+                                                   {comment.teamSupport === 'HOME' ? 'Home' : 'Away'} Fan
+                                               </span>
+                                           )}
+                                       </div>
+                                       <p className="text-sm text-gray-300 leading-relaxed mb-1">{comment.text}</p>
+                                       <button className="flex items-center gap-1 text-[10px] text-gray-500 font-bold hover:text-white transition-colors">
+                                           <ThumbsUp size={10} /> {comment.likes}
+                                       </button>
+                                   </div>
+                              </div>
+                          ))
+                      ) : (
+                          <div className="py-20 text-center text-gray-500">
+                              <MessageCircle size={40} className="mx-auto mb-3 opacity-20" />
+                              <p className="font-condensed font-bold uppercase">Start the conversation</p>
+                          </div>
+                      )}
+                  </div>
+
+                  {/* INPUT */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-[#121212] border-t border-[#2C2C2C]">
+                      <div className="flex items-center gap-2">
+                          <input 
+                              type="text" 
+                              value={commentInput}
+                              onChange={(e) => setCommentInput(e.target.value)}
+                              placeholder="Add a comment..." 
+                              className="flex-1 bg-black border border-[#333] rounded-lg px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none"
+                              onKeyDown={(e) => e.key === 'Enter' && handlePostComment()}
+                          />
+                          <button 
+                              onClick={handlePostComment}
+                              className="p-3 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500 transition-colors"
+                          >
+                              <Send size={18} />
+                          </button>
+                      </div>
+                  </div>
               </div>
           )}
 

@@ -11,7 +11,9 @@ import {
     BetSlipItem,
     MatchStatus,
     SystemAlert,
-    MkekaType
+    MkekaType,
+    FlashAlert,
+    Comment
 } from '../types';
 
 // Mock Data Generators (Moved from App.tsx)
@@ -108,7 +110,11 @@ const generateMockData = () => {
           homeTicketPercent: 45,
           lineMovement: 'DRIFTING_HOME',
           publicConsensus: 'Sharps pounding Patriots'
-      }
+      },
+      comments: [
+          { id: 'c1', userId: 'u5', userName: 'TomBradyBurner', userAvatar: 'https://ui-avatars.com/api/?name=TB', text: 'This defense is unreal in the snow!', timestamp: Date.now() - 300000, likes: 45, teamSupport: 'HOME' },
+          { id: 'c2', userId: 'u6', userName: 'MiamiMike', userAvatar: 'https://ui-avatars.com/api/?name=MM', text: 'Tua cannot throw in the cold. We knew this.', timestamp: Date.now() - 120000, likes: 12, teamSupport: 'AWAY' }
+      ]
     },
     {
       id: 'm4',
@@ -327,6 +333,10 @@ const generateMockData = () => {
           { rank: 2, teamId: 'tX', teamName: 'Man City', logo: 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg', played: 21, won: 16, drawn: 3, lost: 2, points: 51, form: ['W','D','W','W','L'] },
           { rank: 3, teamId: 'tY', teamName: 'Liverpool', logo: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg', played: 21, won: 15, drawn: 4, lost: 2, points: 49, form: ['D','W','W','L','W'] },
           { rank: 9, teamId: 't6', teamName: 'Chelsea', logo: 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg', played: 21, won: 8, drawn: 6, lost: 7, points: 30, form: ['L','D','W','L','L'] },
+      ],
+      comments: [
+           { id: 'c1', userId: 'u10', userName: 'Gooner4Life', userAvatar: 'https://ui-avatars.com/api/?name=G4L&background=EF0107&color=fff', text: 'This is our year! Chelsea look lost.', timestamp: Date.now() - 3600000, likes: 212, teamSupport: 'HOME', isPro: true },
+           { id: 'c2', userId: 'u11', userName: 'BlueBlood', userAvatar: 'https://ui-avatars.com/api/?name=BB&background=034694&color=fff', text: 'Wait until Nkunku is back. We will cook.', timestamp: Date.now() - 1800000, likes: 54, teamSupport: 'AWAY' }
       ]
     },
   ];
@@ -420,6 +430,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [betSlip, setBetSlip] = useState<BetSlipItem[]>([]);
     const [isPwezaOpen, setIsPwezaOpen] = useState(false);
     const [pwezaPrompt, setPwezaPrompt] = useState<string | null>(null);
+    const [flashAlert, setFlashAlert] = useState<FlashAlert | null>(null);
 
     // Function to rebuild the feed based on current data
     const rebuildFeed = (currentMatches: Match[], currentNews: NewsStory[], currentAlerts: SystemAlert[]) => {
@@ -455,6 +466,17 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setNews(news);
         setAlerts(alerts);
         rebuildFeed(matches, news, alerts);
+        
+        // TRIGGER DEMO FLASH ALERT ON LOAD
+        setTimeout(() => {
+            triggerFlashAlert({
+                id: 'flash-demo',
+                message: "⚡ MOMENTUM SHIFT: Patriots driving late in 4th!",
+                type: 'MOMENTUM',
+                matchId: 'm1'
+            });
+        }, 5000);
+
     }, []);
 
     // Rebuild feed whenever underlying data changes
@@ -576,6 +598,37 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setAlerts(prev => [alert, ...prev]);
     };
 
+    // --- FLASH ALERTS ---
+    const triggerFlashAlert = (alert: FlashAlert) => {
+        setFlashAlert(alert);
+        // Auto dismiss after 5s
+        setTimeout(() => setFlashAlert(null), 5000);
+    };
+
+    // --- COMMUNITY ---
+    const addComment = (matchId: string, text: string, teamSupport?: 'HOME' | 'AWAY') => {
+        if (!user) return;
+        
+        const newComment: Comment = {
+            id: `c_${Date.now()}`,
+            userId: user.id,
+            userName: user.name,
+            userAvatar: user.avatar,
+            isPro: user.isPro,
+            text,
+            timestamp: Date.now(),
+            likes: 0,
+            teamSupport
+        };
+
+        setMatches(prev => prev.map(m => {
+            if (m.id === matchId) {
+                return { ...m, comments: [newComment, ...(m.comments || [])] };
+            }
+            return m;
+        }));
+    };
+
     // --- PWEZA MANAGEMENT ---
     const handleSetIsPwezaOpen = (open: boolean, prompt?: string) => {
         setIsPwezaOpen(open);
@@ -597,11 +650,14 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             news,
             feedItems,
             betSlip,
+            flashAlert,
             addToSlip,
             removeFromSlip,
             clearSlip,
             addRandomPick,
-            generateMkeka, // New
+            generateMkeka, 
+            addComment,
+            triggerFlashAlert,
             addNewsStory,
             addSystemAlert,
             isPwezaOpen,

@@ -1,6 +1,9 @@
 
+
 import React, { useState } from 'react';
-import { Search, TrendingUp, Hash, Users, ArrowRight } from 'lucide-react';
+import { Search, TrendingUp, Hash, Users, ArrowRight, Shield, CheckCircle2, Plus } from 'lucide-react';
+import { useSports } from '../context/SportsContext';
+import { useNavigate } from 'react-router-dom';
 
 const TRENDING_TOPICS = [
     { id: '1', name: 'LeBron Trade Rumors', category: 'NBA' },
@@ -16,7 +19,33 @@ const SUGGESTED_ACCOUNTS = [
 ];
 
 export const ExplorePage: React.FC = () => {
+  const { matches, addToSlip } = useSports();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // LOGIC FOR THE ACCUMULATOR
+  // Find matches with >80% confidence and odds between 1.1 and 1.5
+  const sureBets = matches.filter(m => {
+      if (!m.prediction) return false;
+      const confidence = m.prediction.confidence || 0;
+      const odds = m.prediction.outcome === 'HOME' ? m.prediction.odds?.home 
+                  : m.prediction.outcome === 'AWAY' ? m.prediction.odds?.away 
+                  : m.prediction.odds?.draw;
+      
+      return confidence > 80 && odds && odds < 1.50;
+  });
+
+  const [selectedAcca, setSelectedAcca] = useState<string[]>([]);
+
+  const toggleAccaSelection = (id: string) => {
+      if (selectedAcca.includes(id)) setSelectedAcca(prev => prev.filter(x => x !== id));
+      else setSelectedAcca(prev => [...prev, id]);
+  };
+
+  const buildAccumulator = () => {
+      sureBets.filter(m => selectedAcca.includes(m.id)).forEach(m => addToSlip(m));
+      navigate('/slip');
+  };
 
   return (
     <div className="min-h-screen bg-black text-white pb-24 font-sans">
@@ -37,6 +66,58 @@ export const ExplorePage: React.FC = () => {
 
         <div className="px-4 py-6 max-w-[700px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             
+            {/* THE ACCUMULATOR BUILDER */}
+            <section className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden">
+                <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Shield size={20} className="text-green-500" />
+                        <div>
+                            <h2 className="font-condensed font-black text-lg uppercase italic tracking-wide text-white">The Accumulator</h2>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase">Build a safe multibet • 80%+ Confidence</p>
+                        </div>
+                    </div>
+                    {selectedAcca.length > 0 && (
+                        <button 
+                            onClick={buildAccumulator}
+                            className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase flex items-center gap-1 shadow-lg shadow-green-900/20"
+                        >
+                            <Plus size={14} /> Add {selectedAcca.length} Picks
+                        </button>
+                    )}
+                </div>
+                
+                <div className="p-2 space-y-1">
+                    {sureBets.length > 0 ? sureBets.map(match => (
+                        <div 
+                            key={match.id} 
+                            onClick={() => toggleAccaSelection(match.id)}
+                            className={`p-3 rounded-lg flex items-center justify-between cursor-pointer border transition-colors ${selectedAcca.includes(match.id) ? 'bg-green-900/10 border-green-500/50' : 'bg-transparent border-transparent hover:bg-[#252525]'}`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedAcca.includes(match.id) ? 'bg-green-500 border-green-500' : 'border-gray-500'}`}>
+                                    {selectedAcca.includes(match.id) && <CheckCircle2 size={14} className="text-black" />}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-bold text-sm text-white">{match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.awayTeam.name}</span>
+                                        <span className="bg-[#2C2C2C] text-gray-400 text-[10px] px-1.5 rounded">
+                                            {match.prediction?.outcome === 'HOME' ? match.prediction.odds?.home : match.prediction.odds?.away}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 uppercase font-bold block">
+                                        vs {match.prediction?.outcome === 'HOME' ? match.awayTeam.name : match.homeTeam.name} • {match.prediction?.confidence}% Conf.
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="p-8 text-center text-gray-500 text-xs font-bold uppercase">
+                            No safe bets found today.
+                        </div>
+                    )}
+                </div>
+            </section>
+
             {/* TRENDING NOW */}
             <section>
                 <div className="flex items-center gap-2 mb-4">

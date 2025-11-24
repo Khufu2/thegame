@@ -10,6 +10,23 @@ interface ScoreShotModalProps {
 
 export const ScoreShotModal: React.FC<ScoreShotModalProps> = ({ match, onClose }) => {
     
+    // NOTE FOR NEXT ENGINEER:
+    // To make this fully functional, install 'html2canvas'.
+    // import html2canvas from 'html2canvas';
+    // const handleDownload = async () => {
+    //    const element = document.getElementById('scoreshot-canvas');
+    //    const canvas = await html2canvas(element);
+    //    const data = canvas.toDataURL('image/png');
+    //    const link = document.createElement('a');
+    //    link.href = data;
+    //    link.download = 'sheena-pick.png';
+    //    link.click();
+    // }
+
+    const handleDownload = () => {
+        alert("Developer Note: Integrate 'html2canvas' library to enable actual image generation from this DOM element.");
+    };
+
     const handleShare = async () => {
         if (navigator.share) {
             try {
@@ -35,7 +52,7 @@ export const ScoreShotModal: React.FC<ScoreShotModalProps> = ({ match, onClose }
                 </div>
 
                 {/* THE GRAPHIC CANVAS (Visual Representation) */}
-                <div className="aspect-[4/5] w-full bg-gradient-to-br from-[#1a1a1a] to-black border-4 border-white rounded-xl relative overflow-hidden flex flex-col shadow-2xl">
+                <div id="scoreshot-canvas" className="aspect-[4/5] w-full bg-gradient-to-br from-[#1a1a1a] to-black border-4 border-white rounded-xl relative overflow-hidden flex flex-col shadow-2xl">
                     
                     {/* Background Texture */}
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
@@ -100,7 +117,7 @@ export const ScoreShotModal: React.FC<ScoreShotModalProps> = ({ match, onClose }
 
                 {/* ACTION BUTTONS */}
                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => alert('Screenshot this to save!')} className="bg-[#1E1E1E] hover:bg-[#333] text-white py-3 rounded-lg font-condensed font-bold uppercase flex items-center justify-center gap-2 transition-colors">
+                    <button onClick={handleDownload} className="bg-[#1E1E1E] hover:bg-[#333] text-white py-3 rounded-lg font-condensed font-bold uppercase flex items-center justify-center gap-2 transition-colors">
                         <Download size={20} /> Save Image
                     </button>
                     <button onClick={handleShare} className="bg-[#00FFB2] hover:bg-[#00E09E] text-black py-3 rounded-lg font-condensed font-bold uppercase flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-900/20">
