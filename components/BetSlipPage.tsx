@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { BetSlipItem, Match } from '../types';
-import { Trash2, Share2, TrendingUp, Sparkles, Camera, Plus, Check, AlertTriangle, ArrowRight, DollarSign, ExternalLink, Trophy, X } from 'lucide-react';
+import { BetSlipItem, Match, MkekaType } from '../types';
+import { Trash2, Share2, TrendingUp, Sparkles, Camera, Plus, Check, AlertTriangle, ArrowRight, DollarSign, ExternalLink, Trophy, X, Shield, Rocket, Goal } from 'lucide-react';
+import { useSports } from '../context/SportsContext';
 
 interface BetSlipPageProps {
   slipItems: BetSlipItem[];
@@ -13,8 +14,9 @@ interface BetSlipPageProps {
 }
 
 export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveItem, onClearSlip, matches, onAddRandomPick, onOpenPweza }) => {
+  const { generateMkeka } = useSports();
   const [wager, setWager] = useState<number>(10);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [shared, setShared] = useState(false);
   const [showExecution, setShowExecution] = useState(false);
@@ -24,12 +26,11 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
   const potentialReturn = (wager * totalOdds).toFixed(2);
   const totalOddsDisplay = totalOdds.toFixed(2);
 
-  const handleGenerateParlay = () => {
-      setIsGenerating(true);
+  const handleGenerateMkeka = (type: MkekaType) => {
+      setIsGenerating(type);
       setTimeout(() => {
-          onAddRandomPick();
-          onAddRandomPick();
-          setIsGenerating(false);
+          generateMkeka(type);
+          setIsGenerating(null);
       }, 1500);
   };
 
@@ -71,45 +72,77 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
 
         <div className="max-w-[600px] mx-auto">
             
-            {/* AI TOOLS SECTION */}
-            <div className="p-4 grid grid-cols-2 gap-3 border-b border-[#2C2C2C] bg-[#0A0A0A]">
-                <button 
-                    onClick={handleGenerateParlay}
-                    disabled={isGenerating}
-                    className="relative overflow-hidden bg-[#1E1E1E] border border-indigo-500/30 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 group"
-                >
-                    {isGenerating ? (
-                        <div className="animate-spin text-2xl">🐙</div>
-                    ) : (
-                        <>
-                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/40 transition-colors">
-                                <span className="text-lg">🐙</span>
-                            </div>
-                            <div className="text-center">
-                                <span className="block font-condensed font-bold text-sm text-white uppercase leading-none mb-0.5">Pweza Parlay</span>
-                                <span className="text-[10px] text-gray-400">Generate winning slip</span>
-                            </div>
-                        </>
-                    )}
-                </button>
+            {/* MKEKA WIZARD SECTION */}
+            <div className="p-4 border-b border-[#2C2C2C] bg-[#0A0A0A]">
+                <div className="flex items-center gap-2 mb-3">
+                    <Sparkles size={16} className="text-[#00FFB2]" />
+                    <h3 className="font-condensed font-black text-sm uppercase text-gray-400 tracking-wide">Auto-Mkeka Wizard</h3>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2">
+                    {/* OPTION 1: SAFE */}
+                    <button 
+                        onClick={() => handleGenerateMkeka('SAFE')}
+                        disabled={!!isGenerating}
+                        className="bg-[#1E1E1E] border border-[#2C2C2C] hover:border-green-500/50 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition-all active:scale-95"
+                    >
+                        {isGenerating === 'SAFE' ? <div className="animate-spin text-lg">🛡️</div> : (
+                            <>
+                                <div className="w-8 h-8 rounded-full bg-green-900/20 flex items-center justify-center text-green-500">
+                                    <Shield size={16} />
+                                </div>
+                                <div className="text-center">
+                                    <span className="block font-condensed font-bold text-xs text-white uppercase leading-none mb-0.5">Banker</span>
+                                    <span className="text-[9px] text-gray-500">Low Risk</span>
+                                </div>
+                            </>
+                        )}
+                    </button>
+
+                    {/* OPTION 2: LONGSHOT */}
+                    <button 
+                         onClick={() => handleGenerateMkeka('LONGSHOT')}
+                         disabled={!!isGenerating}
+                        className="bg-[#1E1E1E] border border-[#2C2C2C] hover:border-purple-500/50 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition-all active:scale-95"
+                    >
+                        {isGenerating === 'LONGSHOT' ? <div className="animate-spin text-lg">🚀</div> : (
+                            <>
+                                <div className="w-8 h-8 rounded-full bg-purple-900/20 flex items-center justify-center text-purple-500">
+                                    <Rocket size={16} />
+                                </div>
+                                <div className="text-center">
+                                    <span className="block font-condensed font-bold text-xs text-white uppercase leading-none mb-0.5">Longshot</span>
+                                    <span className="text-[9px] text-gray-500">High Odds</span>
+                                </div>
+                            </>
+                        )}
+                    </button>
+
+                    {/* OPTION 3: GOALS */}
+                    <button 
+                         onClick={() => handleGenerateMkeka('GOALS')}
+                         disabled={!!isGenerating}
+                        className="bg-[#1E1E1E] border border-[#2C2C2C] hover:border-yellow-500/50 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition-all active:scale-95"
+                    >
+                        {isGenerating === 'GOALS' ? <div className="animate-spin text-lg">⚽</div> : (
+                            <>
+                                <div className="w-8 h-8 rounded-full bg-yellow-900/20 flex items-center justify-center text-yellow-500">
+                                    <Goal size={16} />
+                                </div>
+                                <div className="text-center">
+                                    <span className="block font-condensed font-bold text-xs text-white uppercase leading-none mb-0.5">Goal Fest</span>
+                                    <span className="text-[9px] text-gray-500">Over 2.5</span>
+                                </div>
+                            </>
+                        )}
+                    </button>
+                </div>
 
                 <button 
                     onClick={handleScanSlip}
-                    className="relative overflow-hidden bg-[#1E1E1E] border border-gray-700 hover:border-gray-500 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition-all active:scale-95"
+                    className="w-full mt-3 py-2 bg-[#1E1E1E] border border-[#2C2C2C] hover:bg-[#252525] rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-gray-400 uppercase transition-colors"
                 >
-                    {isScanning ? (
-                        <span className="text-xs font-bold text-green-500 animate-pulse">Scanning Image...</span>
-                    ) : (
-                        <>
-                            <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                                <Camera size={16} className="text-white" />
-                            </div>
-                            <div className="text-center">
-                                <span className="block font-condensed font-bold text-sm text-white uppercase leading-none mb-0.5">Scan Ticket</span>
-                                <span className="text-[10px] text-gray-400">Upload & Analyze</span>
-                            </div>
-                        </>
-                    )}
+                    <Camera size={14} /> Scan Physical Ticket
                 </button>
             </div>
 
@@ -121,11 +154,8 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
                     </div>
                     <h2 className="font-condensed font-black text-2xl uppercase text-white mb-2">Slip is Empty</h2>
                     <p className="text-gray-500 text-sm mb-8 max-w-[250px]">
-                        Add picks from the feed or let Pweza create a smart parlay for you.
+                        Select a mode above to auto-generate a slip, or add picks from the feed.
                     </p>
-                    <button onClick={onAddRandomPick} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-condensed font-bold text-lg uppercase rounded-lg shadow-lg shadow-indigo-600/20">
-                        Create Smart Slip
-                    </button>
                 </div>
             )}
 

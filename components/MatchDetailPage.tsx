@@ -1,9 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera } from 'lucide-react';
 import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
+import { ScoreShotModal } from './ScoreShotModal';
 
 interface MatchDetailPageProps {
   match: Match;
@@ -19,6 +20,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
   const [isShared, setIsShared] = useState(false);
   const [userVote, setUserVote] = useState<'HOME' | 'AWAY' | null>(null);
   const [pitchSide, setPitchSide] = useState<'HOME' | 'AWAY'>('HOME');
+  const [showScoreShot, setShowScoreShot] = useState(false);
 
   // Check if match is already in slip
   const existingBet = betSlip.find(b => b.matchId === match.id);
@@ -52,18 +54,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
   }
 
   const handleShare = async () => {
-    const shareData = {
-        title: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
-        text: `Sheena's Pick: ${match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.awayTeam.name}`,
-        url: window.location.href
-    };
-    if (navigator.share) {
-        try { await navigator.share(shareData); } catch (err) {}
-    } else {
-        await navigator.clipboard.writeText(window.location.href);
-        setIsShared(true);
-        setTimeout(() => setIsShared(false), 2000);
-    }
+      setShowScoreShot(true);
   };
 
   return (
@@ -78,9 +69,23 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
              </button>
              <span className="font-condensed font-bold text-sm tracking-widest uppercase text-gray-500">{match.league}</span>
              <button onClick={handleShare} className="w-10 h-10 flex items-center justify-center -mr-2 text-gray-400 hover:text-white transition-colors">
-                {isShared ? <Check size={24} className="text-green-500" /> : <Share2 size={24} />}
+                <Share2 size={24} />
              </button>
           </div>
+
+          {/* LIVE MOMENTUM BAR (For Live Games) */}
+          {match.status === MatchStatus.LIVE && match.momentum && (
+              <div className="px-6 mb-2">
+                  <div className="flex justify-between items-center mb-1">
+                      <span className="text-[9px] font-black uppercase text-red-500 animate-pulse">Live Momentum</span>
+                      <span className="text-[9px] font-bold uppercase text-gray-500">Pressure Index</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-800 rounded-full flex overflow-hidden">
+                      <div className="bg-white transition-all duration-1000" style={{ width: `${match.momentum.home}%` }}></div>
+                      <div className="bg-indigo-600 transition-all duration-1000" style={{ width: `${match.momentum.away}%` }}></div>
+                  </div>
+              </div>
+          )}
 
           {/* Scoreboard */}
           <div className="pb-6 pt-2 px-6">
@@ -484,6 +489,8 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                )}
            </button>
       </div>
+      
+      {showScoreShot && <ScoreShotModal match={match} onClose={() => setShowScoreShot(false)} />}
 
     </div>
   );

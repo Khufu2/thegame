@@ -10,7 +10,8 @@ import {
     FeedItem, 
     BetSlipItem,
     MatchStatus,
-    SystemAlert
+    SystemAlert,
+    MkekaType
 } from '../types';
 
 // Mock Data Generators (Moved from App.tsx)
@@ -51,6 +52,7 @@ const generateMockData = () => {
           mapUrl: "https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?q=80&w=1000&auto=format&fit=crop"
       },
       referee: 'Bill Vinovich',
+      momentum: { home: 75, away: 25 }, // High home momentum
       stats: {
           possession: { home: 55, away: 45 },
           shots: { home: 340, away: 280 }, // NFL stats are weird in this context, keeping simplified
@@ -539,6 +541,32 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     };
 
+    const generateMkeka = (type: MkekaType) => {
+        setBetSlip([]); // Clear current
+        
+        // Filter candidates based on Type
+        let candidates = matches.filter(m => m.prediction);
+
+        if (type === 'SAFE') {
+            // High confidence, low odds (simulated by finding >70% confidence)
+            candidates = candidates.filter(m => (m.prediction?.confidence || 0) > 70);
+        } else if (type === 'LONGSHOT') {
+            // Risky bets (lower confidence but high return)
+            candidates = candidates.filter(m => (m.prediction?.confidence || 0) < 70 && m.prediction?.isValuePick);
+        } else if (type === 'GOALS') {
+             // Mock Goal Fest logic (Usually would check for Over 2.5 markets)
+             // For now just pick high scoring predicted games
+             candidates = candidates.filter(m => (m.prediction?.xG?.home || 0) + (m.prediction?.xG?.away || 0) > 3);
+        }
+
+        // Shuffle
+        candidates.sort(() => 0.5 - Math.random());
+        
+        // Take top 3-5
+        const selection = candidates.slice(0, Math.min(candidates.length, 4));
+        selection.forEach(m => addToSlip(m));
+    };
+
     // --- CMS ACTIONS ---
     const addNewsStory = (story: NewsStory) => {
         setNews(prev => [story, ...prev]);
@@ -573,6 +601,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             removeFromSlip,
             clearSlip,
             addRandomPick,
+            generateMkeka, // New
             addNewsStory,
             addSystemAlert,
             isPwezaOpen,

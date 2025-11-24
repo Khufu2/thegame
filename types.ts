@@ -212,6 +212,7 @@ export interface Match {
   standings?: Standing[]; // Contextual table
   bettingTrends?: BettingTrends;
   boxScore?: BoxScore; // NEW: Detailed Box Score
+  momentum?: { home: number; away: number }; // New: Live Pressure Index (0-100)
 }
 
 // --- RICH CONTENT BLOCKS ---
@@ -314,6 +315,8 @@ export interface UserProfile {
 
 export type AuthState = 'UNAUTHENTICATED' | 'ONBOARDING' | 'AUTHENTICATED';
 
+export type MkekaType = 'SAFE' | 'LONGSHOT' | 'GOALS';
+
 // --- CONTEXT TYPE ---
 export interface SportsContextType {
     user: UserProfile | null;
@@ -331,6 +334,7 @@ export interface SportsContextType {
     removeFromSlip: (id: string) => void;
     clearSlip: () => void;
     addRandomPick: () => void;
+    generateMkeka: (type: MkekaType) => void; // New
     
     // Admin / CMS Actions
     addNewsStory: (story: NewsStory) => void;
