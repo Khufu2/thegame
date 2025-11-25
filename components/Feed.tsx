@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
-import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren, Radar, Plus } from 'lucide-react';
+import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 
@@ -47,6 +47,7 @@ const WeatherIcon = ({ condition, size = 14 }: { condition?: string, size?: numb
 export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOpenPweza, onTailBet }) => {
   const { user } = useSports(); 
   const [activeLeague, setActiveLeague] = useState("For You"); // Default to For You
+  const [showAllValuePicks, setShowAllValuePicks] = useState(false);
   const navigate = useNavigate();
 
   // 1. FILTERING LOGIC
@@ -76,8 +77,11 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
         .sort((a, b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0));
 
     // 3. Slice Tiers
-    const top = sortedPredictions.slice(0, 4); // Top 4 for Rail
-    const value = sortedPredictions.slice(4, 10); // Next 6 for Grid
+    // EXPANDED: Show more picks in the horizontal rail (up to 12)
+    const top = sortedPredictions.slice(0, 12); 
+    
+    // EXPANDED: Value picks take the rest (up to 50 for the grid)
+    const value = sortedPredictions.slice(12, 60); 
     
     // 4. Filter the main mixed stream
     const shownMatchIds = new Set([featured?.id, ...top.map(m => m.id), ...value.map(m => m.id)]);
@@ -137,6 +141,8 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
       const prompt = `Give me a quick 50-word sharp betting insight for ${match.homeTeam.name} vs ${match.awayTeam.name}. Focus on value and key stats.`;
       onOpenPweza?.(prompt);
   };
+
+  const visibleValuePicks = showAllValuePicks ? valuePicks : valuePicks.slice(0, 6);
 
   return (
     <div className="min-h-screen bg-[#F2F2F2] md:bg-br-bg md:max-w-[1000px] md:mx-auto pb-24 overflow-x-hidden">
@@ -254,6 +260,12 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                         Daily Locks
                     </h2>
                 </div>
+                <button 
+                    onClick={() => navigate('/scores')}
+                    className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 hover:text-indigo-500 transition-colors"
+                >
+                    All Games <ArrowRight size={12} />
+                </button>
             </div>
              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-4">
                 {topPicks.map(match => (
@@ -274,14 +286,33 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
              <div className="flex items-center gap-2 mb-3">
                  <Radar size={16} className="text-[#00FFB2]" />
                  <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
-                     Value Radar
+                     Value Radar ({valuePicks.length})
                  </h2>
              </div>
-             <div className="grid grid-cols-2 gap-3">
-                 {valuePicks.map(match => (
+             
+             <div className="grid grid-cols-2 gap-3 mb-4">
+                 {visibleValuePicks.map(match => (
                      <CompactPredictionCard key={match.id} match={match} onClick={() => handleMatchClick(match.id)} />
                  ))}
              </div>
+
+             {valuePicks.length > 6 && !showAllValuePicks && (
+                 <button 
+                    onClick={() => setShowAllValuePicks(true)}
+                    className="w-full py-3 bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-gray-400 uppercase hover:bg-[#252525] hover:text-white transition-colors"
+                 >
+                     Show {valuePicks.length - 6} More Picks <ChevronDown size={14} />
+                 </button>
+             )}
+             
+             {showAllValuePicks && (
+                 <button 
+                    onClick={() => setShowAllValuePicks(false)}
+                    className="w-full py-3 bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-gray-400 uppercase hover:bg-[#252525] hover:text-white transition-colors"
+                 >
+                     Show Less <ArrowUpRight size={14} />
+                 </button>
+             )}
         </section>
         )}
 
@@ -442,27 +473,43 @@ const PremiumPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpe
 }
 
 const CompactPredictionCard: React.FC<{ match: Match, onClick: () => void }> = ({ match, onClick }) => (
-    <div onClick={onClick} className="bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C] hover:border-indigo-500/50 transition-colors cursor-pointer flex flex-col justify-between h-[130px]">
-        <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-gray-500 uppercase">{match.league}</span>
-            <span className="text-[9px] font-bold text-green-400 bg-green-900/20 px-1.5 rounded">{match.prediction?.potentialReturn || '+100'}</span>
-        </div>
+    <div onClick={onClick} className="bg-[#121212] rounded-xl p-3 border border-[#2C2C2C] hover:border-[#00FFB2]/50 transition-all cursor-pointer flex flex-col justify-between h-[150px] group relative overflow-hidden">
+        {/* Background Tech Pattern */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
+        <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#00FFB2]/5 rounded-full blur-xl group-hover:bg-[#00FFB2]/10 transition-colors"></div>
         
-        <div className="my-2">
-            <h4 className="font-condensed font-black text-sm text-white uppercase leading-tight mb-1">
-                {match.homeTeam.name} vs {match.awayTeam.name}
-            </h4>
-            <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                <span className="font-bold text-xs text-indigo-400 uppercase">
-                    Pick: {match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.awayTeam.name}
-                </span>
+        <div className="flex justify-between items-start relative z-10">
+             <div className="flex -space-x-2">
+                 <div className="w-8 h-8 rounded-full bg-[#1E1E1E] border border-[#333] flex items-center justify-center z-10">
+                     <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" />
+                 </div>
+                 <div className="w-8 h-8 rounded-full bg-[#1E1E1E] border border-[#333] flex items-center justify-center z-0">
+                     <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" />
+                 </div>
+            </div>
+            <div className="flex items-center gap-1 bg-[#00FFB2]/10 px-2 py-1 rounded border border-[#00FFB2]/20">
+                <TrendingUp size={12} className="text-[#00FFB2]" />
+                <span className="text-[10px] font-black text-[#00FFB2]">{match.prediction?.potentialReturn || '+100'}</span>
             </div>
         </div>
-
-        <div className="mt-auto pt-2 border-t border-[#333] flex justify-between items-center">
-             <span className="text-[9px] font-bold text-gray-500">{match.time}</span>
-             <ChevronRight size={12} className="text-gray-600" />
+        
+        <div className="relative z-10 mt-3">
+             <div className="flex justify-between items-end mb-1">
+                 <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">{match.league}</span>
+                 <span className="text-[9px] font-bold text-gray-500 uppercase">{match.time}</span>
+             </div>
+             
+             <div className="bg-[#1E1E1E] rounded-lg p-2 border border-[#333] group-hover:border-gray-600 transition-colors">
+                 <span className="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Sheena's Value Pick</span>
+                 <div className="flex items-center justify-between">
+                     <span className="font-condensed font-black text-lg text-white uppercase leading-none truncate max-w-[80%]">
+                        {match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.prediction?.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
+                     </span>
+                     {match.prediction?.confidence && (
+                         <div className="w-1.5 h-1.5 rounded-full bg-[#00FFB2]"></div>
+                     )}
+                 </div>
+             </div>
         </div>
     </div>
 )

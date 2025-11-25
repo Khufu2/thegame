@@ -313,6 +313,7 @@ export interface UserPreferences {
         lineMoves: boolean; // Premium feature?
         breakingNews: boolean;
     };
+    oddsFormat: 'DECIMAL' | 'AMERICAN'; // NEW: Localization
     hasCompletedOnboarding: boolean;
 }
 
@@ -333,6 +334,17 @@ export interface UserProfile {
     isAdmin?: boolean; // For CMS access
 }
 
+export interface LeaderboardEntry {
+    rank: number;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    winRate: number;
+    netProfit: number;
+    isPro?: boolean;
+    streak?: number;
+}
+
 export type AuthState = 'UNAUTHENTICATED' | 'ONBOARDING' | 'AUTHENTICATED';
 
 export type MkekaType = 'SAFE' | 'LONGSHOT' | 'GOALS';
@@ -344,12 +356,15 @@ export interface SportsContextType {
     login: (email: string) => void;
     logout: () => void;
     completeOnboarding: (prefs: { leagues: string[], teams: string[] }) => void;
+    updatePreferences: (prefs: Partial<UserPreferences>) => void; // NEW
     
     matches: Match[];
     news: NewsStory[];
+    alerts: SystemAlert[];
     feedItems: FeedItem[];
     betSlip: BetSlipItem[];
-    flashAlert: FlashAlert | null; // NEW
+    flashAlert: FlashAlert | null; 
+    leaderboard: LeaderboardEntry[]; // NEW
     
     addToSlip: (match: Match) => void;
     removeFromSlip: (id: string) => void;
@@ -364,6 +379,8 @@ export interface SportsContextType {
     // Admin / CMS Actions
     addNewsStory: (story: NewsStory) => void;
     addSystemAlert: (alert: SystemAlert) => void;
+    deleteNewsStory: (id: string) => void; // NEW
+    deleteSystemAlert: (id: string) => void; // NEW
     
     isPwezaOpen: boolean;
     pwezaPrompt: string | null;

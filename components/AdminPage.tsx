@@ -1,16 +1,14 @@
-
-
 import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
 import { NewsStory, SystemAlert, ArticleBlock, MatchStatus } from '../types';
 import { generateMatchNews } from '../services/newsAgentService';
-import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw } from 'lucide-react';
+import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const AdminPage: React.FC = () => {
-    const { addNewsStory, addSystemAlert, user, matches } = useSports();
+    const { addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert, user, matches, news, alerts } = useSports();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT'>('NEWS');
+    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'MANAGE'>('NEWS');
 
     // --- NEWS STATE ---
     const [newsTitle, setNewsTitle] = useState('');
@@ -25,11 +23,13 @@ export const AdminPage: React.FC = () => {
     const [alertData, setAlertData] = useState('');
     const [alertLeague, setAlertLeague] = useState('NFL');
     const [alertType, setAlertType] = useState<SystemAlert['alertType']>('SHARP_MONEY');
+    const [broadcastToBots, setBroadcastToBots] = useState(true);
 
     // --- AI AGENT STATE ---
     const [selectedMatchId, setSelectedMatchId] = useState('');
     const [aiTone, setAiTone] = useState<'HYPE' | 'RECAP' | 'ANALYTICAL' | 'RUMOR'>('RECAP');
     const [aiLanguage, setAiLanguage] = useState<'ENGLISH' | 'SWAHILI'>('ENGLISH');
+    const [useGrounding, setUseGrounding] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
 
     if (!user?.isAdmin) {
@@ -96,8 +96,12 @@ export const AdminPage: React.FC = () => {
             timestamp: 'Just Now',
             signalStrength: 'HIGH'
         };
-        addSystemAlert(newAlert);
-        window.alert('Alert Broadcasted to War Room');
+        // Pass broadcast flag to context (simulating backend trigger)
+        addSystemAlert(newAlert); 
+        
+        let msg = 'Alert Broadcasted to War Room';
+        if (broadcastToBots) msg += ' & Pushed to Telegram/WhatsApp';
+        window.alert(msg);
         navigate('/');
     };
 
@@ -106,7 +110,7 @@ export const AdminPage: React.FC = () => {
         if (!match) return;
 
         setIsGenerating(true);
-        const result = await generateMatchNews(match, aiTone, aiLanguage);
+        const result = await generateMatchNews(match, aiTone, aiLanguage, useGrounding);
         setIsGenerating(false);
 
         if (result) {
@@ -135,10 +139,64 @@ export const AdminPage: React.FC = () => {
                     <button onClick={() => setActiveTab('NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded ${activeTab === 'NEWS' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>News Desk</button>
                     <button onClick={() => setActiveTab('AI_AGENT')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 ${activeTab === 'AI_AGENT' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-white'}`}><Wand2 size={12}/> AI Agent</button>
                     <button onClick={() => setActiveTab('WAR_ROOM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded ${activeTab === 'WAR_ROOM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>War Room</button>
+                    <button onClick={() => setActiveTab('MANAGE')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 ${activeTab === 'MANAGE' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}><List size={12}/> Manage</button>
                 </div>
             </div>
 
             <div className="max-w-[1000px] mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                {/* --- MANAGE EXISTING CONTENT --- */}
+                {activeTab === 'MANAGE' && (
+                    <div className="col-span-2">
+                         <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 mb-6 flex items-center gap-2">
+                             <List size={16} /> Active Content
+                         </h3>
+                         
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                             {/* News List */}
+                             <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-5">
+                                 <h4 className="text-sm font-bold text-white mb-4 uppercase border-b border-[#333] pb-2">Active News Stories</h4>
+                                 <div className="space-y-2">
+                                     {news.map(story => (
+                                         <div key={story.id} className="flex justify-between items-center bg-black p-3 rounded border border-[#333]">
+                                             <div className="flex-1 overflow-hidden">
+                                                 <span className="block text-sm font-bold text-white truncate">{story.title}</span>
+                                                 <span className="text-xs text-gray-500 uppercase">{story.tags?.[0]} • {story.timestamp}</span>
+                                             </div>
+                                             <button 
+                                                 onClick={() => { if(confirm('Delete this story?')) deleteNewsStory(story.id) }}
+                                                 className="ml-3 p-2 text-red-500 hover:bg-red-900/20 rounded"
+                                             >
+                                                 <Trash2 size={16} />
+                                             </button>
+                                         </div>
+                                     ))}
+                                 </div>
+                             </div>
+
+                             {/* Alerts List */}
+                             <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-5">
+                                 <h4 className="text-sm font-bold text-white mb-4 uppercase border-b border-[#333] pb-2">Active War Room Alerts</h4>
+                                 <div className="space-y-2">
+                                     {alerts.map(alert => (
+                                         <div key={alert.id} className="flex justify-between items-center bg-black p-3 rounded border border-[#333]">
+                                             <div className="flex-1 overflow-hidden">
+                                                 <span className="block text-sm font-bold text-red-500 truncate">{alert.title}</span>
+                                                 <span className="text-xs text-gray-500 uppercase">{alert.alertType} • {alert.league}</span>
+                                             </div>
+                                             <button 
+                                                 onClick={() => { if(confirm('Delete this alert?')) deleteSystemAlert(alert.id) }}
+                                                 className="ml-3 p-2 text-red-500 hover:bg-red-900/20 rounded"
+                                             >
+                                                 <Trash2 size={16} />
+                                             </button>
+                                         </div>
+                                     ))}
+                                 </div>
+                             </div>
+                         </div>
+                    </div>
+                )}
 
                 {/* --- AI AGENT WORKFLOW --- */}
                 {activeTab === 'AI_AGENT' && (
@@ -196,6 +254,18 @@ export const AdminPage: React.FC = () => {
                                              <option value="SWAHILI">Swahili / Sheng</option>
                                          </select>
                                      </div>
+                                 </div>
+
+                                 {/* Grounding Toggle */}
+                                 <div className="flex items-center gap-3 p-3 bg-black rounded border border-[#333] cursor-pointer" onClick={() => setUseGrounding(!useGrounding)}>
+                                     <div className={`w-4 h-4 rounded-full border border-[#555] flex items-center justify-center ${useGrounding ? 'bg-indigo-600 border-indigo-500' : ''}`}>
+                                         {useGrounding && <Check size={10} className="text-white" />}
+                                     </div>
+                                     <div>
+                                         <span className="block text-sm font-bold text-white">Google Search Grounding</span>
+                                         <span className="text-[10px] text-gray-500">Fetch real-time stats/quotes from web (Simulated)</span>
+                                     </div>
+                                     <Globe size={16} className={`ml-auto ${useGrounding ? 'text-indigo-500' : 'text-gray-600'}`} />
                                  </div>
 
                                  <button 
@@ -388,6 +458,18 @@ export const AdminPage: React.FC = () => {
                                         value={alertDesc}
                                         onChange={e => setAlertDesc(e.target.value)}
                                     />
+                                    
+                                    {/* Bot Broadcast Toggle */}
+                                    <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-500/20 rounded cursor-pointer" onClick={() => setBroadcastToBots(!broadcastToBots)}>
+                                        <div className={`w-4 h-4 rounded-full border border-[#555] flex items-center justify-center ${broadcastToBots ? 'bg-red-600 border-red-500' : ''}`}>
+                                             {broadcastToBots && <Check size={10} className="text-white" />}
+                                        </div>
+                                        <div>
+                                             <span className="block text-sm font-bold text-white">Broadcast to Bots</span>
+                                             <span className="text-[10px] text-gray-500">Push this alert to Telegram & WhatsApp Groups</span>
+                                        </div>
+                                        <Send size={16} className={`ml-auto ${broadcastToBots ? 'text-red-500' : 'text-gray-600'}`} />
+                                    </div>
                                 </div>
                             </div>
                         </div>

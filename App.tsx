@@ -1,5 +1,6 @@
 
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Feed } from './components/Feed';
 import { Pweza } from './components/Pweza';
@@ -12,8 +13,19 @@ import { AuthPage } from './components/AuthPage';
 import { Onboarding } from './components/Onboarding';
 import { ExplorePage } from './components/ExplorePage'; 
 import { AdminPage } from './components/AdminPage';
+import { LeaderboardPage } from './components/LeaderboardPage';
+import { SettingsPage } from './components/SettingsPage';
 import { SportsProvider, useSports } from './context/SportsContext';
 import { HashRouter, Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
+
+// Utility to scroll to top on route change
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 const AppContent = () => {
   const { 
@@ -79,6 +91,7 @@ const AppContent = () => {
       onNavigate={(page) => navigate(page === 'home' ? '/' : `/${page}`)}
       onOpenPweza={() => handleOpenPweza()}
     >
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Feed items={feedItems} matches={matches} onArticleClick={(id) => navigate(`/article/${id}`)} onOpenPweza={handleOpenPweza} onTailBet={handleTailBet} />} />
         <Route path="/scores" element={<ScoresPage matches={matches} onOpenPweza={handleOpenPweza} />} />
@@ -95,6 +108,8 @@ const AppContent = () => {
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/profile" element={user ? <ProfilePage user={user} betHistory={betSlip} /> : null} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/article/:id" element={<ArticleRouteWrapper />} />
         <Route path="/match/:id" element={<MatchRouteWrapper />} />
         <Route path="*" element={<div className="p-20 text-center text-[#A1A1A1] font-condensed font-bold text-xl">COMING SOON</div>} />

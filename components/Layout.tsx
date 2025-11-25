@@ -1,7 +1,5 @@
-
-
 import React from 'react';
-import { Home, Search, Zap, User, Ticket, Zap as ZapIcon, TrendingUp, Goal } from 'lucide-react';
+import { Home, Search, Zap, User, Ticket, Zap as ZapIcon, TrendingUp, Goal, Trophy } from 'lucide-react';
 import { useSports } from '../context/SportsContext';
 
 interface LayoutProps {
@@ -15,7 +13,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
   const { flashAlert } = useSports();
 
   return (
-    <div className="min-h-screen bg-[#F2F2F2] md:bg-br-bg text-black md:text-white font-sans flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#F2F2F2] md:bg-black text-black md:text-white font-sans flex flex-col md:flex-row">
       
       {/* FLASH ALERT TOAST */}
       {flashAlert && (
@@ -36,39 +34,41 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
           </div>
       )}
 
-      {/* DESKTOP SIDEBAR (Hidden on Mobile) */}
-      <aside className="hidden md:flex flex-col w-[280px] h-screen fixed left-0 top-0 border-r border-br-border bg-br-bg z-50">
-        <div className="p-6 flex items-center gap-3 cursor-pointer border-b border-br-border/50" onClick={() => onNavigate('home')}>
-          <div className="w-10 h-10 bg-white flex items-center justify-center rounded shadow-lg">
-            <span className="font-condensed font-black text-black text-2xl italic tracking-tighter">BR</span>
+      {/* DESKTOP SIDEBAR (New "Glass Tech" Design) */}
+      <aside className="hidden md:flex flex-col w-[260px] h-screen fixed left-0 top-0 border-r border-white/5 bg-black/40 backdrop-blur-xl z-50">
+        <div className="p-8 flex items-center gap-3 cursor-pointer" onClick={() => onNavigate('home')}>
+           {/* Modern Logo */}
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.5)]">
+            <span className="font-black text-white text-xl">S</span>
           </div>
-          <h1 className="font-condensed font-black text-3xl italic tracking-tighter text-white">SHEENA</h1>
+          <h1 className="font-sans font-black text-2xl tracking-tight text-white">SHEENA</h1>
         </div>
 
-        <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
-          <SidebarLink icon={<Home size={20} />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+          <SidebarLink icon={<Home size={20} />} label="Home Feed" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
           <SidebarLink icon={<Search size={20} />} label="Explore" active={currentPage === 'explore'} onClick={() => onNavigate('explore')} />
-          <SidebarLink icon={<Zap size={20} />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
-          <SidebarLink icon={<Ticket size={20} />} label="Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
+          <SidebarLink icon={<Zap size={20} />} label="Live Scores" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
+          <SidebarLink icon={<Ticket size={20} />} label="My Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
+          <SidebarLink icon={<Trophy size={20} />} label="Leaderboard" active={currentPage === 'leaderboard'} onClick={() => onNavigate('leaderboard')} />
           <SidebarLink icon={<User size={20} />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
           
-          <div className="my-6 border-t border-br-border/50"></div>
-          <div className="px-4 mb-2 text-xs font-bold text-br-muted uppercase tracking-widest">My Teams</div>
+          <div className="my-8 border-t border-white/10"></div>
+          <div className="px-4 mb-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Following</div>
           <TeamRow name="Arsenal" />
           <TeamRow name="Lakers" />
           <TeamRow name="Real Madrid" />
         </nav>
 
-        <div className="p-4 border-t border-br-border">
-            <button onClick={onOpenPweza} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-condensed font-bold text-lg uppercase py-3 rounded flex items-center justify-center gap-2 transition-colors">
-                <span className="text-xl">🐙</span>
+        <div className="p-6">
+            <button onClick={onOpenPweza} className="group w-full bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-500 hover:to-indigo-700 text-white font-bold text-sm uppercase py-3.5 rounded-xl shadow-lg shadow-indigo-900/40 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] border border-white/10">
+                <span className="text-xl group-hover:rotate-12 transition-transform">🐙</span>
                 Ask Pweza
             </button>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 md:ml-[280px] min-h-screen relative pb-[70px] md:pb-0">
+      <main className="flex-1 md:ml-[260px] min-h-screen relative pb-[70px] md:pb-0">
         
         {/* MOBILE HEADER - Compact (44px standard iOS) */}
         <header className="md:hidden sticky top-0 z-50 bg-[#F2F2F2]/95 backdrop-blur-xl h-[44px] flex items-center justify-between px-4 border-b border-gray-200/50 shadow-sm">
@@ -99,16 +99,27 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
 };
 
 const SidebarLink = ({ icon, label, active, onClick }: any) => (
-    <div onClick={onClick} className={`flex items-center gap-4 px-4 py-3 rounded cursor-pointer transition-colors ${active ? 'bg-br-surface text-white' : 'text-br-muted hover:bg-br-surface/50 hover:text-white'}`}>
-        <span className={active ? 'text-white' : 'text-br-muted'}>{icon}</span>
-        <span className="font-condensed font-bold text-lg uppercase tracking-wide">{label}</span>
+    <div 
+        onClick={onClick} 
+        className={`
+            flex items-center gap-3 px-4 py-3 mx-2 rounded-lg cursor-pointer transition-all duration-200 group
+            ${active 
+                ? 'bg-indigo-600/10 text-[#00FFB2] border border-indigo-500/30 shadow-[0_0_15px_rgba(0,255,178,0.05)]' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }
+        `}
+    >
+        <span className={`transition-transform duration-200 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</span>
+        <span className={`font-sans text-sm font-bold tracking-wide ${active ? 'text-white' : ''}`}>{label}</span>
     </div>
 );
 
 const TeamRow = ({ name }: { name: string }) => (
-    <div className="flex items-center gap-3 px-4 py-2 hover:bg-br-surface/50 cursor-pointer rounded">
-        <div className="w-6 h-6 rounded-full bg-white/10"></div>
-        <span className="font-condensed font-medium text-lg text-br-muted hover:text-white">{name}</span>
+    <div className="flex items-center gap-3 px-4 py-2 hover:bg-white/5 cursor-pointer rounded-lg mx-2 transition-colors group">
+        <div className="w-6 h-6 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors flex items-center justify-center text-[10px] font-bold text-gray-500">
+            {name[0]}
+        </div>
+        <span className="font-sans font-medium text-sm text-gray-400 group-hover:text-white transition-colors">{name}</span>
     </div>
 );
 

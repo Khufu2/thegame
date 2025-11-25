@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera, Send, Crown, ThumbsUp } from 'lucide-react';
 import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore, Comment } from '../types';
@@ -727,7 +725,7 @@ const MarketPulse = ({ trend }: { trend?: any }) => {
     )
 }
 
-const StandingsWidget = ({ standings, homeId, awayId }: { standings: Standing[], homeId: string, awayId: string }) => (
+const StandingsWidget = ({ standings = [], homeId, awayId }: { standings: Standing[], homeId: string, awayId: string }) => (
     <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden">
         <table className="w-full text-left text-xs">
             <thead className="bg-[#1E1E1E] text-gray-400 font-condensed font-bold uppercase">
@@ -740,7 +738,7 @@ const StandingsWidget = ({ standings, homeId, awayId }: { standings: Standing[],
                 </tr>
             </thead>
             <tbody>
-                {standings.map((team) => {
+                {standings?.map((team) => {
                     const isFocus = team.teamId === homeId || team.teamId === awayId;
                     return (
                         <tr key={team.teamId} className={`border-b border-[#2C2C2C] ${isFocus ? 'bg-indigo-900/20' : ''}`}>
@@ -753,7 +751,7 @@ const StandingsWidget = ({ standings, homeId, awayId }: { standings: Standing[],
                             <td className="p-3 text-center text-white font-black">{team.points}</td>
                             <td className="p-3 text-center">
                                 <div className="flex justify-center gap-0.5">
-                                    {team.form.map((res, i) => (
+                                    {team.form?.map((res, i) => (
                                         <div key={i} className={`w-1.5 h-1.5 rounded-full ${res === 'W' ? 'bg-green-500' : res === 'L' ? 'bg-red-500' : 'bg-gray-500'}`} />
                                     ))}
                                 </div>
@@ -767,6 +765,9 @@ const StandingsWidget = ({ standings, homeId, awayId }: { standings: Standing[],
 )
 
 const SoccerPitch: React.FC<{ lineup: TeamLineup, teamName: string }> = ({ lineup, teamName }) => {
+    // Defensive coding: Ensure starting lineup array exists
+    const starting = lineup?.starting || [];
+
     return (
         <div className="w-full aspect-[3/4] bg-[#1a4a25] rounded-xl border-2 border-[#2a6636] relative overflow-hidden shadow-inner">
              {/* Pitch Markings */}
@@ -782,27 +783,27 @@ const SoccerPitch: React.FC<{ lineup: TeamLineup, teamName: string }> = ({ lineu
              <div className="absolute inset-0 p-4 flex flex-col justify-around py-8">
                  {/* GK */}
                  <div className="flex justify-center">
-                     <PlayerPill player={lineup.starting[0]} />
+                     {starting[0] && <PlayerPill player={starting[0]} />}
                  </div>
                  
                  {/* DEF */}
                  <div className="flex justify-around px-4">
-                     {lineup.starting.filter(p => p.position === 'DF').map(p => <PlayerPill key={p.id} player={p} />)}
+                     {starting.filter(p => p.position === 'DF').map(p => <PlayerPill key={p.id} player={p} />)}
                  </div>
 
                  {/* MF */}
                  <div className="flex justify-around px-8">
-                      {lineup.starting.filter(p => p.position === 'MF').map(p => <PlayerPill key={p.id} player={p} />)}
+                      {starting.filter(p => p.position === 'MF').map(p => <PlayerPill key={p.id} player={p} />)}
                  </div>
 
                  {/* FW */}
                  <div className="flex justify-around px-10">
-                      {lineup.starting.filter(p => p.position === 'FW').map(p => <PlayerPill key={p.id} player={p} />)}
+                      {starting.filter(p => p.position === 'FW').map(p => <PlayerPill key={p.id} player={p} />)}
                  </div>
              </div>
              
              <div className="absolute bottom-2 right-2 text-[10px] font-black uppercase text-white/50">
-                 {lineup.formation}
+                 {lineup?.formation || ''}
              </div>
         </div>
     )
@@ -828,17 +829,17 @@ const PlayerPill: React.FC<{ player: LineupPlayer }> = ({ player }) => (
              {/* EVENT INDICATORS (Goals, Cards) */}
              <div className="absolute -top-1 -left-2 flex flex-col gap-0.5">
                  {/* Goals */}
-                 {player.events?.filter(e => e.type === 'GOAL').map((e, i) => (
+                 {player.events?.filter(e => e.type === 'GOAL')?.map((e, i) => (
                     <div key={`g-${i}`} className="w-3 h-3 bg-white rounded-full flex items-center justify-center border border-gray-400 shadow-sm">
                         <div className="w-1.5 h-1.5 bg-black rounded-full"></div>
                     </div>
                  ))}
                  {/* Cards */}
-                 {player.events?.filter(e => e.type === 'CARD').map((e, i) => (
+                 {player.events?.filter(e => e.type === 'CARD')?.map((e, i) => (
                     <div key={`c-${i}`} className="w-2.5 h-3 bg-yellow-500 border border-white rounded-[1px] shadow-sm"></div>
                  ))}
                  {/* Sub Out */}
-                 {player.events?.filter(e => e.type === 'SUB_OUT').map((e, i) => (
+                 {player.events?.filter(e => e.type === 'SUB_OUT')?.map((e, i) => (
                     <div key={`s-${i}`} className="w-3 h-3 bg-red-500 rounded-full flex items-center justify-center text-[6px] text-white font-bold border border-white">
                         ↓
                     </div>
@@ -851,22 +852,22 @@ const PlayerPill: React.FC<{ player: LineupPlayer }> = ({ player }) => (
     </div>
 )
 
-const BoxScoreTable = ({ players, headers }: { players: any[], headers: string[] }) => (
+const BoxScoreTable = ({ players = [], headers = [] }: { players: any[], headers: string[] }) => (
     <div className="bg-[#121212] border border-[#2C2C2C] rounded-lg overflow-hidden">
         <table className="w-full text-right text-xs">
             <thead className="bg-[#1E1E1E] text-gray-500 font-condensed font-bold uppercase">
                 <tr>
                     <th className="p-2 text-left w-[40%] text-white">Player</th>
-                    {headers.map(h => <th key={h} className="p-2 w-[15%]">{h}</th>)}
+                    {headers?.map(h => <th key={h} className="p-2 w-[15%]">{h}</th>)}
                 </tr>
             </thead>
             <tbody>
-                {players.map((p, i) => (
+                {players?.map((p, i) => (
                     <tr key={i} className="border-b border-[#2C2C2C] last:border-0 hover:bg-[#1A1A1A]">
                         <td className="p-2 text-left font-bold text-white">
                             {p.name}
                         </td>
-                        {headers.map(h => (
+                        {headers?.map(h => (
                             <td key={h} className={`p-2 font-mono ${h === 'PTS' || h === 'G' ? 'text-white font-black' : 'text-gray-400'}`}>
                                 {p.stats[h] !== undefined ? p.stats[h] : (h === 'MIN' ? p.minutes : '-')}
                             </td>

@@ -1,7 +1,8 @@
 
+
 import React, { useState } from 'react';
 import { UserProfile, BetSlipItem, Match } from '../types';
-import { Settings, Award, TrendingUp, Shield, Crown, ChevronRight, LogOut, Bell, Heart, CreditCard, Plus, Check, Lock } from 'lucide-react';
+import { Settings, Award, TrendingUp, Shield, Crown, ChevronRight, LogOut, Bell, Heart, CreditCard, Plus, Check, Lock, Trophy, X, Coins, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProfilePageProps {
@@ -22,6 +23,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SQUAD' | 'HISTORY'>('OVERVIEW');
   const [favorites, setFavorites] = useState<string[]>(user.preferences.favoriteLeagues);
   const [followedTeams, setFollowedTeams] = useState<string[]>(user.preferences.favoriteTeams);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const toggleLeague = (league: string) => {
       if (favorites.includes(league)) {
@@ -40,12 +42,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
   };
 
   return (
-    <div className="min-h-screen bg-black text-white pb-24 font-sans">
+    <div className="min-h-screen bg-black text-white pb-24 font-sans relative">
         
         {/* HEADER */}
         <div className="sticky top-0 z-40 bg-[#121212]/95 backdrop-blur-xl border-b border-[#2C2C2C] px-4 h-[60px] flex items-center justify-between">
             <span className="font-condensed font-black text-2xl uppercase italic tracking-tighter">My Profile</span>
-            <button className="text-gray-400 hover:text-white transition-colors">
+            <button onClick={() => navigate('/settings')} className="text-gray-400 hover:text-white transition-colors">
                 <Settings size={20} />
             </button>
         </div>
@@ -139,19 +141,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
                                     <ProFeature text="Unlimited Pweza AI Chat" />
                                     <ProFeature text="Ad-Free Experience" />
                                 </ul>
-                                <button className="w-full py-3 bg-white text-indigo-900 font-condensed font-black uppercase rounded shadow-lg hover:bg-gray-100 transition-colors">
+                                <button 
+                                    onClick={() => setShowPaymentModal(true)}
+                                    className="w-full py-3 bg-white text-indigo-900 font-condensed font-black uppercase rounded shadow-lg hover:bg-gray-100 transition-colors"
+                                >
                                     Upgrade • $9.99/mo
                                 </button>
                             </div>
                         </div>
                     )}
+                    
+                    {/* Leaderboard Link */}
+                    <button onClick={() => navigate('/leaderboard')} className="w-full flex items-center justify-between p-4 border border-[#2C2C2C] bg-[#1E1E1E] rounded-xl hover:bg-[#252525] transition-colors group">
+                        <div className="flex items-center gap-3">
+                            <Trophy size={18} className="text-yellow-400" />
+                            <span className="font-condensed font-bold text-sm uppercase text-white">View Leaderboard</span>
+                        </div>
+                        <ChevronRight size={16} className="text-gray-600" />
+                    </button>
 
                     {/* Quick Settings */}
                     <div className="space-y-1">
-                        <MenuItem icon={<Bell size={18} />} label="Notifications" value="On" />
-                        <MenuItem icon={<CreditCard size={18} />} label="Manage Subscription" />
-                        <MenuItem icon={<Shield size={18} />} label="Privacy & Security" />
-                        <MenuItem icon={<LogOut size={18} />} label="Sign Out" danger />
+                        <MenuItem onClick={() => navigate('/settings')} icon={<Bell size={18} />} label="Notifications" value="On" />
+                        <MenuItem onClick={() => navigate('/settings')} icon={<CreditCard size={18} />} label="Manage Subscription" />
+                        <MenuItem onClick={() => navigate('/settings')} icon={<Shield size={18} />} label="Privacy & Security" />
+                        <MenuItem onClick={() => navigate('/')} icon={<LogOut size={18} />} label="Sign Out" danger />
                     </div>
                 </div>
             )}
@@ -248,13 +262,79 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
                     />
                 </div>
             )}
-
         </div>
+
+        {/* PAYMENT MODAL */}
+        {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} />}
     </div>
   );
 };
 
 // --- SUB COMPONENTS ---
+
+const PaymentModal = ({ onClose }: { onClose: () => void }) => {
+    const [method, setMethod] = useState<'CARD' | 'CRYPTO'>('CARD');
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+            <div className="bg-[#1E1E1E] border border-[#2C2C2C] w-full max-w-[400px] rounded-xl overflow-hidden shadow-2xl">
+                
+                <div className="flex justify-between items-center p-4 border-b border-[#2C2C2C] bg-[#121212]">
+                    <div className="flex items-center gap-2">
+                        <Crown size={20} className="text-yellow-400" />
+                        <h3 className="font-condensed font-black text-xl uppercase italic">Upgrade to Pro</h3>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
+                </div>
+
+                <div className="flex p-2 gap-2 bg-[#121212]">
+                    <button onClick={() => setMethod('CARD')} className={`flex-1 py-2 rounded font-bold text-xs uppercase flex items-center justify-center gap-2 ${method === 'CARD' ? 'bg-[#2C2C2C] text-white' : 'text-gray-500'}`}>
+                        <CreditCard size={14} /> Card
+                    </button>
+                    <button onClick={() => setMethod('CRYPTO')} className={`flex-1 py-2 rounded font-bold text-xs uppercase flex items-center justify-center gap-2 ${method === 'CRYPTO' ? 'bg-[#2C2C2C] text-white' : 'text-gray-500'}`}>
+                        <Coins size={14} /> Crypto
+                    </button>
+                </div>
+
+                <div className="p-6">
+                    {method === 'CARD' ? (
+                        <div className="space-y-4">
+                            <div className="bg-black/50 p-4 rounded border border-white/10 text-center">
+                                <p className="text-sm font-bold text-gray-400">Secure Stripe Checkout</p>
+                                <p className="text-xs text-gray-500 mt-1">Accepts Visa, Mastercard, Amex</p>
+                            </div>
+                            <button className="w-full py-3 bg-indigo-600 text-white font-condensed font-black uppercase rounded hover:bg-indigo-500">
+                                Pay $9.99
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <p className="text-xs text-gray-400 text-center">
+                                Use Crypto for instant, borderless upgrades.
+                                <br />Recommended: <span className="text-[#00FFB2] font-bold">USDT (TRC20)</span>
+                            </p>
+                            
+                            <div className="bg-white p-4 rounded-xl flex justify-center">
+                                {/* Mock QR */}
+                                <div className="w-32 h-32 bg-black opacity-10"></div>
+                            </div>
+
+                            <div className="bg-black border border-[#333] rounded p-3 flex items-center justify-between">
+                                <span className="font-mono text-xs text-gray-300 truncate mr-2">TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t</span>
+                                <button className="text-indigo-400 hover:text-indigo-300"><Copy size={16} /></button>
+                            </div>
+                            
+                            <div className="text-center text-[10px] text-gray-500 uppercase font-bold">
+                                Send exactly $9.99 USDT. Account activates instantly.
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+            </div>
+        </div>
+    )
+}
 
 const TabButton = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
     <button 
@@ -272,8 +352,8 @@ const ProFeature = ({ text }: { text: string }) => (
     </li>
 );
 
-const MenuItem = ({ icon, label, value, danger }: any) => (
-    <button className="w-full flex items-center justify-between p-4 border-b border-[#1E1E1E] hover:bg-[#1E1E1E] transition-colors group">
+const MenuItem = ({ icon, label, value, danger, onClick }: any) => (
+    <button onClick={onClick} className="w-full flex items-center justify-between p-4 border-b border-[#1E1E1E] hover:bg-[#1E1E1E] transition-colors group">
         <div className="flex items-center gap-3">
             <span className={danger ? 'text-red-500' : 'text-gray-400 group-hover:text-white'}>{icon}</span>
             <span className={`font-condensed font-bold text-sm uppercase ${danger ? 'text-red-500' : 'text-white'}`}>{label}</span>

@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Match, NewsStory, ArticleBlock } from "../types";
 
@@ -17,10 +16,22 @@ interface GeneratedArticle {
     blocks: ArticleBlock[];
 }
 
+// SIMULATED SEARCH FUNCTION (Place your Google/Tavily API call here)
+const performGroundingSearch = async (query: string): Promise<string> => {
+    console.log(`[Production] Searching web for: ${query}`);
+    // In production:
+    // const results = await fetch(`https://api.tavily.com/search?q=${query}...`);
+    // return results.map(r => r.content).join('\n');
+    
+    // For now, return a placeholder string to prompt the AI
+    return "Real-time search results would appear here in production, providing specific stats, quotes, and injury updates.";
+}
+
 export const generateMatchNews = async (
     match: Match,
     tone: 'HYPE' | 'RECAP' | 'ANALYTICAL' | 'RUMOR',
-    language: 'ENGLISH' | 'SWAHILI'
+    language: 'ENGLISH' | 'SWAHILI',
+    useGrounding: boolean = false // New Parameter
 ): Promise<GeneratedArticle | null> => {
     const client = getClient();
     if (!client) return null;
@@ -30,6 +41,12 @@ export const generateMatchNews = async (
     const scoreStr = match.score ? `${match.homeTeam.name} ${match.score.home} - ${match.score.away} ${match.awayTeam.name}` : "Match not started";
     const statusStr = match.status;
 
+    let groundingContext = "";
+    if (useGrounding) {
+        const query = `${match.homeTeam.name} vs ${match.awayTeam.name} ${match.league} news quotes stats`;
+        groundingContext = await performGroundingSearch(query);
+    }
+
     const prompt = `
     You are 'Sheena Agent', a top-tier sports journalist for a premium app called 'Sheena Sports'.
     Write a news article about this match:
@@ -37,6 +54,9 @@ export const generateMatchNews = async (
     League: ${match.league}
     Score/Status: ${scoreStr} (${statusStr})
     Box Score Data: ${boxScoreStr}
+
+    GROUNDING CONTEXT (Real World Data):
+    ${useGrounding ? groundingContext : "N/A - Use internal data only."}
 
     TONE: ${tone}
     LANGUAGE: ${language === 'SWAHILI' ? 'Swahili (Use engaging "Sheng" slang where appropriate for hype)' : 'English (Premium, Professional but engaging)'}
@@ -47,6 +67,7 @@ export const generateMatchNews = async (
     3. Generate the article body as a list of "Blocks".
     4. IF Box Score data is present, analyze the stats and mention top performers in the text.
     5. Include a "TWEET" block at the end that is perfect for social media sharing (short, hashtags).
+    6. If Grounding Context is provided, prioritize those facts over general knowledge.
     `;
 
     try {

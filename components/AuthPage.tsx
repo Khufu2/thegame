@@ -1,7 +1,8 @@
 
+
 import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
-import { Mail, ArrowRight, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, ArrowRight, Lock, Eye, EyeOff, Info } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
     const { login } = useSports();
@@ -97,6 +98,17 @@ export const AuthPage: React.FC = () => {
                             </button>
                         </p>
                     </div>
+
+                    {/* Developer Hint */}
+                    <div className="mt-6 p-3 bg-white/5 rounded border border-white/10 flex gap-2">
+                        <Info size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-gray-400">
+                            <span className="font-bold text-indigo-400">Dev Hint:</span> Use 
+                            <code className="mx-1 bg-black px-1 rounded text-white font-mono">admin@sheena.com</code> 
+                            to access the CMS & Admin Dashboard.
+                        </p>
+                    </div>
+
                 </div>
 
                 <div className="mt-8 text-center">

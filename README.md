@@ -1,113 +1,107 @@
-# 🐙 Sheena Sports - Engineering Handoff Guide
+# 🐙 Sheena Sports - The Bible (Engineering Master Plan)
 
-**Version:** 1.0 (High-Fidelity Prototype)  
-**Tech Stack:** React 19, Tailwind CSS, Lucide Icons, Google Gemini AI  
-**Concept:** The ultimate sports intelligence platform blending Bleacher Report-style media with AI-driven betting insights.
+**Version:** 2.0 (Production Roadmap)
+**Tech Stack:** React 19, Tailwind CSS, Lucide Icons, Google Gemini AI
+**Concept:** The ultimate sports intelligence platform. Blending Bleacher Report-style media with a high-powered Betting Intelligence Terminal.
 
 ---
 
 ## 🏗️ Architecture Overview
 
-The app currently runs as a **Single Page Application (SPA)** using `react-router-dom`.
+The app runs as a **Single Page Application (SPA)** using `react-router-dom`.
 
-*   **State Management:** `SportsContext.tsx` acts as the global store. It holds the User state, Betting Slip, Feed Data, and Authentication status. It currently relies on `generateMockData()` to hydrate the app.
-*   **AI Layer:** `services/pwezaService.ts` and `newsAgentService.ts` communicate directly with Google's Gemini API.
-*   **Styling:** Tailwind CSS with a custom config for "Premium Dark Mode" (colors: `br-bg`, `br-card`, `sheena-primary`).
-
----
-
-## ✅ Implemented Features (Ready for Backend Integration)
-
-### 1. Core Experience
-*   **Smart Feed (`Feed.tsx`)**:
-    *   **Logic:** Prioritizes "For You" content based on user preferences.
-    *   **Mixed Media:** Interleaves Matches, News, and System Alerts (War Room).
-    *   **Tiered Predictions:** distinct visual hierarchy for "Daily Locks" (Rail) vs "Value Radar" (Grid).
-*   **Immersive Match Details (`MatchDetailPage.tsx`)**:
-    *   **Live Momentum:** Visual pressure bar for live games.
-    *   **Visual Lineups:** Soccer pitch visualization with player ratings and events.
-    *   **Stats Engine:** Granular stats (xG, heatmap style bars) mimicking 365Scores.
-    *   **Timeline:** Vertical play-by-play feed with rich media support.
-    *   **Community:** "Banther" tab for live comments and polls.
-
-### 2. Betting Intelligence
-*   **The "Mkeka" Wizard (`BetSlipPage.tsx`)**:
-    *   **3-Mode Generator:** "Safe Banker", "Longshot", "Goal Fest".
-    *   **Logic:** Auto-selects matches from the context based on confidence thresholds.
-    *   **Execution Hub:** A modal comparing odds across mocked sportsbooks (FanDuel/DraftKings).
-*   **The Accumulator (`ExplorePage.tsx`)**:
-    *   A tool to quickly build high-confidence, low-odds parlay slips.
-*   **War Room (`AdminPage.tsx` -> Feed)**:
-    *   System alerts for "Sharp Money", "Line Moves", and "Critical Injuries".
-
-### 3. Growth & Social
-*   **ScoreShot (`ScoreShotModal.tsx`)**:
-    *   Generates a viral-ready, 4:5 aspect ratio graphic of the match prediction for Instagram Stories/WhatsApp Status.
-*   **Pweza AI Chat (`Pweza.tsx`)**:
-    *   **Context Aware:** Knows which match the user clicked on.
-    *   **Streaming:** Responses stream in real-time like ChatGPT.
-
-### 4. CMS & Admin (`AdminPage.tsx`)
-*   **News Desk:** Editor to write articles with rich blocks (Tweets, Quotes).
-*   **AI Agent:** Workflow to auto-generate articles from Match Data (Box Scores) in specific tones (Hype/Analytical) and languages (English/Swahili).
+*   **Frontend:** React (Vite/Next.js). Hosts the UI, Pweza Chat, and Admin Dashboard.
+*   **Backend (Required for Production):** Node.js (Express) or Python (FastAPI).
+    *   **Role:** Hosts the Database, runs the Cron Jobs for live scores, hosts the **Telegram/WhatsApp Bots**, and proxies AI calls.
+*   **Database:** Supabase (PostgreSQL) or Firebase. Stores Users, Bets, and History.
 
 ---
 
-## 🚀 Production Roadmap (The "To-Do" List)
+## 🧠 Production AI Workflow (The "Grounding" Layer)
 
-To take this live, the next engineer needs to implement the following:
+Currently, the AI generates content based on the mock data provided. In production, it must be **Grounded** in real-time internet data.
 
-### 1. Backend & Data Layer (CRITICAL)
-*   **Database:** Migrate `SportsContext` state to a real DB (Supabase/Firebase).
-    *   Tables needed: `Users`, `Matches`, `News`, `Bets`, `Comments`.
-*   **Live Data Pipeline:** Replace `generateMockData` with real APIs.
-    *   **Scores:** API-Football or SportRadar.
-    *   **Odds:** The Odds API.
-    *   **News:** RSS feeds or custom editorial input.
-
-### 2. Frontend Logic Updates
-*   **ScoreShot Image Generation:**
-    *   *Current:* Renders HTML/CSS.
-    *   *Action:* Install `html2canvas` or `dom-to-image` to actually convert the DOM element into a `.png` for download.
-*   **Authentication:**
-    *   *Current:* Mock login in `SportsContext`.
-    *   *Action:* Integrate Clerk, Firebase Auth, or Supabase Auth.
-
-### 3. Server-Side AI
-*   **Security Risk:** Currently, the Gemini API key is exposed in the client.
-*   *Action:* Move `pwezaService.ts` and `newsAgentService.ts` logic to an Edge Function (Vercel/Supabase Functions) and proxy the calls.
-
-### 4. Payments
-*   **Sheena+:** The UI exists in `ProfilePage.tsx`.
-*   *Action:* Integrate Stripe/LemonSqueezy for subscription management.
+**The "News Agent" Pipeline:**
+1.  **Trigger:** Admin selects a match (e.g., Lakers vs Warriors) in the Admin Dashboard.
+2.  **Grounding Step (The Missing Link):** 
+    *   The Backend calls **Google Custom Search API** or **Tavily API**.
+    *   Query: *"Lakers vs Warriors game highlights, quotes, and injuries last 24 hours"*.
+    *   Result: Returns ~5 text snippets of real facts.
+3.  **Synthesis:**
+    *   The Backend sends a prompt to **Gemini**: *"Using ONLY these facts [Snippets], write a [Hype/Analytical] article..."*
+4.  **Publish:** The result is saved to the DB and pushed to the Feed.
 
 ---
 
-## 📂 File Structure Guide
+## 🤖 The Bot Ecosystem (WhatsApp & Telegram)
 
-*   `components/`
-    *   `Feed.tsx`: The main algorithmic home stream.
-    *   `MatchDetailPage.tsx`: The complex single-match view.
-    *   `BetSlipPage.tsx`: Betting logic and Mkeka Wizard.
-    *   `AdminPage.tsx`: CMS for content creators.
-    *   `ScoreShotModal.tsx`: The viral graphic generator.
-*   `context/`
-    *   `SportsContext.tsx`: The "Brain". Mock data lives here currently.
-*   `services/`
-    *   `pwezaService.ts`: Chatbot AI logic.
-    *   `newsAgentService.ts`: Article generation AI logic.
-*   `types.ts`: TypeScript definitions for the entire data model.
+**Crucial Note:** Bots cannot run in the browser. They need a server that stays online 24/7.
+
+### 1. The Strategy: "The Sheena Broadcaster"
+Instead of just a chatbot, use these platforms as a **Distribution Channel**.
+
+*   **Step 1:** You create a "Sheena VIP Signals" Channel on Telegram and a Community on WhatsApp.
+*   **Step 2:** In the **Admin Dashboard (War Room)**, you check a box: "Broadcast to Bots".
+*   **Step 3:** When you click "Publish Alert", your Backend sends the text to the Telegram/WhatsApp APIs.
+*   **Step 4:** Thousands of users get a push notification instantly.
+*   **Step 5:** The message includes a deep link: `Check the analysis here: https://sheena.app/match/123`.
+
+### 2. Bot Implementation Details
+*   **Telegram:** Use the `telegraf` Node.js library. It's free and easy.
+*   **WhatsApp:** Use **Twilio API for WhatsApp** (Paid, Enterprise) or **WhatsApp Cloud API** (Meta, Free tier).
+*   **Hosting:** Host the bot code on **Heroku**, **DigitalOcean**, or **AWS Lambda**.
 
 ---
 
-## 🔑 Environment Variables
+## 🔌 The API Checklist (What you need to buy/get)
 
-Create a `.env` file in the root:
+To go live, you need to sign up for these services:
 
-```
-REACT_APP_GEMINI_API_KEY=your_google_ai_key_here
-REACT_APP_SPORTS_API_KEY=your_data_provider_key
-```
+### 1. Data Feeds (The Lifeblood)
+*   **Live Scores & Stats:** 
+    *   *Recommendation:* **API-Football (api-sports.io)**.
+    *   *Why:* Great coverage of EPL, NBA, and African leagues. Cheap starter tier.
+*   **Betting Odds:**
+    *   *Recommendation:* **The Odds API (the-odds-api.com)**.
+    *   *Why:* US & UK bookmaker lines. Essential for "Odds Shopping" and "Value Radar".
+
+### 2. AI & Search
+*   **LLM:** **Google Gemini API** (Vertex AI).
+*   **Grounding/Search:** **Tavily AI** (Optimized for LLMs) or **Google Programmable Search**.
+
+### 3. Infrastructure
+*   **Database/Auth:** **Supabase**. (Includes Auth, Database, and Realtime subscriptions).
+*   **Hosting:** **Vercel** (Frontend) + **Railway/Render** (Backend Node.js).
+
+---
+
+## ✅ Implemented Features (Frontend Complete)
+
+### 1. The Core Feed (`Feed.tsx`)
+*   **Hybrid Stream:** Interleaves News, Matches, and "War Room" alerts.
+*   **Smart Filtering:** "For You" tab based on user preferences.
+*   **Tiered Visuals:** Hero, Daily Locks Rail, Value Radar.
+
+### 2. Match Intelligence (`MatchDetailPage.tsx`)
+*   **Live Momentum:** Real-time pressure bar.
+*   **Visual Pitch:** Interactive lineups.
+*   **Granular Stats:** 365Scores-style breakdown.
+*   **Community:** "Banther" section for comments.
+
+### 3. Betting Utilities
+*   **Mkeka Wizard (`BetSlipPage.tsx`)**: Auto-generates slips (Safe/Longshot).
+*   **The Accumulator (`ExplorePage.tsx`)**: Builds sure bets.
+*   **Flash Alerts:** Global notifications.
+
+### 4. Admin CMS (`AdminPage.tsx`)
+*   **News Desk:** WYSIWYG editor.
+*   **AI Agent:** Interface ready for Grounding integration.
+*   **War Room:** Manual alert broadcasting.
+
+### 5. Social & Growth
+*   **Leaderboard:** Ranking system.
+*   **ScoreShot:** Viral image generator logic.
+*   **Profile:** Stats tracking and "Sheena+" upsell.
 
 ---
 

@@ -86,7 +86,7 @@ export const Pweza: React.FC<PwezaProps> = ({ isOpen, onClose }) => {
          <div className="flex items-center justify-between p-4 border-b border-br-border bg-br-card rounded-t-xl">
              <div className="flex items-center gap-3">
                  <div className="w-8 h-8 bg-sheena-primary flex items-center justify-center rounded">
-                     <Bot size={18} className="text-white" />
+                     <span className="text-xl">🐙</span>
                  </div>
                  <div>
                      <h3 className="font-condensed font-black text-lg italic text-white tracking-tight leading-none">PWEZA AI</h3>
