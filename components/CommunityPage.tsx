@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Hash, Send, MoreVertical, Shield, Bell, MessageCircle, Heart, Share2, Plus, Image, BarChart2, Paperclip, Smile, Pin, X, CheckCircle2, Menu, TrendingUp, Zap, Flame, Trophy } from 'lucide-react';
+import { ArrowLeft, Users, Hash, Send, Pin, X, Menu, Zap, BarChart2, Image, Smile, Shield, Trophy, Plus } from 'lucide-react';
 import { useSports } from '../context/SportsContext';
 
 // Mock Data
@@ -98,9 +98,9 @@ export const CommunityPage: React.FC = () => {
     return (
         <div className="fixed inset-0 bg-[#000000] text-white z-[50] flex flex-col md:flex-row overflow-hidden font-sans h-[100dvh]">
             
-            {/* SIDEBAR (Channels) */}
+            {/* SIDEBAR (Channels) - Z-INDEX INCREASED TO 50 TO SIT ABOVE BACKDROP */}
             <div className={`
-                fixed md:relative inset-y-0 left-0 w-[280px] bg-[#0A0A0A] border-r border-[#2C2C2C] flex flex-col transition-transform duration-300 z-30
+                fixed md:relative inset-y-0 left-0 w-[280px] bg-[#0A0A0A] border-r border-[#2C2C2C] flex flex-col transition-transform duration-300 z-50
                 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
             `}>
                 {/* Desktop Sidebar Header */}
@@ -280,7 +280,7 @@ export const CommunityPage: React.FC = () => {
 
             </div>
             
-            {/* Overlay for mobile sidebar */}
+            {/* Overlay for mobile sidebar - Z-INDEX 40 (Lower than Sidebar 50) */}
             {isSidebarOpen && (
                 <div className="md:hidden fixed inset-0 bg-black/80 z-40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}></div>
             )}

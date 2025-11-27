@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
 import { NewsStory, SystemAlert, ArticleBlock, MatchStatus } from '../types';
 import { generateMatchNews } from '../services/newsAgentService';
-import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy } from 'lucide-react';
+import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const AdminPage: React.FC = () => {
@@ -27,16 +27,19 @@ export const AdminPage: React.FC = () => {
     const [broadcastToBots, setBroadcastToBots] = useState(true);
 
     // --- AI AGENT STATE ---
-    const [generationMode, setGenerationMode] = useState<'MATCH' | 'TOPIC' | 'LINK'>('MATCH');
+    const [generationMode, setGenerationMode] = useState<'MATCH' | 'TOPIC' | 'LINK' | 'LOCAL'>('MATCH');
     const [selectedMatchId, setSelectedMatchId] = useState('');
     const [customTopic, setCustomTopic] = useState('');
-    const [externalLink, setExternalLink] = useState(''); // NEW
+    const [externalLink, setExternalLink] = useState('');
+    const [localCountry, setLocalCountry] = useState('Nigeria');
+    const [localLeagueName, setLocalLeagueName] = useState('NPFL');
+    
     const [aiTone, setAiTone] = useState<'HYPE' | 'RECAP' | 'ANALYTICAL' | 'RUMOR'>('RECAP');
     const [aiLanguage, setAiLanguage] = useState<'ENGLISH' | 'SWAHILI'>('ENGLISH');
     const [aiPersona, setAiPersona] = useState<'SHEENA' | 'ORACLE' | 'STREET' | 'JOURNALIST'>('SHEENA'); 
     const [useGrounding, setUseGrounding] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedSocial, setGeneratedSocial] = useState(''); // New for social media
+    const [generatedSocial, setGeneratedSocial] = useState('');
 
     // --- TEAM MANAGEMENT STATE ---
     const [inviteEmail, setInviteEmail] = useState('');
@@ -125,12 +128,13 @@ export const AdminPage: React.FC = () => {
         // Call Service
         const result = await generateMatchNews(
             match, 
-            customTopic, 
+            generationMode === 'LOCAL' ? `${localLeagueName} (${localCountry})` : customTopic, 
             aiTone, 
             aiLanguage, 
             aiPersona, 
             useGrounding,
-            generationMode === 'LINK' ? externalLink : undefined
+            generationMode === 'LINK' ? externalLink : undefined,
+            generationMode === 'LOCAL' // Is Local Mode?
         );
         setIsGenerating(false);
 
@@ -138,7 +142,7 @@ export const AdminPage: React.FC = () => {
             setNewsTitle(result.title);
             setNewsSummary(result.summary);
             setBlocks(result.blocks);
-            setNewsTag(match ? match.league : 'General');
+            setNewsTag(generationMode === 'LOCAL' ? localLeagueName : (match ? match.league : 'General'));
             if (result.socialCaption) setGeneratedSocial(result.socialCaption);
             setActiveTab('NEWS'); 
         } else {
@@ -190,7 +194,8 @@ export const AdminPage: React.FC = () => {
                                  <div className="flex bg-black rounded p-1 border border-[#333]">
                                      <button onClick={() => setGenerationMode('MATCH')} className={`flex-1 py-2 text-xs font-bold uppercase rounded ${generationMode === 'MATCH' ? 'bg-[#1E1E1E] text-white' : 'text-gray-500'}`}>Match</button>
                                      <button onClick={() => setGenerationMode('TOPIC')} className={`flex-1 py-2 text-xs font-bold uppercase rounded ${generationMode === 'TOPIC' ? 'bg-[#1E1E1E] text-white' : 'text-gray-500'}`}>Topic</button>
-                                     <button onClick={() => setGenerationMode('LINK')} className={`flex-1 py-2 text-xs font-bold uppercase rounded flex items-center justify-center gap-1 ${generationMode === 'LINK' ? 'bg-[#1E1E1E] text-white' : 'text-gray-500'}`}><LinkIcon size={12}/> Scrape URL</button>
+                                     <button onClick={() => setGenerationMode('LOCAL')} className={`flex-1 py-2 text-xs font-bold uppercase rounded flex items-center justify-center gap-1 ${generationMode === 'LOCAL' ? 'bg-[#1E1E1E] text-white' : 'text-gray-500'}`}><MapPin size={12}/> Local Scout</button>
+                                     <button onClick={() => setGenerationMode('LINK')} className={`flex-1 py-2 text-xs font-bold uppercase rounded flex items-center justify-center gap-1 ${generationMode === 'LINK' ? 'bg-[#1E1E1E] text-white' : 'text-gray-500'}`}><LinkIcon size={12}/> Link</button>
                                  </div>
 
                                  {/* Inputs */}
@@ -217,10 +222,41 @@ export const AdminPage: React.FC = () => {
                                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Custom Topic</label>
                                          <input 
                                             className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
-                                            placeholder="e.g., Nigeria Premier League Results..."
+                                            placeholder="e.g., Lakers Trade News..."
                                             value={customTopic}
                                             onChange={(e) => setCustomTopic(e.target.value)}
                                          />
+                                     </div>
+                                 )}
+
+                                 {generationMode === 'LOCAL' && (
+                                     <div className="space-y-3 p-3 bg-indigo-900/10 border border-indigo-500/30 rounded-lg">
+                                         <div>
+                                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-1">Country</label>
+                                            <select 
+                                                className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                                value={localCountry}
+                                                onChange={(e) => setLocalCountry(e.target.value)}
+                                            >
+                                                <option value="Nigeria">Nigeria</option>
+                                                <option value="Kenya">Kenya</option>
+                                                <option value="South Africa">South Africa</option>
+                                                <option value="Ghana">Ghana</option>
+                                                <option value="Tanzania">Tanzania</option>
+                                                <option value="Egypt">Egypt</option>
+                                                <option value="Morocco">Morocco</option>
+                                            </select>
+                                         </div>
+                                         <div>
+                                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-1">League Name</label>
+                                            <input 
+                                                className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                                placeholder="e.g. NPFL, GPL, PSL..."
+                                                value={localLeagueName}
+                                                onChange={(e) => setLocalLeagueName(e.target.value)}
+                                            />
+                                         </div>
+                                         <p className="text-[10px] text-gray-500">AI will assume the role of a local beat writer to fetch coverage.</p>
                                      </div>
                                  )}
 
@@ -260,6 +296,7 @@ export const AdminPage: React.FC = () => {
                                              <option value="SHEENA">Sheena (Pro)</option>
                                              <option value="ORACLE">The Oracle (Cryptic)</option>
                                              <option value="STREET">Street Hype</option>
+                                             <option value="JOURNALIST">Local Scout (Detailed)</option>
                                          </select>
                                      </div>
                                  </div>

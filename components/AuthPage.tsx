@@ -1,16 +1,38 @@
 
 import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
-import { Mail, ArrowRight, Lock, Eye, EyeOff, Info, User, Phone, MessageCircle, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Mail, ArrowRight, Lock, Eye, EyeOff, User, Phone, MessageCircle, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// EXPANDED COUNTRY LIST
 const COUNTRY_CODES = [
-    { code: '+255', country: 'TZ', flag: '🇹🇿' },
-    { code: '+254', country: 'KE', flag: '🇰🇪' },
-    { code: '+234', country: 'NG', flag: '🇳🇬' },
-    { code: '+27',  country: 'ZA', flag: '🇿🇦' },
-    { code: '+1',   country: 'US', flag: '🇺🇸' },
+    // Major African Nations
+    { code: '+234', country: 'Nigeria', flag: '🇳🇬' },
+    { code: '+254', country: 'Kenya', flag: '🇰🇪' },
+    { code: '+255', country: 'Tanzania', flag: '🇹🇿' },
+    { code: '+27',  country: 'South Africa', flag: '🇿🇦' },
+    { code: '+233', country: 'Ghana', flag: '🇬🇭' },
+    { code: '+256', country: 'Uganda', flag: '🇺🇬' },
+    { code: '+20',  country: 'Egypt', flag: '🇪🇬' },
+    { code: '+212', country: 'Morocco', flag: '🇲🇦' },
+    { code: '+221', country: 'Senegal', flag: '🇸🇳' },
+    { code: '+237', country: 'Cameroon', flag: '🇨🇲' },
+    { code: '+250', country: 'Rwanda', flag: '🇷🇼' },
+    { code: '+260', country: 'Zambia', flag: '🇿🇲' },
+    { code: '+263', country: 'Zimbabwe', flag: '🇿🇼' },
+    { code: '+251', country: 'Ethiopia', flag: '🇪🇹' },
+    { code: '+225', country: 'Ivory Coast', flag: '🇨🇮' },
+    // Global Major
+    { code: '+1',   country: 'USA/Canada', flag: '🇺🇸' },
     { code: '+44',  country: 'UK', flag: '🇬🇧' },
+    { code: '+91',  country: 'India', flag: '🇮🇳' },
+    { code: '+971', country: 'UAE', flag: '🇦🇪' },
+    { code: '+33',  country: 'France', flag: '🇫🇷' },
+    { code: '+49',  country: 'Germany', flag: '🇩🇪' },
+    { code: '+34',  country: 'Spain', flag: '🇪🇸' },
+    { code: '+55',  country: 'Brazil', flag: '🇧🇷' },
+    { code: '+86',  country: 'China', flag: '🇨🇳' },
+    { code: '+81',  country: 'Japan', flag: '🇯🇵' },
 ];
 
 export const AuthPage: React.FC = () => {
@@ -123,14 +145,14 @@ export const AuthPage: React.FC = () => {
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">WhatsApp Number</label>
                                         <div className="flex gap-2">
-                                            <div className="relative w-[100px]">
+                                            <div className="relative w-[130px]">
                                                 <select 
                                                     value={countryCode}
                                                     onChange={(e) => setCountryCode(e.target.value)}
-                                                    className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 pl-3 pr-8 text-white appearance-none focus:border-indigo-500 outline-none text-sm font-bold"
+                                                    className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 pl-3 pr-8 text-white appearance-none focus:border-indigo-500 outline-none text-xs font-bold"
                                                 >
                                                     {COUNTRY_CODES.map(c => (
-                                                        <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
+                                                        <option key={c.code} value={c.code}>{c.flag} {c.country}</option>
                                                     ))}
                                                 </select>
                                                 <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
@@ -272,16 +294,6 @@ export const AuthPage: React.FC = () => {
                     >
                         <User size={16} /> Peek Inside (Guest Mode)
                     </button>
-
-                    {/* Developer Hint */}
-                    <div className="mt-6 p-3 bg-white/5 rounded border border-white/10 flex gap-2">
-                        <Info size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                        <p className="text-xs text-gray-400">
-                            <span className="font-bold text-indigo-400">Dev Hint:</span> Use 
-                            <code className="mx-1 bg-black px-1 rounded text-white font-mono">admin@sheena.com</code> 
-                            (email) to access Admin Dashboard.
-                        </p>
-                    </div>
 
                 </div>
 

@@ -37,7 +37,8 @@ export const generateMatchNews = async (
     language: 'ENGLISH' | 'SWAHILI',
     persona: 'SHEENA' | 'ORACLE' | 'STREET' | 'JOURNALIST',
     useGrounding: boolean = false,
-    externalLink?: string // New input for scraping
+    externalLink?: string, // New input for scraping
+    isLocalScout: boolean = false // New flag for Local Mode
 ): Promise<GeneratedArticle | null> => {
     const client = getClient();
     if (!client) return null;
@@ -54,15 +55,17 @@ export const generateMatchNews = async (
     }
 
     let groundingContext = "";
-    if (useGrounding || externalLink) {
-        const query = externalLink || (match ? `${match.homeTeam.name} vs ${match.awayTeam.name} match report` : customTopic || "sports news");
+    if (useGrounding || externalLink || isLocalScout) {
+        // If Local Scout mode, we search for the specific league/country
+        const query = externalLink || (isLocalScout ? `Latest news, results, and top stories for ${customTopic}` : (match ? `${match.homeTeam.name} vs ${match.awayTeam.name} match report` : customTopic || "sports news"));
         groundingContext = await performGroundingSearch(query);
     }
 
     const prompt = `
-    You are ${persona}. ${persona === 'STREET' ? 'Use slang, emojis, high energy.' : 'Be professional but engaging.'}
+    You are ${persona}. ${persona === 'STREET' ? 'Use slang, emojis, high energy.' : isLocalScout ? 'You are a dedicated Local Beat Writer covering local African leagues. Focus on grassroots heroes, local rivalries, and community impact.' : 'Be professional but engaging.'}
 
     TASK: Write a sports news article & a social media caption.
+    ${isLocalScout ? 'SPECIAL INSTRUCTION: Focus on the specific local context of the league provided. Use local terminology if appropriate (e.g., "Oga", "Mzansi" depending on country).' : ''}
     
     CONTEXT:
     ${contextData}

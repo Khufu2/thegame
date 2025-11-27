@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
 import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper } from 'lucide-react';
@@ -424,33 +425,68 @@ const FilterChip: React.FC<{ label: string, isActive: boolean, onClick: () => vo
     </button>
 );
 
-const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match, onClick }) => (
-    <div onClick={onClick} className="min-w-[280px] bg-black rounded-xl p-3 border border-[#2C2C2C] relative overflow-hidden flex items-center justify-between cursor-pointer group hover:border-[#444] transition-colors snap-center">
-        {/* Glass effect bg */}
-        <div className="absolute inset-0 bg-gradient-to-r from-red-900/10 to-transparent pointer-events-none"></div>
-        
-        <div className="flex items-center gap-3 relative z-10">
-            <span className="text-[10px] font-black text-red-500 animate-pulse uppercase tracking-wider">
-                {match.time}
-            </span>
-            <div className="w-[1px] h-6 bg-[#333]"></div>
-            <div className="flex flex-col gap-1">
+const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match, onClick }) => {
+    // Helper to get possession safely
+    const homePossession = match.stats?.possession?.home;
+    const awayPossession = match.stats?.possession?.away;
+
+    return (
+        <div onClick={onClick} className="min-w-[300px] bg-black rounded-xl p-3 border border-[#2C2C2C] relative overflow-hidden cursor-pointer group hover:border-red-900/50 transition-colors snap-center shadow-lg">
+            {/* Glass effect bg */}
+            <div className="absolute inset-0 bg-gradient-to-br from-red-900/5 via-transparent to-transparent pointer-events-none"></div>
+            
+            {/* Header: Live Indicator & Time */}
+            <div className="flex items-center justify-between mb-3 relative z-10">
                 <div className="flex items-center gap-2">
-                    <img src={match.homeTeam.logo} className="w-4 h-4 object-contain" />
-                    <span className="font-bold text-sm text-white leading-none">{match.homeTeam.name}</span>
-                    <span className="font-mono text-sm text-red-500 font-bold ml-auto">{match.score?.home}</span>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                        LIVE • {match.time}
+                    </span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <img src={match.awayTeam.logo} className="w-4 h-4 object-contain" />
-                    <span className="font-bold text-sm text-white leading-none">{match.awayTeam.name}</span>
-                    <span className="font-mono text-sm text-red-500 font-bold ml-auto">{match.score?.away}</span>
+                {/* Optional: League Badge */}
+                <span className="text-[9px] font-bold text-gray-600 uppercase border border-gray-800 px-1.5 py-0.5 rounded">{match.league}</span>
+            </div>
+            
+            {/* Teams & Scores */}
+            <div className="space-y-2 relative z-10">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" />
+                        <span className="font-condensed font-bold text-base text-white">{match.homeTeam.name}</span>
+                    </div>
+                    <span className="font-mono text-lg font-bold text-white">{match.score?.home ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" />
+                        <span className="font-condensed font-bold text-base text-white">{match.awayTeam.name}</span>
+                    </div>
+                    <span className="font-mono text-lg font-bold text-white">{match.score?.away ?? 0}</span>
                 </div>
             </div>
+
+            {/* Possession Stats (If Available) */}
+            {homePossession !== undefined && (
+                <div className="mt-3 relative z-10">
+                    <div className="flex justify-between text-[8px] font-bold text-gray-500 uppercase mb-1">
+                        <span>Possession</span>
+                        <div className="flex gap-2">
+                            <span className={homePossession > 50 ? 'text-white' : ''}>{homePossession}%</span>
+                            <span className={awayPossession && awayPossession > 50 ? 'text-white' : ''}>{awayPossession}%</span>
+                        </div>
+                    </div>
+                    <div className="h-1 w-full bg-gray-800 rounded-full flex overflow-hidden">
+                        <div className="bg-red-600 transition-all duration-1000 ease-out" style={{ width: `${homePossession}%` }}></div>
+                        <div className="bg-gray-700 transition-all duration-1000 ease-out flex-1"></div>
+                    </div>
+                </div>
+            )}
         </div>
-        
-        <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
-    </div>
-);
+    );
+};
 
 const PremiumPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpenPweza: () => void, isLocked?: boolean }> = ({ match, onClick, onOpenPweza, isLocked }) => {
     const leagueStyle = getLeagueStyle(match.league);
