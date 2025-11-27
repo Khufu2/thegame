@@ -1,5 +1,11 @@
 
 
+
+
+
+
+
+
 export enum MatchStatus {
   SCHEDULED = 'SCHEDULED',
   LIVE = 'LIVE',
@@ -243,6 +249,7 @@ export interface NewsStory {
   summary: string;
   imageUrl: string;
   source: string;
+  author?: string;
   authorAvatar?: string;
   timestamp: string;
   likes: number;
@@ -307,13 +314,19 @@ export interface ChatMessage {
 export interface UserPreferences {
     favoriteLeagues: string[];
     favoriteTeams: string[]; // Team IDs
+    followedSources?: string[]; // NEW: Follow specific journalists/sources
     notifications: {
         gameStart: boolean;
         scoreUpdates: boolean;
         lineMoves: boolean; // Premium feature?
         breakingNews: boolean;
+        whatsappUpdates: boolean; // NEW: WhatsApp integration
     };
+    communicationChannel: 'EMAIL' | 'WHATSAPP' | 'BOTH'; // NEW
+    whatsappNumber?: string; // NEW
     oddsFormat: 'DECIMAL' | 'AMERICAN'; // NEW: Localization
+    dataSaver: boolean; // NEW: Data Saver Mode
+    theme: 'LIGHT' | 'DARK'; // NEW: Theme Switching
     hasCompletedOnboarding: boolean;
 }
 
@@ -345,7 +358,7 @@ export interface LeaderboardEntry {
     streak?: number;
 }
 
-export type AuthState = 'UNAUTHENTICATED' | 'ONBOARDING' | 'AUTHENTICATED';
+export type AuthState = 'UNAUTHENTICATED' | 'ONBOARDING' | 'AUTHENTICATED' | 'GUEST';
 
 export type MkekaType = 'SAFE' | 'LONGSHOT' | 'GOALS';
 
@@ -354,6 +367,7 @@ export interface SportsContextType {
     user: UserProfile | null;
     authState: AuthState;
     login: (email: string) => void;
+    loginAsGuest: () => void; // NEW
     logout: () => void;
     completeOnboarding: (prefs: { leagues: string[], teams: string[] }) => void;
     updatePreferences: (prefs: Partial<UserPreferences>) => void; // NEW

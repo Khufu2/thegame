@@ -1,8 +1,7 @@
 
-
 import React, { useState, useMemo } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
-import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown } from 'lucide-react';
+import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 
@@ -31,6 +30,18 @@ const getLeagueStyle = (league: string) => {
     }
 }
 
+// Helper for COMPACT card styling (Subtler gradients)
+const getCompactLeagueStyle = (league: string) => {
+    switch (league) {
+        case 'EPL': return 'bg-gradient-to-r from-[#38003C]/80 to-[#121212] border-[#00FF85]/30 hover:border-[#00FF85]';
+        case 'LaLiga': return 'bg-gradient-to-r from-[#2a0e0e]/90 to-[#121212] border-[#EE3F46]/30 hover:border-[#EE3F46]';
+        case 'NFL': return 'bg-gradient-to-r from-[#013369]/80 to-[#121212] border-[#D50A0A]/30 hover:border-[#D50A0A]';
+        case 'NBA': return 'bg-gradient-to-r from-[#1D428A]/80 to-[#121212] border-[#C8102E]/30 hover:border-[#C8102E]';
+        case 'UFC': return 'bg-gradient-to-r from-[#333]/80 to-[#000] border-[#D20A0A]/30 hover:border-[#D20A0A]';
+        default: return 'bg-[#161616] border-[#2C2C2C] hover:border-[#00FFB2]/50';
+    }
+}
+
 const LEAGUES = ["All", "NFL", "NBA", "EPL", "LaLiga", "Serie A", "UFC"];
 
 // Helper for Weather Icon
@@ -47,8 +58,8 @@ const WeatherIcon = ({ condition, size = 14 }: { condition?: string, size?: numb
 export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOpenPweza, onTailBet }) => {
   const { user } = useSports(); 
   const [activeLeague, setActiveLeague] = useState("For You"); // Default to For You
-  const [showAllValuePicks, setShowAllValuePicks] = useState(false);
   const navigate = useNavigate();
+  const dataSaver = user?.preferences.dataSaver || false;
 
   // 1. FILTERING LOGIC
   const { filteredStreamItems, topPicks, valuePicks, featuredMatch } = useMemo(() => {
@@ -80,8 +91,8 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
     // EXPANDED: Show more picks in the horizontal rail (up to 12)
     const top = sortedPredictions.slice(0, 12); 
     
-    // EXPANDED: Value picks take the rest (up to 50 for the grid)
-    const value = sortedPredictions.slice(12, 60); 
+    // EXPANDED: Value picks take the rest (up to 60 for the grid)
+    const value = sortedPredictions.slice(12, 72); 
     
     // 4. Filter the main mixed stream
     const shownMatchIds = new Set([featured?.id, ...top.map(m => m.id), ...value.map(m => m.id)]);
@@ -101,7 +112,15 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
         else if ('source' in item) {
             const story = item as NewsStory;
             if (isAll) matchesLeague = true;
-            else if (isForYou) matchesLeague = user ? story.tags?.some(tag => user.preferences.favoriteLeagues.includes(tag)) || false : true;
+            else if (isForYou) {
+                // Check if user follows the SOURCE or the LEAGUE tag
+                if (!user) matchesLeague = true;
+                else {
+                    const followsSource = user.preferences.followedSources?.includes(story.source) || user.preferences.followedSources?.includes(story.author || '');
+                    const followsTag = story.tags?.some(tag => user.preferences.favoriteLeagues.includes(tag));
+                    matchesLeague = followsSource || followsTag || false;
+                }
+            }
             else matchesLeague = story.tags?.includes(activeLeague) || story.source.includes(activeLeague) || false;
         }
         // Handle Alert Item
@@ -141,8 +160,6 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
       const prompt = `Give me a quick 50-word sharp betting insight for ${match.homeTeam.name} vs ${match.awayTeam.name}. Focus on value and key stats.`;
       onOpenPweza?.(prompt);
   };
-
-  const visibleValuePicks = showAllValuePicks ? valuePicks : valuePicks.slice(0, 6);
 
   return (
     <div className="min-h-screen bg-[#F2F2F2] md:bg-br-bg md:max-w-[1000px] md:mx-auto pb-24 overflow-x-hidden">
@@ -260,12 +277,6 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                         Daily Locks
                     </h2>
                 </div>
-                <button 
-                    onClick={() => navigate('/scores')}
-                    className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 hover:text-indigo-500 transition-colors"
-                >
-                    All Games <ArrowRight size={12} />
-                </button>
             </div>
              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-4">
                 {topPicks.map(match => (
@@ -274,61 +285,67 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                         match={match} 
                         onClick={() => handleMatchClick(match.id)} 
                         onOpenPweza={() => openPwezaForMatch(match)} 
+                        isLocked={!user}
                     />
                 ))}
              </div>
         </section>
         )}
 
-        {/* 5. VALUE RADAR (GRID) */}
+        {/* 5. VALUE RADAR (UPDATED: 4-ROW HIGH DENSITY GRID) */}
         {valuePicks.length > 0 && (
-        <section className="px-4 py-2">
-             <div className="flex items-center gap-2 mb-3">
-                 <Radar size={16} className="text-[#00FFB2]" />
-                 <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
-                     Value Radar ({valuePicks.length})
-                 </h2>
+        <section className="py-2 space-y-4">
+             <div className="flex items-center justify-between px-4">
+                 <div className="flex items-center gap-2">
+                     <Radar size={16} className="text-[#00FFB2]" />
+                     <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
+                         Value Radar
+                     </h2>
+                 </div>
+                 <button 
+                    onClick={() => navigate('/scores')}
+                    className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 hover:text-[#00FFB2] transition-colors"
+                >
+                    View All <ArrowRight size={12} />
+                </button>
              </div>
              
-             <div className="grid grid-cols-2 gap-3 mb-4">
-                 {visibleValuePicks.map(match => (
-                     <CompactPredictionCard key={match.id} match={match} onClick={() => handleMatchClick(match.id)} />
+             {/* 
+                 HORIZONTAL SCROLL CONTAINER WITH GRID 
+                 Rows: 4 (Denser)
+                 Flow: Column
+                 Auto Columns: 240px (Compact Cards)
+             */}
+             <div className="grid grid-rows-4 grid-flow-col gap-2 px-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4 auto-cols-[240px]">
+                 {valuePicks.map(match => (
+                     <div className="snap-start h-[60px]" key={match.id}>
+                        <CompactPredictionCard 
+                            match={match} 
+                            onClick={() => handleMatchClick(match.id)} 
+                            isLocked={!user}
+                        />
+                     </div>
                  ))}
              </div>
-
-             {valuePicks.length > 6 && !showAllValuePicks && (
-                 <button 
-                    onClick={() => setShowAllValuePicks(true)}
-                    className="w-full py-3 bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-gray-400 uppercase hover:bg-[#252525] hover:text-white transition-colors"
-                 >
-                     Show {valuePicks.length - 6} More Picks <ChevronDown size={14} />
-                 </button>
-             )}
-             
-             {showAllValuePicks && (
-                 <button 
-                    onClick={() => setShowAllValuePicks(false)}
-                    className="w-full py-3 bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-gray-400 uppercase hover:bg-[#252525] hover:text-white transition-colors"
-                 >
-                     Show Less <ArrowUpRight size={14} />
-                 </button>
-             )}
         </section>
         )}
 
         {/* 6. THE STREAM (Latest Wire & Mixed Content) */}
         <section className="px-4 py-2 pb-20">
-             <div className="flex items-center justify-between mb-4 mt-4">
+             {/* UPDATED HEADER: Actionable Link */}
+             <div 
+                className="flex items-center justify-between mb-4 mt-4 cursor-pointer group"
+                onClick={() => navigate('/explore')}
+             >
                 <div className="flex items-center gap-2">
                     <Zap size={16} className="text-yellow-400 fill-yellow-400" />
-                    <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
+                    <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic group-hover:text-indigo-500 transition-colors">
                         Latest Wire
                     </h2>
                 </div>
-                {/* View Options */}
-                <button className="text-gray-400 hover:text-white">
-                    <MoreHorizontal size={20} />
-                </button>
+                <div className="flex items-center gap-1 text-xs font-bold text-gray-400 group-hover:text-white transition-colors">
+                    View News <ChevronRight size={14} />
+                </div>
              </div>
              
              <div className="space-y-4">
@@ -341,19 +358,35 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                                 match={item as Match} 
                                 onClick={() => handleMatchClick((item as Match).id)} 
                                 onOpenPweza={() => openPwezaForMatch(item as Match)} 
+                                isLocked={!user}
                             />
                         );
                     } 
                     // RENDER: NEWS
                     else if ('source' in item) {
                          const story = item as NewsStory;
-                         if (story.type === 'HIGHLIGHT') return <HighlightCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />;
-                         if (story.isHero) return <HeroNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />;
-                         return <StandardNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />;
+                         if (story.type === 'HIGHLIGHT' && !dataSaver) return <HighlightCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />;
+                         if (story.isHero) return <HeroNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} />;
+                         return <StandardNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} />;
                     }
                     // RENDER: SYSTEM ALERT (WAR ROOM)
                     else if ('alertType' in item) {
                         const alert = item as SystemAlert;
+                        // HIDE ALERTS FOR GUEST USERS
+                        if (!user) {
+                             return (
+                                 <div key={alert.id} className="bg-[#121212] border border-[#2C2C2C] rounded-lg p-4 flex items-center justify-between opacity-50 relative overflow-hidden">
+                                     <div className="flex items-center gap-2">
+                                         <Siren size={16} className="text-red-500" />
+                                         <span className="font-bold text-sm text-gray-400 uppercase">War Room Alert</span>
+                                     </div>
+                                     <Lock size={14} className="text-gray-500" />
+                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                         <span className="text-[10px] font-black uppercase text-gray-300">Locked</span>
+                                     </div>
+                                 </div>
+                             );
+                        }
                         return <WarRoomIntelCard key={alert.id} alert={alert} onTail={() => onTailBet?.(alert.relatedMatchId || '')} />;
                     }
                     return null;
@@ -415,253 +448,341 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
     </div>
 );
 
-const PremiumPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpenPweza: () => void }> = ({ match, onClick, onOpenPweza }) => {
+const PremiumPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpenPweza: () => void, isLocked?: boolean }> = ({ match, onClick, onOpenPweza, isLocked }) => {
     const leagueStyle = getLeagueStyle(match.league);
     
     return (
-        <div onClick={onClick} className={`min-w-[260px] max-w-[260px] ${leagueStyle} rounded-xl p-4 relative overflow-hidden cursor-pointer group snap-center border-t-2 shadow-lg`}>
-             <div className="flex justify-between items-start mb-4">
-                 <span className="font-condensed font-black text-xs text-white/50 uppercase tracking-widest">{match.league}</span>
-                 {match.prediction?.confidence && (
-                     <div className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded backdrop-blur-md border border-white/10">
-                         <Target size={12} className="text-[#00FFB2]" />
-                         <span className="font-bold text-xs text-[#00FFB2]">{match.prediction.confidence}% Conf.</span>
-                     </div>
-                 )}
-             </div>
-
-             <div className="flex items-center justify-between mb-4">
-                 <div className="flex flex-col items-center">
-                     <img src={match.homeTeam.logo} className="w-10 h-10 object-contain drop-shadow-md" />
-                     <span className="font-bold text-xs text-white mt-1 uppercase">{match.homeTeam.name.substring(0,3)}</span>
-                 </div>
-                 <div className="flex flex-col items-center">
-                     <span className="font-condensed font-black text-2xl text-white/90 italic">VS</span>
-                 </div>
-                 <div className="flex flex-col items-center">
-                     <img src={match.awayTeam.logo} className="w-10 h-10 object-contain drop-shadow-md" />
-                     <span className="font-bold text-xs text-white mt-1 uppercase">{match.awayTeam.name.substring(0,3)}</span>
-                 </div>
-             </div>
-
-             <div className="bg-black/40 rounded-lg p-2.5 backdrop-blur-sm border border-white/5 mb-3">
-                 <div className="flex justify-between items-center mb-1">
-                     <span className="text-[9px] font-bold text-gray-400 uppercase">Sheena's Pick</span>
-                     <span className="text-[9px] font-bold text-[#00FFB2] uppercase">
-                        {match.prediction?.potentialReturn || 'High Value'}
-                     </span>
-                 </div>
-                 <div className="flex items-center justify-between">
-                     <span className="font-condensed font-black text-lg text-white uppercase italic leading-none">
-                         {match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.prediction?.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
-                     </span>
-                     {match.prediction?.modelEdge && <span className="text-[10px] font-bold text-green-400">+{match.prediction.modelEdge}% Edge</span>}
-                 </div>
-             </div>
-
-             <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                 <div className="flex items-center gap-2">
-                     <WeatherIcon condition={match.prediction?.weather} />
-                     <span className="text-[10px] font-bold text-gray-400 uppercase">{match.time}</span>
-                 </div>
-                 <button onClick={(e) => {e.stopPropagation(); onOpenPweza();}} className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center hover:bg-indigo-500 transition-colors">
-                     <span className="text-xs">🐙</span>
-                 </button>
-             </div>
-        </div>
-    )
-}
-
-const CompactPredictionCard: React.FC<{ match: Match, onClick: () => void }> = ({ match, onClick }) => (
-    <div onClick={onClick} className="bg-[#121212] rounded-xl p-3 border border-[#2C2C2C] hover:border-[#00FFB2]/50 transition-all cursor-pointer flex flex-col justify-between h-[150px] group relative overflow-hidden">
-        {/* Background Tech Pattern */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
-        <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#00FFB2]/5 rounded-full blur-xl group-hover:bg-[#00FFB2]/10 transition-colors"></div>
-        
-        <div className="flex justify-between items-start relative z-10">
-             <div className="flex -space-x-2">
-                 <div className="w-8 h-8 rounded-full bg-[#1E1E1E] border border-[#333] flex items-center justify-center z-10">
-                     <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" />
-                 </div>
-                 <div className="w-8 h-8 rounded-full bg-[#1E1E1E] border border-[#333] flex items-center justify-center z-0">
-                     <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" />
-                 </div>
-            </div>
-            <div className="flex items-center gap-1 bg-[#00FFB2]/10 px-2 py-1 rounded border border-[#00FFB2]/20">
-                <TrendingUp size={12} className="text-[#00FFB2]" />
-                <span className="text-[10px] font-black text-[#00FFB2]">{match.prediction?.potentialReturn || '+100'}</span>
-            </div>
-        </div>
-        
-        <div className="relative z-10 mt-3">
-             <div className="flex justify-between items-end mb-1">
-                 <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">{match.league}</span>
-                 <span className="text-[9px] font-bold text-gray-500 uppercase">{match.time}</span>
-             </div>
-             
-             <div className="bg-[#1E1E1E] rounded-lg p-2 border border-[#333] group-hover:border-gray-600 transition-colors">
-                 <span className="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Sheena's Value Pick</span>
-                 <div className="flex items-center justify-between">
-                     <span className="font-condensed font-black text-lg text-white uppercase leading-none truncate max-w-[80%]">
-                        {match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.prediction?.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
-                     </span>
-                     {match.prediction?.confidence && (
-                         <div className="w-1.5 h-1.5 rounded-full bg-[#00FFB2]"></div>
-                     )}
-                 </div>
-             </div>
-        </div>
-    </div>
-)
-
-const SmartPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpenPweza?: () => void }> = ({ match, onClick, onOpenPweza }) => {
-    return (
-        <div onClick={onClick} className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 cursor-pointer hover:border-indigo-500/50 transition-colors">
-            <div className="flex justify-between items-start mb-4">
+        <div 
+            onClick={onClick}
+            className={`min-w-[320px] rounded-xl overflow-hidden relative cursor-pointer border ${leagueStyle} shadow-lg transition-transform hover:scale-[1.01] snap-center flex flex-col`}
+        >
+             {/* Header */}
+            <div className="flex justify-between items-center px-4 py-2 border-b border-white/5 bg-black/20">
                 <div className="flex items-center gap-2">
-                     <span className="font-condensed font-black text-sm text-gray-400 uppercase tracking-wide">{match.league}</span>
-                     <span className="text-[10px] font-bold text-red-500 uppercase">{match.time}</span>
+                    <span className="font-condensed font-black text-sm uppercase italic text-white/80">{match.league}</span>
+                    {match.prediction?.confidence && match.prediction.confidence > 80 && (
+                        <div className="flex items-center gap-1 bg-[#00FFB2]/20 text-[#00FFB2] text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
+                            <Sparkles size={10} /> Lock
+                        </div>
+                    )}
                 </div>
-                {match.prediction?.isValuePick && (
-                    <div className="flex items-center gap-1 bg-green-900/20 px-2 py-0.5 rounded border border-green-500/30">
-                        <TrendingUp size={12} className="text-green-400" />
-                        <span className="text-[10px] font-bold text-green-400 uppercase">Value Pick</span>
+                <span className="text-[10px] font-bold text-white/50 uppercase">{match.time}</span>
+            </div>
+
+            {/* Matchup */}
+            <div className="flex items-center justify-between px-5 py-4 flex-1">
+                <div className="flex flex-col items-center gap-2">
+                    <img src={match.homeTeam.logo} className="w-10 h-10 object-contain drop-shadow-md" />
+                    <span className="font-condensed font-bold text-lg uppercase text-white leading-none">{match.homeTeam.name}</span>
+                </div>
+                <span className="font-serif font-italic text-gray-500 text-sm">VS</span>
+                <div className="flex flex-col items-center gap-2">
+                    <img src={match.awayTeam.logo} className="w-10 h-10 object-contain drop-shadow-md" />
+                    <span className="font-condensed font-bold text-lg uppercase text-white leading-none">{match.awayTeam.name}</span>
+                </div>
+            </div>
+
+            {/* Prediction Footer */}
+            <div className="bg-black/40 px-4 py-3 border-t border-white/5 flex items-center justify-between relative overflow-hidden">
+                
+                {/* GUEST LOCK OVERLAY */}
+                {isLocked && (
+                    <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] flex items-center justify-center gap-2">
+                        <Lock size={14} className="text-white/70" />
+                        <span className="font-condensed font-black text-xs uppercase text-white tracking-wide">Member Access Only</span>
                     </div>
                 )}
-            </div>
 
-            <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-3">
-                     <img src={match.homeTeam.logo} className="w-8 h-8 object-contain" />
-                     <span className="font-bold text-lg text-white">{match.homeTeam.name}</span>
-                 </div>
-                 <div className="px-3 py-1 bg-[#121212] rounded text-lg font-mono font-bold text-white tracking-widest">
-                     {match.score ? `${match.score.home} - ${match.score.away}` : 'VS'}
-                 </div>
-                 <div className="flex items-center gap-3 flex-row-reverse">
-                     <img src={match.awayTeam.logo} className="w-8 h-8 object-contain" />
-                     <span className="font-bold text-lg text-white">{match.awayTeam.name}</span>
-                 </div>
-            </div>
-
-            {match.prediction && (
-                <div className="bg-[#121212] rounded p-3 flex items-center justify-between">
-                    <div>
-                        <span className="block text-[10px] font-bold text-gray-500 uppercase">Sheena's Prediction</span>
-                        <span className="font-condensed font-bold text-sm text-indigo-400 uppercase">
-                            {match.prediction.outcome === 'HOME' ? match.homeTeam.name : match.prediction.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'} 
-                            {match.prediction.confidence && ` (${match.prediction.confidence}%)`}
+                <div className={isLocked ? 'blur-sm select-none' : ''}>
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase">Sheena's Pick</span>
+                    <div className="flex items-center gap-2">
+                        <span className="font-condensed font-black text-xl text-white uppercase tracking-tight">
+                            {match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.prediction?.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
                         </span>
+                        {match.prediction?.odds && (
+                             <span className="font-mono text-xs font-bold text-[#00FFB2] bg-[#00FFB2]/10 px-1.5 rounded">
+                                 {match.prediction?.outcome === 'HOME' ? match.prediction.odds.home : match.prediction.odds.away}
+                             </span>
+                        )}
                     </div>
-                     <button 
-                        onClick={(e) => { e.stopPropagation(); onOpenPweza?.(); }}
-                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
-                    >
-                        <span className="text-sm">🐙</span>
-                    </button>
                 </div>
-            )}
+                
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onOpenPweza(); }}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-lg shadow-sm border border-white/5 transition-colors relative z-30"
+                >
+                    🐙
+                </button>
+            </div>
         </div>
     );
 };
 
-const WarRoomIntelCard: React.FC<{ alert: SystemAlert, onTail: () => void }> = ({ alert, onTail }) => (
-    <div className="bg-black border border-l-4 border-[#2C2C2C] border-l-red-600 rounded-r-lg p-4 font-mono relative overflow-hidden group">
-        <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 uppercase flex items-center gap-1">
-            <Siren size={10} className="animate-pulse" /> War Room
+const CompactPredictionCard: React.FC<{ match: Match, onClick: () => void, isLocked?: boolean }> = ({ match, onClick, isLocked }) => {
+    // UPDATED: Use dynamic league style for the card background
+    const styleClass = getCompactLeagueStyle(match.league);
+
+    return (
+        <div 
+            onClick={onClick}
+            className={`w-full h-full rounded-lg p-2 flex items-center justify-between cursor-pointer group transition-all relative overflow-hidden border ${styleClass}`}
+        >
+            {/* Noise Texture */}
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
+            
+            <div className="flex items-center gap-3 relative z-10 w-full">
+                 {/* Time Badge */}
+                 <div className="flex flex-col items-center justify-center w-8 shrink-0 border-r border-white/10 pr-2">
+                     <span className="text-[9px] font-mono text-gray-400 uppercase">{match.time.split(':')[0] || match.time}</span>
+                     <span className="text-[8px] text-gray-500">{match.time.includes(':') ? 'PM' : ''}</span>
+                 </div>
+
+                 {/* Matchup */}
+                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                     <div className="flex items-center gap-2">
+                         <img src={match.homeTeam.logo} className="w-3.5 h-3.5 object-contain opacity-90" />
+                         <span className={`font-condensed font-bold text-xs leading-none truncate ${match.prediction?.outcome === 'HOME' ? 'text-white' : 'text-gray-400'}`}>
+                             {match.homeTeam.name.substring(0,12)}
+                         </span>
+                         {match.prediction?.outcome === 'HOME' && <div className="w-1 h-1 bg-[#00FFB2] rounded-full ml-auto shadow-[0_0_5px_rgba(0,255,178,0.5)]"></div>}
+                     </div>
+                     <div className="flex items-center gap-2">
+                         <img src={match.awayTeam.logo} className="w-3.5 h-3.5 object-contain opacity-90" />
+                         <span className={`font-condensed font-bold text-xs leading-none truncate ${match.prediction?.outcome === 'AWAY' ? 'text-white' : 'text-gray-400'}`}>
+                             {match.awayTeam.name.substring(0,12)}
+                         </span>
+                         {match.prediction?.outcome === 'AWAY' && <div className="w-1 h-1 bg-[#00FFB2] rounded-full ml-auto shadow-[0_0_5px_rgba(0,255,178,0.5)]"></div>}
+                     </div>
+                 </div>
+
+                 {/* Odds / Lock */}
+                 <div className="text-right shrink-0 pl-2">
+                     {isLocked ? (
+                        <div className="bg-black/40 p-1.5 rounded">
+                            <Lock size={10} className="text-gray-500" />
+                        </div>
+                     ) : (
+                         <div className="bg-black/40 px-2 py-1 rounded border border-white/10 group-hover:border-[#00FFB2]/30 transition-colors">
+                             <span className="block font-mono font-bold text-xs text-[#00FFB2]">
+                                 {match.prediction?.potentialReturn}
+                             </span>
+                         </div>
+                     )}
+                 </div>
+            </div>
         </div>
-        
-        <div className="flex items-start gap-3 relative z-10">
-            <div className="mt-1"><Terminal size={18} className="text-red-500" /></div>
-            <div className="flex-1">
-                <h4 className="font-bold text-red-500 text-sm uppercase mb-1">{alert.title}</h4>
-                <p className="text-xs text-gray-300 mb-3 leading-relaxed">{alert.description}</p>
-                
-                <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold bg-[#1E1E1E] text-white px-1.5 py-0.5 rounded border border-[#333]">
-                        {alert.dataPoint}
-                    </span>
-                    {alert.actionableBet && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onTail(); }}
-                            className="flex items-center gap-1 text-[10px] font-black uppercase bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded transition-colors"
-                        >
-                            Tail Bet <ArrowRight size={10} />
-                        </button>
-                    )}
+    );
+};
+
+const SmartPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpenPweza: () => void, isLocked?: boolean }> = ({ match, onClick, onOpenPweza, isLocked }) => {
+    return (
+        <div onClick={onClick} className="bg-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden cursor-pointer hover:border-[#3E3E3E] transition-all group relative">
+            
+            {/* GUEST LOCK OVERLAY */}
+            {isLocked && (
+                <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-[3px] flex flex-col items-center justify-center p-6 text-center border border-white/5 m-1 rounded-lg">
+                    <Lock size={24} className="text-white mb-2" />
+                    <h3 className="font-condensed font-black text-lg uppercase text-white tracking-wide">Analysis Locked</h3>
+                    <p className="text-xs text-gray-400 mt-1 max-w-[200px]">Join Sheena Sports to see this prediction.</p>
+                </div>
+            )}
+            
+            <div className={`p-4 ${isLocked ? 'blur-sm select-none opacity-50' : ''}`}>
+                <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-2">
+                        <span className="font-condensed font-bold text-xs text-gray-400 uppercase tracking-wide">{match.league}</span>
+                        <span className="text-[10px] text-gray-600 font-bold uppercase">• {match.time}</span>
+                    </div>
+                     {/* PWEZA BADGE */}
+                     <div className="flex items-center gap-1 bg-indigo-900/30 border border-indigo-500/30 px-1.5 py-0.5 rounded">
+                         <span className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Pweza Edge</span>
+                     </div>
+                </div>
+
+                {/* Matchup Row */}
+                <div className="flex items-center justify-between mb-4">
+                     <div className="flex items-center gap-3">
+                         <img src={match.homeTeam.logo} className="w-8 h-8 object-contain" />
+                         <span className="font-condensed font-black text-xl uppercase text-white">{match.homeTeam.name}</span>
+                     </div>
+                     <span className="font-serif italic text-gray-600 text-sm">vs</span>
+                     <div className="flex items-center gap-3">
+                         <span className="font-condensed font-black text-xl uppercase text-white">{match.awayTeam.name}</span>
+                         <img src={match.awayTeam.logo} className="w-8 h-8 object-contain" />
+                     </div>
+                </div>
+
+                {/* Smart Footer Strip */}
+                <div className="flex items-center justify-between pt-3 border-t border-[#2C2C2C]">
+                     <div className="flex gap-4">
+                         {/* Weather */}
+                         <div className="flex items-center gap-1.5" title={match.prediction?.weather}>
+                             <WeatherIcon condition={match.prediction?.weather} size={14} />
+                             <span className="text-[10px] font-bold text-gray-500 uppercase hidden sm:block">
+                                 {match.prediction?.weather?.split(' ')[0] || 'Clear'}
+                             </span>
+                         </div>
+                         
+                         {/* Sentiment */}
+                         {match.prediction?.sentiment && (
+                             <div className="flex items-center gap-1.5">
+                                 {match.prediction.sentiment === 'POSITIVE' ? <TrendingUp size={14} className="text-green-500" /> : <TrendingDown size={14} className="text-red-500" />}
+                                 <span className="text-[10px] font-bold text-gray-500 uppercase hidden sm:block">Market</span>
+                             </div>
+                         )}
+
+                         {/* Dynamic Snippet (Injury/Headline) */}
+                         <div className="flex items-center gap-1.5">
+                             {match.context?.injuryReport ? (
+                                 <>
+                                     <Activity size={14} className="text-red-500" />
+                                     <span className="text-[10px] font-bold text-gray-400 uppercase truncate max-w-[120px]">
+                                         Injury Alert
+                                     </span>
+                                 </>
+                             ) : (
+                                 <>
+                                     <Info size={14} className="text-blue-500" />
+                                     <span className="text-[10px] font-bold text-gray-400 uppercase truncate max-w-[120px]">
+                                         {match.context?.headline || 'Match Insights'}
+                                     </span>
+                                 </>
+                             )}
+                         </div>
+                     </div>
+                     
+                     {/* Prediction Indicator */}
+                     <div className="relative">
+                         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse absolute -top-0.5 -right-0.5"></div>
+                         <div className="bg-indigo-600/20 p-1.5 rounded-md border border-indigo-500/30">
+                             <Brain size={14} className="text-indigo-400" />
+                         </div>
+                     </div>
                 </div>
             </div>
         </div>
+    );
+};
+
+export const HeroNewsCard: React.FC<{ story: NewsStory, onClick: () => void, dataSaver?: boolean }> = ({ story, onClick, dataSaver }) => (
+    <div onClick={onClick} className="relative aspect-video w-full rounded-xl overflow-hidden cursor-pointer group shadow-2xl bg-[#121212]">
+        {dataSaver ? (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/40 to-black">
+                <Newspaper size={48} className="text-indigo-500/50" />
+            </div>
+        ) : (
+            <img src={story.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+        )}
+        <div className={`absolute inset-0 ${dataSaver ? '' : 'bg-gradient-to-t from-black via-black/40 to-transparent'}`}></div>
         
-        {/* Background Grid Pattern */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none"></div>
-    </div>
-)
-
-// --- NEWS CARDS ---
-
-const HeroNewsCard: React.FC<{ story: NewsStory, onClick: () => void }> = ({ story, onClick }) => (
-    <div onClick={onClick} className="w-full aspect-video md:aspect-[21/9] rounded-xl relative overflow-hidden cursor-pointer group">
-        <img src={story.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
         <div className="absolute bottom-0 left-0 p-5 w-full">
             <div className="flex items-center gap-2 mb-2">
-                <span className="bg-[#00FFB2] text-black text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide">
-                    Breaking
-                </span>
+                <span className="bg-indigo-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded tracking-wide">Top Story</span>
                 <span className="text-[10px] font-bold text-gray-300 uppercase">{story.timestamp}</span>
             </div>
-            <h3 className="font-condensed font-black text-2xl md:text-3xl text-white uppercase leading-[0.95] mb-2 drop-shadow-lg">
+            <h2 className="font-condensed font-black text-3xl uppercase text-white leading-[0.9] mb-2 tracking-tight group-hover:text-indigo-400 transition-colors">
                 {story.title}
-            </h3>
-            <p className="text-gray-300 text-xs line-clamp-2 md:w-2/3 leading-relaxed font-medium">
+            </h2>
+            <p className="text-sm text-gray-300 line-clamp-2 font-medium leading-relaxed max-w-[90%]">
                 {story.summary}
             </p>
         </div>
     </div>
-)
+);
 
-const StandardNewsCard: React.FC<{ story: NewsStory, onClick: () => void }> = ({ story, onClick }) => (
-    <div onClick={onClick} className="flex gap-3 bg-[#1E1E1E] border border-[#2C2C2C] p-3 rounded-lg cursor-pointer hover:bg-[#252525] transition-colors group">
-        <div className="flex-1 flex flex-col justify-between">
-            <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-wide">{story.source}</span>
-                    <span className="text-[9px] text-gray-500 font-bold">• {story.timestamp}</span>
-                </div>
-                <h3 className="font-condensed font-bold text-lg text-white leading-tight uppercase group-hover:underline underline-offset-2 decoration-2 decoration-indigo-500">
-                    {story.title}
-                </h3>
-            </div>
-            <div className="flex items-center gap-4 mt-2">
-                 <div className="flex items-center gap-1 text-gray-500 text-[10px] font-bold">
-                     <Flame size={12} /> {story.likes}
-                 </div>
-                 <div className="flex items-center gap-1 text-gray-500 text-[10px] font-bold">
-                     <MessageSquare size={12} /> {story.comments}
-                 </div>
-            </div>
+export const StandardNewsCard: React.FC<{ story: NewsStory, onClick: () => void, dataSaver?: boolean }> = ({ story, onClick, dataSaver }) => (
+    <div onClick={onClick} className="flex gap-4 p-3 bg-black/40 rounded-xl cursor-pointer hover:bg-black/60 transition-colors border border-transparent hover:border-[#333]">
+        <div className="w-[100px] h-[80px] rounded-lg overflow-hidden shrink-0 relative bg-[#1E1E1E] flex items-center justify-center">
+            {dataSaver ? (
+                <ImageOff size={24} className="text-gray-600" />
+            ) : (
+                <img src={story.imageUrl} className="w-full h-full object-cover" />
+            )}
+            {story.type === 'RUMOR' && (
+                <div className="absolute top-1 left-1 bg-yellow-500 text-black text-[8px] font-black uppercase px-1 rounded">Rumor</div>
+            )}
         </div>
-        <div className="w-24 h-24 rounded bg-gray-800 overflow-hidden shrink-0">
-            <img src={story.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        <div className="flex-1 flex flex-col justify-between py-1">
+             <div>
+                 <div className="flex items-center gap-2 mb-1">
+                     <span className="text-[9px] font-bold text-gray-500 uppercase">{story.source}</span>
+                     <span className="text-[9px] text-gray-600">• {story.timestamp}</span>
+                 </div>
+                 <h3 className="font-condensed font-bold text-lg uppercase text-white leading-none line-clamp-2">
+                     {story.title}
+                 </h3>
+             </div>
+             <div className="flex items-center gap-3 mt-2">
+                 <div className="flex items-center gap-1 text-gray-500">
+                     <MessageSquare size={12} /> <span className="text-[10px] font-bold">{story.comments}</span>
+                 </div>
+                 <div className="flex items-center gap-1 text-gray-500">
+                     <Flame size={12} /> <span className="text-[10px] font-bold">{story.likes}</span>
+                 </div>
+             </div>
         </div>
     </div>
-)
+);
 
 const HighlightCard: React.FC<{ story: NewsStory, onClick: () => void }> = ({ story, onClick }) => (
-    <div onClick={onClick} className="relative rounded-lg overflow-hidden aspect-[16/9] cursor-pointer group border border-[#2C2C2C]">
-        <img src={story.imageUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur border border-white/40 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Play size={20} className="fill-white text-white ml-1" />
+    <div onClick={onClick} className="relative w-full rounded-xl overflow-hidden cursor-pointer group border border-[#2C2C2C]">
+        <div className="aspect-[16/9] w-full relative">
+            <img src={story.imageUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/50 group-hover:scale-110 transition-transform">
+                    <PlayCircle size={28} className="text-white fill-white" />
+                </div>
+            </div>
+            <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
+                0:45
             </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
-             <div className="flex items-center gap-2 mb-1">
-                 <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                 <span className="text-[9px] font-black text-white uppercase tracking-wide">Highlight</span>
-             </div>
-             <h3 className="font-condensed font-bold text-sm text-white uppercase leading-tight">{story.title}</h3>
+        <div className="p-3 bg-[#121212]">
+            <h3 className="font-condensed font-bold text-base uppercase text-white leading-none truncate">
+                {story.title}
+            </h3>
         </div>
     </div>
-)
+);
+
+const WarRoomIntelCard: React.FC<{ alert: SystemAlert, onTail: () => void }> = ({ alert, onTail }) => (
+    <div className="bg-black border border-[#2C2C2C] rounded-xl overflow-hidden relative">
+        <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 uppercase">
+            War Room Alert
+        </div>
+        
+        {/* Terminal Effect Lines */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none"></div>
+
+        <div className="p-4 relative z-10">
+            <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-red-900/20 rounded flex items-center justify-center shrink-0 border border-red-500/30">
+                     {alert.alertType === 'SHARP_MONEY' ? <DollarSign size={16} className="text-red-500"/> : <Siren size={16} className="text-red-500"/>}
+                </div>
+                <div>
+                    <h3 className="font-mono font-bold text-red-500 text-sm uppercase leading-tight mb-1">{alert.title}</h3>
+                    <p className="font-mono text-xs text-gray-400 mb-3 leading-relaxed">
+                        {alert.description}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <span className="bg-[#1E1E1E] text-white text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#333] font-mono">
+                            {alert.dataPoint}
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-600 uppercase">
+                            {alert.timestamp}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="mt-3 pt-3 border-t border-[#2C2C2C] flex justify-end">
+                <button 
+                    onClick={onTail}
+                    className="flex items-center gap-1.5 text-xs font-bold text-white hover:text-red-500 transition-colors uppercase"
+                >
+                    <Target size={14} /> Tail Bet
+                </button>
+            </div>
+        </div>
+    </div>
+);

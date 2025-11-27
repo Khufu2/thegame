@@ -1,8 +1,8 @@
-
 import React, { useEffect } from 'react';
-import { ArrowLeft, Share2, MessageSquare, Bookmark, Flame, Twitter, ThumbsUp, Quote, Play } from 'lucide-react';
+import { ArrowLeft, Share2, MessageSquare, Bookmark, Flame, Twitter, ThumbsUp, Quote, Play, ImageOff, WifiOff, Loader2 } from 'lucide-react';
 import { NewsStory, ArticleBlock } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { useSports } from '../context/SportsContext';
 
 interface ArticlePageProps {
   story: NewsStory;
@@ -11,20 +11,30 @@ interface ArticlePageProps {
 
 export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories }) => {
   const navigate = useNavigate();
+  const { user } = useSports();
+  const dataSaver = user?.preferences.dataSaver || false;
 
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [story.id]);
 
+  const goToSource = () => {
+      // Navigate to the source/author profile
+      navigate(`/source/${encodeURIComponent(story.source)}`);
+  };
+
   return (
     <div className="min-h-screen bg-white text-black dark:bg-black dark:text-white pb-[80px] relative z-50">
       
       {/* STICKY HEADER */}
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-black/90 backdrop-blur border-b border-gray-200 dark:border-[#2C2C2C] h-[60px] flex items-center justify-between px-4 transition-all">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-[#1E1E1E] rounded-full transition-colors">
-          <ArrowLeft size={24} className="text-black dark:text-white" />
-        </button>
+        <div className="flex items-center gap-2">
+            <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-[#1E1E1E] rounded-full transition-colors">
+              <ArrowLeft size={24} className="text-black dark:text-white" />
+            </button>
+            {dataSaver && <div className="flex items-center gap-1 bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-yellow-500/20"><WifiOff size={10} /> Data Saver</div>}
+        </div>
         
         <div className="flex items-center gap-2">
           <button className="p-2 hover:bg-gray-100 dark:hover:bg-[#1E1E1E] rounded-full transition-colors">
@@ -36,20 +46,38 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
         </div>
       </div>
 
-      {/* HERO IMAGE */}
-      <div className="w-full aspect-video relative bg-[#121212]">
-        <img src={story.imageUrl} className="w-full h-full object-cover" alt={story.title} />
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/80 to-transparent pointer-events-none md:hidden"></div>
-      </div>
+      {/* HERO IMAGE - CONDITIONAL RENDER */}
+      {dataSaver ? (
+          <div className="w-full h-48 bg-[#121212] border-b border-[#2C2C2C] flex items-center justify-center relative overflow-hidden group cursor-pointer">
+               <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/10 to-black/80"></div>
+               {/* Pattern */}
+               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+               
+               <div className="relative z-10 flex flex-col items-center gap-2 text-gray-500 group-hover:text-indigo-400 transition-colors">
+                   <div className="w-12 h-12 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-[#333] group-hover:border-indigo-500/50">
+                        <ImageOff size={24} />
+                   </div>
+                   <div className="text-center">
+                       <span className="block text-[10px] font-bold uppercase tracking-wider">Image Hidden</span>
+                       <span className="text-[9px] text-gray-600 group-hover:text-indigo-500/80">Tap to load (1.2MB)</span>
+                   </div>
+               </div>
+          </div>
+      ) : (
+          <div className="w-full aspect-video relative bg-[#121212]">
+            <img src={story.imageUrl} className="w-full h-full object-cover" alt={story.title} />
+            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/80 to-transparent pointer-events-none md:hidden"></div>
+          </div>
+      )}
 
       {/* ARTICLE CONTENT CONTAINER */}
       <div className="max-w-[700px] mx-auto px-5 py-6">
         
         {/* METADATA TOP */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase px-2 py-1 tracking-widest rounded-sm">
+          <button onClick={goToSource} className="bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase px-2 py-1 tracking-widest rounded-sm hover:opacity-80 transition-opacity">
             {story.source}
-          </span>
+          </button>
           <span className="text-[11px] font-bold text-gray-500 dark:text-[#A1A1A1] uppercase tracking-wide">
             {story.timestamp}
           </span>
@@ -62,17 +90,18 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
 
         {/* AUTHOR ROW */}
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-[#2C2C2C] pb-6 mb-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={goToSource}>
                 <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-300 dark:border-[#2C2C2C]">
-                    <img src={story.authorAvatar || "https://ui-avatars.com/api/?name=BR"} className="w-full h-full object-cover" />
+                    {!dataSaver && <img src={story.authorAvatar || "https://ui-avatars.com/api/?name=BR"} className="w-full h-full object-cover" />}
+                    {dataSaver && <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500">{story.source[0]}</div>}
                 </div>
                 <div className="flex flex-col">
-                    <span className="font-sans font-bold text-sm">By {story.source} Staff</span>
+                    <span className="font-sans font-bold text-sm hover:underline">By {story.source} Staff</span>
                     <span className="text-xs text-gray-500 dark:text-[#A1A1A1]">National Lead Writer</span>
                 </div>
             </div>
-            <button className="bg-black dark:bg-white text-white dark:text-black px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider hover:opacity-80 transition-opacity">
-                Follow
+            <button onClick={goToSource} className="bg-black dark:bg-white text-white dark:text-black px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider hover:opacity-80 transition-opacity">
+                View Profile
             </button>
         </div>
 
@@ -80,7 +109,7 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
         <article className="prose dark:prose-invert prose-lg max-w-none">
             {story.contentBlocks ? (
                 story.contentBlocks.map((block, idx) => (
-                    <ContentBlockRenderer key={idx} block={block} />
+                    <ContentBlockRenderer key={idx} block={block} dataSaver={dataSaver} />
                 ))
             ) : story.body ? (
                 // Fallback for old string[] body
@@ -109,8 +138,12 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
              <div className="space-y-6">
                  {relatedStories.map(related => (
                      <div key={related.id} onClick={() => { navigate(`/article/${related.id}`); window.scrollTo(0,0); }} className="flex gap-4 cursor-pointer group">
-                         <div className="w-24 h-16 bg-gray-800 rounded overflow-hidden shrink-0">
-                             <img src={related.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                         <div className="w-24 h-16 bg-gray-800 rounded overflow-hidden shrink-0 relative flex items-center justify-center border border-[#333]">
+                             {dataSaver ? (
+                                <ImageOff size={16} className="text-gray-600" />
+                             ) : (
+                                <img src={related.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                             )}
                          </div>
                          <div>
                              <h4 className="font-condensed font-bold text-lg leading-none uppercase mb-1 group-hover:underline underline-offset-2 decoration-2">
@@ -157,7 +190,7 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
 };
 
 // --- RICH CONTENT BLOCK RENDERER ---
-const ContentBlockRenderer: React.FC<{ block: ArticleBlock }> = ({ block }) => {
+const ContentBlockRenderer: React.FC<{ block: ArticleBlock, dataSaver: boolean }> = ({ block, dataSaver }) => {
     switch (block.type) {
         case 'TEXT':
             return (
@@ -167,6 +200,12 @@ const ContentBlockRenderer: React.FC<{ block: ArticleBlock }> = ({ block }) => {
             );
         
         case 'IMAGE':
+            if (dataSaver) return (
+                <div className="my-8 p-6 bg-[#121212] border border-[#2C2C2C] rounded-lg text-center flex flex-col items-center gap-2">
+                    <ImageOff size={20} className="text-gray-500" />
+                    <span className="text-xs text-gray-400 font-bold uppercase tracking-wide">Image Hidden (Lite Mode)</span>
+                </div>
+            );
             return (
                 <figure className="my-8">
                     <img src={block.url} alt={block.caption} className="w-full rounded-lg" />
@@ -197,7 +236,13 @@ const ContentBlockRenderer: React.FC<{ block: ArticleBlock }> = ({ block }) => {
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                              <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                                 <img src={block.avatar || `https://ui-avatars.com/api/?name=${block.author}`} className="w-full h-full object-cover" />
+                                 {dataSaver ? (
+                                    <div className="w-full h-full bg-gray-300 flex items-center justify-center font-bold text-gray-500">
+                                        {block.author[0]}
+                                    </div>
+                                 ) : (
+                                    <img src={block.avatar || `https://ui-avatars.com/api/?name=${block.author}`} className="w-full h-full object-cover" />
+                                 )}
                              </div>
                              <div className="leading-tight">
                                  <span className="block font-bold text-sm text-black dark:text-white">{block.author}</span>
@@ -218,6 +263,15 @@ const ContentBlockRenderer: React.FC<{ block: ArticleBlock }> = ({ block }) => {
             );
         
         case 'VIDEO':
+            if (dataSaver) {
+                return (
+                    <div className="my-8 p-4 bg-[#1E1E1E] rounded border border-[#333] flex items-center gap-3">
+                         <Play size={20} className="text-gray-500" />
+                         <span className="text-sm font-bold text-gray-400">Video Content Hidden (Lite Mode)</span>
+                         <button className="ml-auto text-xs font-bold text-indigo-400">Load</button>
+                    </div>
+                )
+            }
             return (
                 <div className="my-8 relative group cursor-pointer rounded-xl overflow-hidden aspect-video bg-black">
                     <img src={block.thumbnail} className="w-full h-full object-cover opacity-80" />

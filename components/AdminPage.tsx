@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
 import { NewsStory, SystemAlert, ArticleBlock, MatchStatus } from '../types';
 import { generateMatchNews } from '../services/newsAgentService';
-import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio } from 'lucide-react';
+import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const AdminPage: React.FC = () => {
     const { addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert, user, matches, news, alerts } = useSports();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'MANAGE'>('NEWS');
+    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'MANAGE' | 'TEAM'>('NEWS');
 
     // --- NEWS STATE ---
     const [newsTitle, setNewsTitle] = useState('');
@@ -26,11 +26,18 @@ export const AdminPage: React.FC = () => {
     const [broadcastToBots, setBroadcastToBots] = useState(true);
 
     // --- AI AGENT STATE ---
+    const [generationMode, setGenerationMode] = useState<'MATCH' | 'TOPIC'>('MATCH');
     const [selectedMatchId, setSelectedMatchId] = useState('');
+    const [customTopic, setCustomTopic] = useState('');
     const [aiTone, setAiTone] = useState<'HYPE' | 'RECAP' | 'ANALYTICAL' | 'RUMOR'>('RECAP');
     const [aiLanguage, setAiLanguage] = useState<'ENGLISH' | 'SWAHILI'>('ENGLISH');
+    const [aiPersona, setAiPersona] = useState<'SHEENA' | 'ORACLE' | 'STREET' | 'JOURNALIST'>('SHEENA'); // NEW
     const [useGrounding, setUseGrounding] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
+
+    // --- TEAM MANAGEMENT STATE ---
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteRole, setInviteRole] = useState('JOURNALIST');
 
     if (!user?.isAdmin) {
         return (
@@ -72,7 +79,7 @@ export const AdminPage: React.FC = () => {
             title: newsTitle,
             summary: newsSummary,
             imageUrl: newsImage,
-            source: 'Sheena Desk',
+            source: aiPersona === 'ORACLE' ? 'The Oracle' : 'Sheena Desk', // Dynamic source
             timestamp: 'Just Now',
             likes: 0,
             comments: 0,
@@ -106,23 +113,33 @@ export const AdminPage: React.FC = () => {
     };
 
     const handleAIGeneration = async () => {
-        const match = matches.find(m => m.id === selectedMatchId);
-        if (!match) return;
+        let match = null;
+        if (generationMode === 'MATCH') {
+            match = matches.find(m => m.id === selectedMatchId) || null;
+            if (!match) return;
+        } else if (generationMode === 'TOPIC' && !customTopic) {
+            return;
+        }
 
         setIsGenerating(true);
-        const result = await generateMatchNews(match, aiTone, aiLanguage, useGrounding);
+        const result = await generateMatchNews(match, customTopic, aiTone, aiLanguage, aiPersona, useGrounding);
         setIsGenerating(false);
 
         if (result) {
             setNewsTitle(result.title);
             setNewsSummary(result.summary);
             setBlocks(result.blocks);
-            setNewsTag(match.league);
+            setNewsTag(match ? match.league : 'General');
             setActiveTab('NEWS'); // Switch to editor to review
         } else {
             window.alert("Failed to generate article. Check API Key or try again.");
         }
     };
+
+    const handleSendInvite = () => {
+        alert(`Invite sent to ${inviteEmail} as ${inviteRole}`);
+        setInviteEmail('');
+    }
 
     return (
         <div className="min-h-screen bg-[#050505] text-white pb-24 font-sans">
@@ -140,10 +157,83 @@ export const AdminPage: React.FC = () => {
                     <button onClick={() => setActiveTab('AI_AGENT')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 ${activeTab === 'AI_AGENT' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-white'}`}><Wand2 size={12}/> AI Agent</button>
                     <button onClick={() => setActiveTab('WAR_ROOM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded ${activeTab === 'WAR_ROOM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>War Room</button>
                     <button onClick={() => setActiveTab('MANAGE')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 ${activeTab === 'MANAGE' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}><List size={12}/> Manage</button>
+                    <button onClick={() => setActiveTab('TEAM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 ${activeTab === 'TEAM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}><Users size={12}/> Team</button>
                 </div>
             </div>
 
             <div className="max-w-[1000px] mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                {/* --- TEAM MANAGEMENT --- */}
+                {activeTab === 'TEAM' && (
+                    <div className="col-span-2">
+                        <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 mb-6 flex items-center gap-2">
+                             <Users size={16} /> Staff Management
+                        </h3>
+                        
+                        {/* Invite Card */}
+                        <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-6 mb-8">
+                            <h4 className="font-bold text-white mb-4 uppercase text-sm">Add New Member</h4>
+                            <div className="flex items-end gap-3">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
+                                    <input 
+                                        type="email" 
+                                        value={inviteEmail} 
+                                        onChange={e => setInviteEmail(e.target.value)} 
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-sm text-white" 
+                                        placeholder="journalist@sheena.com" 
+                                    />
+                                </div>
+                                <div className="w-1/3">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Role</label>
+                                    <select 
+                                        value={inviteRole}
+                                        onChange={e => setInviteRole(e.target.value)}
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-sm text-white uppercase"
+                                    >
+                                        <option value="JOURNALIST">Journalist</option>
+                                        <option value="MODERATOR">Moderator</option>
+                                        <option value="ADMIN">Admin</option>
+                                    </select>
+                                </div>
+                                <button onClick={handleSendInvite} className="bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded flex items-center gap-2 font-bold uppercase text-sm">
+                                    <UserPlus size={16} /> Invite
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Current Staff List (Mock) */}
+                        <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-black text-gray-500 font-bold uppercase text-xs border-b border-[#2C2C2C]">
+                                    <tr>
+                                        <th className="p-4">User</th>
+                                        <th className="p-4">Role</th>
+                                        <th className="p-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#2C2C2C]">
+                                    <tr>
+                                        <td className="p-4 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold">JD</div>
+                                            <span className="font-bold text-white">John Doe</span>
+                                        </td>
+                                        <td className="p-4"><span className="bg-green-900/30 text-green-500 px-2 py-0.5 rounded text-xs font-bold uppercase">Admin</span></td>
+                                        <td className="p-4 text-right"><button className="text-gray-500 hover:text-white">Edit</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-4 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">AL</div>
+                                            <span className="font-bold text-white">Alice Lee</span>
+                                        </td>
+                                        <td className="p-4"><span className="bg-blue-900/30 text-blue-500 px-2 py-0.5 rounded text-xs font-bold uppercase">Journalist</span></td>
+                                        <td className="p-4 text-right"><button className="text-gray-500 hover:text-white">Edit</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
                 {/* --- MANAGE EXISTING CONTENT --- */}
                 {activeTab === 'MANAGE' && (
@@ -213,25 +303,43 @@ export const AdminPage: React.FC = () => {
                              </div>
 
                              <div className="space-y-4">
-                                 <div>
-                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Select Match</label>
-                                     <select 
-                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
-                                        value={selectedMatchId}
-                                        onChange={(e) => setSelectedMatchId(e.target.value)}
-                                     >
-                                         <option value="">-- Choose a Game --</option>
-                                         {matches.map(m => (
-                                             <option key={m.id} value={m.id}>
-                                                 {m.homeTeam.name} vs {m.awayTeam.name} ({m.status})
-                                             </option>
-                                         ))}
-                                     </select>
+                                 {/* Mode Selector */}
+                                 <div className="flex bg-black rounded p-1 border border-[#333]">
+                                     <button onClick={() => setGenerationMode('MATCH')} className={`flex-1 py-2 text-xs font-bold uppercase rounded ${generationMode === 'MATCH' ? 'bg-[#1E1E1E] text-white' : 'text-gray-500'}`}>Match Analysis</button>
+                                     <button onClick={() => setGenerationMode('TOPIC')} className={`flex-1 py-2 text-xs font-bold uppercase rounded ${generationMode === 'TOPIC' ? 'bg-[#1E1E1E] text-white' : 'text-gray-500'}`}>Custom Topic</button>
                                  </div>
+
+                                 {generationMode === 'MATCH' ? (
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Select Match</label>
+                                         <select 
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                            value={selectedMatchId}
+                                            onChange={(e) => setSelectedMatchId(e.target.value)}
+                                         >
+                                             <option value="">-- Choose a Game --</option>
+                                             {matches.map(m => (
+                                                 <option key={m.id} value={m.id}>
+                                                     {m.homeTeam.name} vs {m.awayTeam.name} ({m.status})
+                                                 </option>
+                                             ))}
+                                         </select>
+                                     </div>
+                                 ) : (
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Custom Topic</label>
+                                         <input 
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                            placeholder="e.g., Nigeria Premier League Results, AFCON Qualifiers..."
+                                            value={customTopic}
+                                            onChange={(e) => setCustomTopic(e.target.value)}
+                                         />
+                                     </div>
+                                 )}
 
                                  <div className="grid grid-cols-2 gap-4">
                                      <div>
-                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Narrative Tone</label>
+                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tone</label>
                                          <select 
                                             className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
                                             value={aiTone}
@@ -256,6 +364,21 @@ export const AdminPage: React.FC = () => {
                                      </div>
                                  </div>
 
+                                 {/* Persona Selector */}
+                                 <div>
+                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Agent Persona</label>
+                                     <select 
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                        value={aiPersona}
+                                        onChange={(e) => setAiPersona(e.target.value as any)}
+                                     >
+                                         <option value="SHEENA">Sheena (Professional Analyst)</option>
+                                         <option value="ORACLE">The Oracle (Cryptic/Wise)</option>
+                                         <option value="STREET">Street Hype (Energetic/Slang)</option>
+                                         <option value="JOURNALIST">Standard Journalist (Neutral)</option>
+                                     </select>
+                                 </div>
+
                                  {/* Grounding Toggle */}
                                  <div className="flex items-center gap-3 p-3 bg-black rounded border border-[#333] cursor-pointer" onClick={() => setUseGrounding(!useGrounding)}>
                                      <div className={`w-4 h-4 rounded-full border border-[#555] flex items-center justify-center ${useGrounding ? 'bg-indigo-600 border-indigo-500' : ''}`}>
@@ -270,7 +393,7 @@ export const AdminPage: React.FC = () => {
 
                                  <button 
                                      onClick={handleAIGeneration}
-                                     disabled={!selectedMatchId || isGenerating}
+                                     disabled={isGenerating || (generationMode === 'MATCH' && !selectedMatchId) || (generationMode === 'TOPIC' && !customTopic)}
                                      className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-condensed font-black text-xl uppercase rounded flex items-center justify-center gap-2 mt-4"
                                  >
                                      {isGenerating ? <RefreshCw className="animate-spin" /> : <Wand2 />}
@@ -318,6 +441,7 @@ export const AdminPage: React.FC = () => {
                                             <option>NBA</option>
                                             <option>EPL</option>
                                             <option>UFC</option>
+                                            <option>General</option>
                                         </select>
                                     </div>
                                 </div>

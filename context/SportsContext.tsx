@@ -1,5 +1,3 @@
-
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
     SportsContextType, 
@@ -46,16 +44,14 @@ const generateProceduralMatches = (count: number): Match[] => {
     
     for (let i = 0; i < count; i++) {
         const league = leagues[Math.floor(Math.random() * leagues.length)];
-        // Get random teams based on league (fallback to placeholders if pool empty)
         const pool = (TEAMS_POOL as any)[league] || [{name: 'Team A', logo: ''}, {name: 'Team B', logo: ''}];
         const homeT = pool[Math.floor(Math.random() * pool.length)];
         const awayT = pool[Math.floor(Math.random() * pool.length)];
         
-        // Ensure different teams
         const home = { ...homeT, id: `t_gen_h_${i}` };
         const away = homeT.name === awayT.name ? { name: 'Opponent', logo: '', id: `t_gen_a_${i}` } : { ...awayT, id: `t_gen_a_${i}` };
 
-        const confidence = Math.floor(Math.random() * 50) + 40; // 40-90%
+        const confidence = Math.floor(Math.random() * 50) + 40; 
         const isHighVal = Math.random() > 0.7;
         const outcome = Math.random() > 0.5 ? 'HOME' : (Math.random() > 0.5 ? 'AWAY' : 'DRAW');
 
@@ -82,10 +78,8 @@ const generateProceduralMatches = (count: number): Match[] => {
     return matches;
 };
 
-// Mock Data Generators
 const generateMockData = () => {
    const hardcodedMatches: Match[] = [
-    // --- LIVE FEATURED GAME ---
     {
       id: 'm_live_1',
       league: 'LaLiga',
@@ -101,7 +95,15 @@ const generateMockData = () => {
       time: "82'",
       score: { home: 2, away: 2 },
       venue: 'Santiago Bernabéu',
-      momentum: { home: 85, away: 15 }, // Madrid pushing
+      venueDetails: {
+          capacity: '81,044',
+          opened: '1947',
+          city: 'Madrid',
+          country: 'Spain',
+          imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/13/Santiago_Bernab%C3%A9u_Stadium_%282022%29.jpg',
+          description: 'The Santiago Bernabéu Stadium is a football stadium in Madrid, Spain. With a current seating capacity of 81,044, it has been the home stadium of Real Madrid since its completion in 1947.'
+      },
+      momentum: { home: 85, away: 15 },
       prediction: {
         outcome: 'HOME',
         confidence: 65,
@@ -121,8 +123,6 @@ const generateMockData = () => {
         ]
       },
       context: { headline: "El Clasico Thriller: Bellingham equalizes!", commentCount: 12500, isHot: true },
-      bettingTrends: { homeMoneyPercent: 70, homeTicketPercent: 65, lineMovement: 'DRIFTING_AWAY', publicConsensus: 'Madrid Late Winner' },
-      // Mocking lineup for pitch view
       lineups: {
           home: {
               formation: '4-3-3',
@@ -150,10 +150,8 @@ const generateMockData = () => {
           }
       }
     },
-    // ... Additional matches would be here as per previous context
    ];
   
-  // Create sample news and alerts (simplified for context update)
   const news: NewsStory[] = [
     {
       id: 'n_hero_1',
@@ -161,13 +159,26 @@ const generateMockData = () => {
       title: "Mbappe Announcement Imminent",
       summary: "Sources close to the player confirm a decision has been made regarding his future at PSG.",
       imageUrl: "https://images.unsplash.com/photo-1551958219-acbc608c6377?q=80&w=2000&auto=format&fit=crop",
-      source: "Sheena Wire",
+      source: "Fabrizio Romano",
       timestamp: "15m ago",
       likes: 24500,
       comments: 1200,
       isHero: true,
       tags: ['Soccer', 'Transfers'],
       contentBlocks: [{ type: 'TEXT', content: "The saga appears to be reaching its conclusion." }]
+    },
+     {
+      id: 'n_std_1',
+      type: 'NEWS',
+      title: "Warriors Dynasty in Question",
+      summary: "Klay Thompson's departure signals a new era for Golden State.",
+      imageUrl: "https://images.unsplash.com/photo-1519861531473-920026393112?q=80&w=1000",
+      source: "Wojnarowski",
+      timestamp: "1h ago",
+      likes: 1200,
+      comments: 300,
+      tags: ['NBA'],
+      contentBlocks: [{ type: 'TEXT', content: "Big changes coming to the Bay Area." }]
     },
   ];
 
@@ -212,11 +223,8 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [flashAlert, setFlashAlert] = useState<FlashAlert | null>(null);
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
-    // Function to rebuild the feed based on current data
     const rebuildFeed = (currentMatches: Match[], currentNews: NewsStory[], currentAlerts: SystemAlert[]) => {
         const mixedFeed: FeedItem[] = [];
-        
-        // Find Hero
         const hero = currentNews.find(n => n.isHero);
         if (hero) mixedFeed.push(hero);
 
@@ -225,7 +233,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .filter(m => m.status !== MatchStatus.LIVE && m.prediction)
             .sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0));
 
-        let mIdx = 60; // Start AFTER Value Radar logic
+        let mIdx = 60; 
         let nIdx = 0;
         let aIdx = 0;
 
@@ -238,7 +246,6 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setFeedItems(mixedFeed);
     };
 
-    // Initial Data Load
     useEffect(() => {
         const { matches, news, alerts, leaderboard } = generateMockData();
         setMatches(matches);
@@ -247,7 +254,6 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setLeaderboard(leaderboard);
         rebuildFeed(matches, news, alerts);
         
-        // TRIGGER DEMO FLASH ALERT ON LOAD
         setTimeout(() => {
             triggerFlashAlert({
                 id: 'flash-demo',
@@ -259,7 +265,19 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     }, []);
 
-    // Rebuild feed whenever underlying data changes
+    useEffect(() => {
+        const theme = user?.preferences.theme || 'DARK';
+        if (theme === 'LIGHT') {
+            document.documentElement.classList.remove('dark');
+            document.body.style.backgroundColor = '#ffffff';
+            document.body.style.color = '#000000';
+        } else {
+            document.documentElement.classList.add('dark');
+            document.body.style.backgroundColor = '#000000';
+            document.body.style.color = '#ffffff';
+        }
+    }, [user?.preferences.theme]);
+
     useEffect(() => {
         if (matches.length > 0) {
             rebuildFeed(matches, news, alerts);
@@ -267,7 +285,6 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, [matches, news, alerts]);
 
     const login = (email: string) => {
-        // Mock Login with ADMIN capability if email contains 'admin'
         const isAdmin = email.includes('admin');
         const mockUser: UserProfile = {
             id: 'u1',
@@ -280,13 +297,29 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             preferences: {
                 favoriteLeagues: [],
                 favoriteTeams: [],
-                notifications: { gameStart: true, scoreUpdates: true, lineMoves: false, breakingNews: true },
+                followedSources: ['Fabrizio Romano'], 
+                notifications: { 
+                    gameStart: true, 
+                    scoreUpdates: true,
+                    lineMoves: false,
+                    breakingNews: true,
+                    whatsappUpdates: false
+                },
+                communicationChannel: 'EMAIL',
                 oddsFormat: 'DECIMAL',
-                hasCompletedOnboarding: false
+                dataSaver: false, // CRITICAL: FORCE FALSE BY DEFAULT
+                theme: 'DARK',
+                hasCompletedOnboarding: true
             }
         };
+        
         setUser(mockUser);
-        setAuthState('ONBOARDING');
+        setAuthState('AUTHENTICATED');
+    };
+
+    const loginAsGuest = () => {
+        // Guest user also defaults to High Quality mode
+        setAuthState('GUEST');
     };
 
     const logout = () => {
@@ -295,94 +328,120 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const completeOnboarding = (prefs: { leagues: string[], teams: string[] }) => {
-        if (!user) return;
-        setUser({
-            ...user,
-            preferences: {
-                ...user.preferences,
-                favoriteLeagues: prefs.leagues,
-                favoriteTeams: prefs.teams,
-                hasCompletedOnboarding: true
-            }
-        });
-        setAuthState('AUTHENTICATED');
+        if (user) {
+            const updatedUser = { ...user, preferences: { ...user.preferences, favoriteLeagues: prefs.leagues, favoriteTeams: prefs.teams, hasCompletedOnboarding: true } };
+            setUser(updatedUser);
+            setAuthState('AUTHENTICATED');
+        }
     };
 
-    const updatePreferences = (prefs: Partial<UserPreferences>) => {
-        if (!user) return;
-        setUser({
-            ...user,
-            preferences: { ...user.preferences, ...prefs }
-        });
-    }
+    const updatePreferences = (newPrefs: Partial<UserPreferences>) => {
+        if (user) {
+            const updatedUser = { ...user, preferences: { ...user.preferences, ...newPrefs } };
+            setUser(updatedUser);
+        }
+    };
 
     const addToSlip = (match: Match) => {
-      if (!match.prediction) return;
-      const existing = betSlip.find(b => b.matchId === match.id);
-      if (existing) return;
+        if (betSlip.find(b => b.matchId === match.id)) return;
+        
+        let selection = 'Draw';
+        let odds = match.prediction?.odds?.draw || 3.0;
+        let outcome: 'HOME'|'DRAW'|'AWAY' = 'DRAW';
 
-      const oddVal = match.prediction.outcome === 'HOME' ? match.prediction.odds?.home 
-                     : match.prediction.outcome === 'AWAY' ? match.prediction.odds?.away 
-                     : match.prediction.odds?.draw;
+        if (match.prediction?.outcome === 'HOME') {
+            selection = match.homeTeam.name;
+            odds = match.prediction.odds?.home || 2.0;
+            outcome = 'HOME';
+        } else if (match.prediction?.outcome === 'AWAY') {
+            selection = match.awayTeam.name;
+            odds = match.prediction.odds?.away || 2.0;
+            outcome = 'AWAY';
+        }
 
-      const newItem: BetSlipItem = {
-          id: Date.now().toString(),
-          matchId: match.id,
-          matchUp: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
-          selection: match.prediction.outcome === 'HOME' ? match.homeTeam.name : match.prediction.outcome === 'AWAY' ? match.awayTeam.name : 'Draw',
-          outcome: match.prediction.outcome,
-          odds: oddVal || 1.91,
-          confidence: match.prediction.confidence,
-          timestamp: Date.now()
-      };
-      setBetSlip(prev => [...prev, newItem]);
+        const newItem: BetSlipItem = {
+            id: `bet_${Date.now()}`,
+            matchId: match.id,
+            matchUp: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
+            selection: selection,
+            odds: odds,
+            outcome: outcome,
+            timestamp: Date.now(),
+            confidence: match.prediction?.confidence
+        };
+        
+        setBetSlip(prev => [...prev, newItem]);
     };
 
     const removeFromSlip = (id: string) => {
         setBetSlip(prev => prev.filter(item => item.id !== id));
     };
 
-    const clearSlip = () => setBetSlip([]);
-    
+    const clearSlip = () => {
+        setBetSlip([]);
+    };
+
     const addRandomPick = () => {
-      const candidates = matches.filter(m => m.prediction && !betSlip.find(b => b.matchId === m.id));
-      if (candidates.length > 0) {
-          const random = candidates[Math.floor(Math.random() * candidates.length)];
-          addToSlip(random);
-      }
+        const availableMatches = matches.filter(m => !betSlip.find(b => b.matchId === m.id) && m.prediction);
+        if (availableMatches.length > 0) {
+            const randomMatch = availableMatches[Math.floor(Math.random() * availableMatches.length)];
+            addToSlip(randomMatch);
+        }
     };
 
     const generateMkeka = (type: MkekaType) => {
-        setBetSlip([]); 
-        let candidates = matches.filter(m => m.prediction);
-
+        let filtered = matches.filter(m => m.prediction && m.status === MatchStatus.SCHEDULED);
+        
         if (type === 'SAFE') {
-            candidates = candidates.filter(m => (m.prediction?.confidence || 0) > 75);
+            filtered = filtered
+                .filter(m => (m.prediction?.confidence || 0) > 75)
+                .sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0))
+                .slice(0, 5);
         } else if (type === 'LONGSHOT') {
-            candidates = candidates.filter(m => (m.prediction?.confidence || 0) < 60 && m.prediction?.isValuePick);
+            filtered = filtered.sort(() => 0.5 - Math.random()).slice(0, 8);
         } else if (type === 'GOALS') {
-             candidates = candidates.filter(m => 
-                (Number(m.prediction?.scorePrediction.split('-')[0]) + Number(m.prediction?.scorePrediction.split('-')[1])) > 2.5
-             );
+            filtered = filtered.slice(0, 4); 
         }
 
-        candidates.sort(() => 0.5 - Math.random());
-        const selection = candidates.slice(0, Math.min(candidates.length, 4));
-        selection.forEach(m => addToSlip(m));
+        setBetSlip([]);
+        filtered.forEach(m => addToSlip(m));
     };
 
-    // --- CMS ACTIONS ---
+    const addComment = (matchId: string, text: string, teamSupport?: 'HOME' | 'AWAY') => {
+        if (!user) return;
+        const newComment: Comment = {
+            id: `c_${Date.now()}`,
+            userId: user.id,
+            userName: user.name,
+            userAvatar: user.avatar,
+            text: text,
+            timestamp: Date.now(),
+            isPro: user.isPro,
+            likes: 0,
+            teamSupport: teamSupport
+        };
+
+        setMatches(prev => prev.map(m => {
+            if (m.id === matchId) {
+                return { ...m, comments: [newComment, ...(m.comments || [])], context: { ...m.context, commentCount: (m.context?.commentCount || 0) + 1 } };
+            }
+            return m;
+        }));
+    };
+
+    const triggerFlashAlert = (alert: FlashAlert) => {
+        setFlashAlert(alert);
+        setTimeout(() => setFlashAlert(null), 5000);
+    };
+
     const addNewsStory = (story: NewsStory) => {
         setNews(prev => [story, ...prev]);
     };
 
     const addSystemAlert = (alert: SystemAlert) => {
         setAlerts(prev => [alert, ...prev]);
-        // MOCK BACKEND TRIGGER
-        console.log(`[BACKEND HOOK] Broadcasting Alert ${alert.title} to WhatsApp & Telegram Bots...`);
     };
 
-    // NEW: Delete actions
     const deleteNewsStory = (id: string) => {
         setNews(prev => prev.filter(n => n.id !== id));
     };
@@ -391,73 +450,14 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setAlerts(prev => prev.filter(a => a.id !== id));
     };
 
-    // --- FLASH ALERTS ---
-    const triggerFlashAlert = (alert: FlashAlert) => {
-        setFlashAlert(alert);
-        setTimeout(() => setFlashAlert(null), 5000);
-    };
-
-    // --- COMMUNITY ---
-    const addComment = (matchId: string, text: string, teamSupport?: 'HOME' | 'AWAY') => {
-        if (!user) return;
-        const newComment: Comment = {
-            id: `c_${Date.now()}`,
-            userId: user.id,
-            userName: user.name,
-            userAvatar: user.avatar,
-            isPro: user.isPro,
-            text,
-            timestamp: Date.now(),
-            likes: 0,
-            teamSupport
-        };
-        setMatches(prev => prev.map(m => {
-            if (m.id === matchId) {
-                return { ...m, comments: [newComment, ...(m.comments || [])] };
-            }
-            return m;
-        }));
-    };
-
-    // --- PWEZA MANAGEMENT ---
-    const handleSetIsPwezaOpen = (open: boolean, prompt?: string) => {
-        setIsPwezaOpen(open);
-        if (open && prompt) {
-            setPwezaPrompt(prompt);
-        } else if (!open) {
-            setPwezaPrompt(null);
-        }
-    };
-
     return (
         <SportsContext.Provider value={{
-            user,
-            authState,
-            login,
-            logout,
-            completeOnboarding,
-            updatePreferences,
-            matches,
-            news,
-            alerts,
-            feedItems,
-            betSlip,
-            flashAlert,
-            leaderboard,
-            addToSlip,
-            removeFromSlip,
-            clearSlip,
-            addRandomPick,
-            generateMkeka, 
-            addComment,
-            triggerFlashAlert,
-            addNewsStory,
-            addSystemAlert,
-            deleteNewsStory,
-            deleteSystemAlert,
-            isPwezaOpen,
-            pwezaPrompt,
-            setIsPwezaOpen: handleSetIsPwezaOpen
+            user, authState, matches, news, feedItems, betSlip, isPwezaOpen, pwezaPrompt, flashAlert, alerts, leaderboard,
+            login, loginAsGuest, logout, completeOnboarding, updatePreferences,
+            addToSlip, removeFromSlip, clearSlip, addRandomPick, generateMkeka,
+            setIsPwezaOpen: (open, prompt) => { setIsPwezaOpen(open); if(prompt) setPwezaPrompt(prompt); else setPwezaPrompt(null); },
+            addComment, triggerFlashAlert,
+            addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert
         }}>
             {children}
         </SportsContext.Provider>
@@ -466,8 +466,8 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
 export const useSports = () => {
     const context = useContext(SportsContext);
-    if (!context) {
-        throw new Error("useSports must be used within a SportsProvider");
+    if (context === undefined) {
+        throw new Error('useSports must be used within a SportsProvider');
     }
     return context;
 };

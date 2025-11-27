@@ -1,20 +1,32 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
-import { ArrowLeft, Bell, Globe, Shield, Moon, Monitor } from 'lucide-react';
+import { ArrowLeft, Bell, Globe, Shield, Moon, Monitor, MessageCircle, Mail, WifiOff, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const SettingsPage: React.FC = () => {
   const { user, updatePreferences } = useSports();
   const navigate = useNavigate();
+  const [waNumber, setWaNumber] = useState(user?.preferences.whatsappNumber || '');
 
   if (!user) return null;
+
+  const saveWaNumber = () => {
+      updatePreferences({ whatsappNumber: waNumber });
+      alert("WhatsApp Number Saved!");
+  }
+
+  const toggleTheme = () => {
+      const newTheme = user.preferences.theme === 'DARK' ? 'LIGHT' : 'DARK';
+      updatePreferences({ theme: newTheme });
+  }
 
   return (
     <div className="min-h-screen bg-black text-white pb-24 font-sans">
         
         {/* HEADER */}
         <div className="sticky top-0 z-40 bg-[#121212] border-b border-[#2C2C2C] px-4 h-[60px] flex items-center gap-4">
-             <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-[#1E1E1E] rounded-full transition-colors">
+             <button onClick={() => navigate('/profile')} className="p-2 -ml-2 hover:bg-[#1E1E1E] rounded-full transition-colors">
                  <ArrowLeft size={24} className="text-gray-400" />
              </button>
              <span className="font-condensed font-black text-xl uppercase italic tracking-tighter">Settings</span>
@@ -22,7 +34,68 @@ export const SettingsPage: React.FC = () => {
 
         <div className="max-w-[600px] mx-auto p-4 space-y-6">
              
-             {/* SECTION: PREFERENCES */}
+             {/* SECTION: COMMUNICATION */}
+             <section>
+                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 ml-2">Communication Preferences</h3>
+                 <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden p-4 space-y-4">
+                     
+                     {/* Channel Selector */}
+                     <div>
+                         <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Preferred Channel</label>
+                         <div className="grid grid-cols-3 gap-2">
+                             {['EMAIL', 'WHATSAPP', 'BOTH'].map((channel) => (
+                                 <button
+                                    key={channel}
+                                    onClick={() => updatePreferences({ communicationChannel: channel as any })}
+                                    className={`py-2 rounded font-bold text-xs uppercase border transition-all ${user.preferences.communicationChannel === channel ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-black text-gray-500 border-[#333]'}`}
+                                 >
+                                     {channel}
+                                 </button>
+                             ))}
+                         </div>
+                     </div>
+
+                     {/* WhatsApp Number Input */}
+                     {(user.preferences.communicationChannel === 'WHATSAPP' || user.preferences.communicationChannel === 'BOTH') && (
+                         <div className="animate-in fade-in">
+                             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">WhatsApp Number</label>
+                             <div className="flex gap-2">
+                                 <div className="relative flex-1">
+                                     <MessageCircle size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500" />
+                                     <input 
+                                         type="tel"
+                                         value={waNumber}
+                                         onChange={(e) => setWaNumber(e.target.value)}
+                                         placeholder="+1 234 567 890"
+                                         className="w-full bg-black border border-[#333] rounded py-2 pl-9 pr-4 text-sm text-white focus:border-green-500 outline-none"
+                                     />
+                                 </div>
+                                 <button onClick={saveWaNumber} className="bg-white text-black text-xs font-black uppercase px-4 rounded hover:bg-gray-200">Save</button>
+                             </div>
+                             <p className="text-[10px] text-gray-500 mt-2">
+                                 We will send "Sheena's Daily Locks" and "Live Momentum" alerts to this number.
+                             </p>
+                         </div>
+                     )}
+
+                 </div>
+             </section>
+
+             {/* SECTION: PERFORMANCE & DATA */}
+             <section>
+                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 ml-2">Data & Storage</h3>
+                 <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
+                     <ToggleRow 
+                        label="Data Saver Mode" 
+                        description="Hide images & heavy graphics (Save MBs)"
+                        icon={<WifiOff size={18} />}
+                        active={user.preferences.dataSaver}
+                        onToggle={() => updatePreferences({ dataSaver: !user.preferences.dataSaver })}
+                     />
+                 </div>
+             </section>
+
+             {/* SECTION: LOCALIZATION */}
              <section>
                  <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 ml-2">Localization</h3>
                  <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
@@ -54,43 +127,24 @@ export const SettingsPage: React.FC = () => {
                  </div>
              </section>
 
-             {/* SECTION: NOTIFICATIONS */}
-             <section>
-                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 ml-2">Notifications</h3>
-                 <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
-                     
-                     <ToggleRow 
-                        label="Game Start Alerts" 
-                        description="Get notified when your teams kick off"
-                        active={user.preferences.notifications.gameStart}
-                        onToggle={() => updatePreferences({ notifications: { ...user.preferences.notifications, gameStart: !user.preferences.notifications.gameStart } })}
-                     />
-                     <ToggleRow 
-                        label="Score Updates" 
-                        description="Live score notifications"
-                        active={user.preferences.notifications.scoreUpdates}
-                        onToggle={() => updatePreferences({ notifications: { ...user.preferences.notifications, scoreUpdates: !user.preferences.notifications.scoreUpdates } })}
-                     />
-                     <ToggleRow 
-                        label="Sharp Money Alerts" 
-                        description="War Room intel and line moves"
-                        active={user.preferences.notifications.lineMoves}
-                        onToggle={() => updatePreferences({ notifications: { ...user.preferences.notifications, lineMoves: !user.preferences.notifications.lineMoves } })}
-                     />
-
-                 </div>
-             </section>
-
              {/* SECTION: APPEARANCE */}
              <section>
                  <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 ml-2">Appearance</h3>
                  <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
                      <div className="p-4 flex items-center justify-between">
                          <div className="flex items-center gap-3">
-                             <Moon size={18} className="text-gray-400" />
-                             <span className="font-bold text-sm text-white">Theme</span>
+                             {user.preferences.theme === 'DARK' ? <Moon size={18} className="text-gray-400" /> : <Sun size={18} className="text-yellow-500" />}
+                             <div>
+                                 <span className="block font-bold text-sm text-white">App Theme</span>
+                                 <span className="text-xs text-gray-500">{user.preferences.theme === 'DARK' ? 'Dark Mode' : 'Light Mode'}</span>
+                             </div>
                          </div>
-                         <span className="text-xs font-bold text-gray-500 uppercase">Dark Mode (Default)</span>
+                         <button 
+                            onClick={toggleTheme}
+                            className={`w-12 h-6 rounded-full relative transition-colors ${user.preferences.theme === 'DARK' ? 'bg-indigo-600' : 'bg-gray-500'}`}
+                         >
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${user.preferences.theme === 'DARK' ? 'left-7' : 'left-1'}`}></div>
+                         </button>
                      </div>
                  </div>
              </section>
@@ -101,10 +155,10 @@ export const SettingsPage: React.FC = () => {
   );
 };
 
-const ToggleRow = ({ label, description, active, onToggle }: any) => (
+const ToggleRow = ({ label, description, icon, active, onToggle }: any) => (
     <div className="p-4 border-b border-[#2C2C2C] last:border-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
-            <Bell size={18} className="text-gray-400" />
+            {icon ? React.cloneElement(icon, { className: "text-gray-400" }) : <Bell size={18} className="text-gray-400" />}
             <div>
                 <span className="block font-bold text-sm text-white">{label}</span>
                 <span className="text-xs text-gray-500">{description}</span>

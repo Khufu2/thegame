@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera, Send, Crown, ThumbsUp } from 'lucide-react';
-import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore, Comment } from '../types';
+import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera, Send, Crown, ThumbsUp, Lock, WifiOff, ArrowRight, PlayCircle } from 'lucide-react';
+import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore, Comment, MatchStats } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { ScoreShotModal } from './ScoreShotModal';
@@ -13,7 +14,7 @@ interface MatchDetailPageProps {
 
 export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenPweza, onAddToSlip }) => {
   const navigate = useNavigate();
-  const { betSlip, addComment, user } = useSports();
+  const { betSlip, addComment, user, logout } = useSports();
   const [activeTab, setActiveTab] = useState('STREAM');
   const [betSlipStatus, setBetSlipStatus] = useState<'IDLE' | 'CONFIRM' | 'ADDED'>('IDLE');
   const [isShared, setIsShared] = useState(false);
@@ -21,6 +22,8 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
   const [pitchSide, setPitchSide] = useState<'HOME' | 'AWAY'>('HOME');
   const [showScoreShot, setShowScoreShot] = useState(false);
   const [commentInput, setCommentInput] = useState('');
+  
+  const dataSaver = user?.preferences.dataSaver || false;
 
   // Check if match is already in slip
   const existingBet = betSlip.find(b => b.matchId === match.id);
@@ -32,6 +35,13 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
   const handleAddToSlip = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!user) {
+        if(confirm("Create an account to build your slip!")) {
+            logout();
+        }
+        return;
+    }
+
     if (isInSlip) {
         navigate('/slip'); // Go to slip if already added
         return;
@@ -58,6 +68,10 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
   };
 
   const handlePostComment = () => {
+      if (!user) {
+          if(confirm("Sign in to join the conversation.")) logout();
+          return;
+      }
       if (!commentInput.trim()) return;
       addComment(match.id, commentInput, userVote || undefined);
       setCommentInput('');
@@ -73,7 +87,10 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
              <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 text-gray-400 hover:text-white transition-colors">
                 <ArrowLeft size={24} />
              </button>
-             <span className="font-condensed font-bold text-sm tracking-widest uppercase text-gray-500">{match.league}</span>
+             <div className="flex items-center gap-2">
+                 <span className="font-condensed font-bold text-sm tracking-widest uppercase text-gray-500">{match.league}</span>
+                 {dataSaver && <WifiOff size={12} className="text-yellow-500" title="Data Saver Mode On" />}
+             </div>
              <button onClick={handleShare} className="w-10 h-10 flex items-center justify-center -mr-2 text-gray-400 hover:text-white transition-colors">
                 <Share2 size={24} />
              </button>
@@ -98,9 +115,11 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
               <div className="flex items-center justify-between">
                   {/* Home */}
                   <div className="flex flex-col items-center w-1/3">
-                      <div className="w-16 h-16 bg-white/5 rounded-full p-3 mb-3 border border-white/10 shadow-lg">
-                          <img src={match.homeTeam.logo} className="w-full h-full object-contain" />
-                      </div>
+                      {!dataSaver && (
+                          <div className="w-16 h-16 bg-white/5 rounded-full p-3 mb-3 border border-white/10 shadow-lg">
+                              <img src={match.homeTeam.logo} className="w-full h-full object-contain" />
+                          </div>
+                      )}
                       <h2 className="font-condensed font-black text-xl uppercase leading-none text-center mb-1">{match.homeTeam.name}</h2>
                       {match.homeTeam.form && (
                           <div className="flex gap-0.5">
@@ -123,9 +142,11 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
                   {/* Away */}
                   <div className="flex flex-col items-center w-1/3">
-                      <div className="w-16 h-16 bg-white/5 rounded-full p-3 mb-3 border border-white/10 shadow-lg">
-                          <img src={match.awayTeam.logo} className="w-full h-full object-contain" />
-                      </div>
+                      {!dataSaver && (
+                          <div className="w-16 h-16 bg-white/5 rounded-full p-3 mb-3 border border-white/10 shadow-lg">
+                              <img src={match.awayTeam.logo} className="w-full h-full object-contain" />
+                          </div>
+                      )}
                       <h2 className="font-condensed font-black text-xl uppercase leading-none text-center mb-1">{match.awayTeam.name}</h2>
                        {match.awayTeam.form && (
                           <div className="flex gap-0.5">
@@ -186,7 +207,20 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   {/* PREDICTION CARD (Editorial Style) */}
                   {match.prediction && (
-                      <div className="m-4 rounded-xl overflow-hidden border border-[#2C2C2C] bg-[#121212]">
+                      <div className="m-4 rounded-xl overflow-hidden border border-[#2C2C2C] bg-[#121212] relative">
+                          
+                          {/* GUEST LOCK OVERLAY */}
+                          {!user && (
+                              <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                                  <div className="w-12 h-12 bg-[#2C2C2C] rounded-full flex items-center justify-center mb-3">
+                                      <Lock size={24} className="text-white" />
+                                  </div>
+                                  <h3 className="font-condensed font-black text-xl uppercase text-white mb-1">Unlock Sheena's Edge</h3>
+                                  <p className="text-sm text-gray-400 mb-4">Sign up to see the AI analysis, value rating, and odds.</p>
+                                  <button onClick={logout} className="px-6 py-2 bg-indigo-600 text-white font-bold uppercase text-xs rounded-lg">Sign In / Join</button>
+                              </div>
+                          )}
+
                           <div className="bg-indigo-900/20 p-3 border-b border-indigo-500/20 flex justify-between items-center">
                               <div className="flex items-center gap-2">
                                   <Brain size={16} className="text-indigo-400" />
@@ -252,7 +286,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                       </div>
                   )}
 
-                  {/* VENUE INTEL */}
+                  {/* VENUE INTEL (Lite Mode Compatible) */}
                   {match.venueDetails && (
                       <div className="mx-4 mb-6">
                            <div className="flex items-center gap-2 mb-2 px-1">
@@ -260,14 +294,22 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                 <h3 className="font-condensed font-bold text-sm uppercase text-gray-400 tracking-wide">Venue Intel</h3>
                            </div>
                            <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden">
-                               <div className="h-32 w-full relative">
-                                   <img src={match.venueDetails.imageUrl} className="w-full h-full object-cover" />
-                                   <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-                                   <div className="absolute bottom-3 left-4">
+                               {!dataSaver && (
+                                   <div className="h-32 w-full relative">
+                                       <img src={match.venueDetails.imageUrl} className="w-full h-full object-cover" />
+                                       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                                       <div className="absolute bottom-3 left-4">
+                                           <span className="block font-black text-white text-lg leading-none">{match.venue}</span>
+                                           <span className="text-xs text-gray-300">{match.venueDetails.city}, {match.venueDetails.country}</span>
+                                       </div>
+                                   </div>
+                               )}
+                               {dataSaver && (
+                                   <div className="p-4 bg-[#1a1a1a] border-b border-[#2C2C2C]">
                                        <span className="block font-black text-white text-lg leading-none">{match.venue}</span>
                                        <span className="text-xs text-gray-300">{match.venueDetails.city}, {match.venueDetails.country}</span>
                                    </div>
-                               </div>
+                               )}
                                <div className="p-4 grid grid-cols-2 gap-4 text-xs border-b border-[#2C2C2C]">
                                    <div>
                                        <span className="block text-gray-500 font-bold uppercase">Capacity</span>
@@ -290,7 +332,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                        <h3 className="font-condensed font-bold text-sm uppercase text-gray-400 tracking-wide mb-3 pl-1">Match Feed</h3>
                        <div className="space-y-6 border-l-2 border-[#2C2C2C] ml-3 pl-6 relative">
                            {match.timeline?.map((event) => (
-                               <StreamItem key={event.id} event={event} />
+                               <StreamItem key={event.id} event={event} dataSaver={dataSaver} />
                            ))}
                            <div className="absolute bottom-0 -left-[5px] w-2 h-2 rounded-full bg-[#2C2C2C]"></div>
                        </div>
@@ -308,6 +350,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                 key={event.id} 
                                 event={event} 
                                 isLast={index === (match.timeline?.length || 0) - 1} 
+                                dataSaver={dataSaver}
                              />
                           ))}
                       </div>
@@ -328,7 +371,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                            {/* HOME */}
                            <div className="mb-6">
                                <div className="flex items-center gap-2 mb-3 px-2">
-                                   <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" />
+                                   {!dataSaver && <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" />}
                                    <h3 className="font-condensed font-black text-lg uppercase">{match.homeTeam.name}</h3>
                                </div>
                                <BoxScoreTable players={match.boxScore.home} headers={match.boxScore.headers} />
@@ -337,7 +380,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                            {/* AWAY */}
                            <div>
                                <div className="flex items-center gap-2 mb-3 px-2">
-                                   <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" />
+                                   {!dataSaver && <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" />}
                                    <h3 className="font-condensed font-black text-lg uppercase">{match.awayTeam.name}</h3>
                                </div>
                                <BoxScoreTable players={match.boxScore.away} headers={match.boxScore.headers} />
@@ -359,522 +402,394 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                        <div className="space-y-6">
                            
                            {/* ACTUAL PLAY TIME (365Scores Style) */}
-                           <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-4">
-                               <div className="flex justify-between text-xs font-bold uppercase text-gray-400 mb-2">
-                                   <span>Actual Play Time</span>
-                                   <span>57:23</span>
+                           <div className="bg-[#121212] border border-[#2C2C2C] rounded-lg p-4">
+                               <div className="flex justify-between items-center mb-2">
+                                   <span className="text-[10px] font-bold text-gray-500 uppercase">Actual Play Time</span>
+                                   <span className="text-[10px] font-bold text-indigo-400 uppercase">57m 23s</span>
                                </div>
-                               <div className="h-2 w-full bg-[#2C2C2C] rounded-full overflow-hidden flex">
-                                   <div className="w-[58%] bg-indigo-500"></div>
+                               <div className="h-2 w-full bg-gray-800 rounded-full flex overflow-hidden">
+                                   <div className="w-[60%] bg-indigo-600"></div>
+                                   <div className="w-[40%] bg-gray-700"></div>
+                               </div>
+                               <div className="flex justify-between mt-1 text-[9px] text-gray-500">
+                                   <span>In Play</span>
+                                   <span>Out of Play</span>
                                </div>
                            </div>
 
-                           <StatGroup title="General" stats={[
-                               { label: 'Possession', home: match.stats.possession?.home, away: match.stats.possession?.away, unit: '%' },
-                               { label: 'Expected Goals (xG)', home: match.stats.expectedGoals?.home, away: match.stats.expectedGoals?.away },
-                           ]} />
-
                            <StatGroup title="Attack" stats={[
-                               { label: 'Total Shots', home: match.stats.shots?.home, away: match.stats.shots?.away },
-                               { label: 'On Target', home: match.stats.shotsOnTarget?.home, away: match.stats.shotsOnTarget?.away },
-                               { label: 'Big Chances', home: match.stats.bigChances?.home, away: match.stats.bigChances?.away },
-                               { label: 'Hit Woodwork', home: match.stats.hitWoodwork?.home, away: match.stats.hitWoodwork?.away },
+                               { label: 'Shots', home: match.stats.shots?.home || 0, away: match.stats.shots?.away || 0 },
+                               { label: 'On Target', home: match.stats.shotsOnTarget?.home || 0, away: match.stats.shotsOnTarget?.away || 0 },
+                               { label: 'Big Chances', home: match.stats.bigChances?.home || 0, away: match.stats.bigChances?.away || 0 },
+                               { label: 'Inside Box', home: match.stats.shotsInsideBox?.home || 0, away: match.stats.shotsInsideBox?.away || 0 },
                            ]} />
 
-                            <StatGroup title="Distribution" stats={[
-                               { label: 'Passes', home: match.stats.passes?.home, away: match.stats.passes?.away },
-                               { label: 'Accuracy', home: match.stats.passAccuracy?.home, away: match.stats.passAccuracy?.away, unit: '%' },
-                               { label: 'Long Balls', home: match.stats.longBalls?.home, away: match.stats.longBalls?.away },
+                           <StatGroup title="Possession & Passing" stats={[
+                               { label: 'Possession %', home: match.stats.possession?.home || 50, away: match.stats.possession?.away || 50, isPercent: true },
+                               { label: 'Passes', home: match.stats.passes?.home || 0, away: match.stats.passes?.away || 0 },
+                               { label: 'Accurate Passes', home: match.stats.passesCompleted?.home || 0, away: match.stats.passesCompleted?.away || 0 },
                            ]} />
 
-                            <StatGroup title="Defense" stats={[
-                               { label: 'Tackles', home: match.stats.tackles?.home, away: match.stats.tackles?.away },
-                               { label: 'Interceptions', home: match.stats.interceptions?.home, away: match.stats.interceptions?.away },
-                               { label: 'Clearances', home: match.stats.clearances?.home, away: match.stats.clearances?.away },
+                           <StatGroup title="Defense" stats={[
+                               { label: 'Tackles', home: match.stats.tackles?.home || 0, away: match.stats.tackles?.away || 0 },
+                               { label: 'Clearances', home: match.stats.clearances?.home || 0, away: match.stats.clearances?.away || 0 },
+                               { label: 'Saves', home: match.stats.saves?.home || 0, away: match.stats.saves?.away || 0 },
                            ]} />
 
                        </div>
                    ) : (
-                       <div className="py-20 text-center text-gray-500">Stats coming soon</div>
+                       <div className="py-20 text-center text-gray-500">
+                           <BarChart2 size={40} className="mx-auto mb-3 opacity-20" />
+                           <p className="font-condensed font-bold uppercase">Stats Unavailable</p>
+                       </div>
                    )}
                </div>
           )}
 
-          {/* TAB: LINEUPS (Pitch View) */}
+          {/* TAB: LINEUPS (Pitch View or Lite List) */}
           {activeTab === 'LINEUPS' && (
               <div className="p-4 animate-in fade-in">
                   {match.lineups ? (
-                      <div>
-                          <div className="flex justify-center mb-6">
-                              <div className="bg-[#121212] p-1 rounded-full border border-[#2C2C2C] flex">
-                                  <button onClick={() => setPitchSide('HOME')} className={`px-6 py-2 rounded-full text-xs font-black uppercase transition-colors ${pitchSide === 'HOME' ? 'bg-indigo-600 text-white' : 'text-gray-500'}`}>
-                                      {match.homeTeam.name}
-                                  </button>
-                                  <button onClick={() => setPitchSide('AWAY')} className={`px-6 py-2 rounded-full text-xs font-black uppercase transition-colors ${pitchSide === 'AWAY' ? 'bg-indigo-600 text-white' : 'text-gray-500'}`}>
-                                      {match.awayTeam.name}
-                                  </button>
-                              </div>
+                      <>
+                          <div className="flex justify-center mb-4 bg-[#121212] rounded-full p-1 border border-[#2C2C2C] inline-flex mx-auto w-full">
+                              <button onClick={() => setPitchSide('HOME')} className={`flex-1 py-2 rounded-full text-xs font-bold uppercase transition-colors ${pitchSide === 'HOME' ? 'bg-white text-black' : 'text-gray-500'}`}>{match.homeTeam.name}</button>
+                              <button onClick={() => setPitchSide('AWAY')} className={`flex-1 py-2 rounded-full text-xs font-bold uppercase transition-colors ${pitchSide === 'AWAY' ? 'bg-white text-black' : 'text-gray-500'}`}>{match.awayTeam.name}</button>
                           </div>
                           
-                          <SoccerPitch 
-                             lineup={pitchSide === 'HOME' ? match.lineups.home : match.lineups.away} 
-                             teamName={pitchSide === 'HOME' ? match.homeTeam.name : match.awayTeam.name}
-                          />
-
-                          <div className="mt-6">
-                              <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 mb-3 pl-2">Bench</h3>
-                              <div className="grid grid-cols-1 gap-2">
-                                  {(pitchSide === 'HOME' ? match.lineups.home.subs : match.lineups.away.subs).map(player => (
-                                      <div key={player.id} className="flex items-center justify-between bg-[#121212] p-3 rounded-lg border border-[#2C2C2C]">
+                          {/* LITE MODE CHECK */}
+                          {dataSaver ? (
+                              <div className="space-y-2">
+                                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Starting XI</h4>
+                                  {match.lineups[pitchSide === 'HOME' ? 'home' : 'away'].starting.map(player => (
+                                      <div key={player.id} className="flex items-center justify-between p-3 bg-[#1E1E1E] rounded border border-[#333]">
                                           <div className="flex items-center gap-3">
-                                              <span className="font-mono text-gray-500 w-6">{player.number}</span>
-                                              <span className="font-bold text-sm">{player.name}</span>
+                                              <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center text-[10px] font-bold text-gray-400 border border-[#333]">
+                                                  {player.number}
+                                              </div>
+                                              <span className="font-bold text-sm text-white">{player.name}</span>
                                           </div>
-                                          <span className="text-[10px] font-bold text-gray-600 uppercase">{player.position}</span>
+                                          <span className="text-xs text-gray-500 font-bold">{player.position}</span>
                                       </div>
                                   ))}
                               </div>
+                          ) : (
+                              <SoccerPitch 
+                                lineup={match.lineups[pitchSide === 'HOME' ? 'home' : 'away']} 
+                                teamName={pitchSide === 'HOME' ? match.homeTeam.name : match.awayTeam.name} 
+                              />
+                          )}
+                      </>
+                  ) : (
+                      <div className="py-20 text-center text-gray-500">
+                          <Shirt size={40} className="mx-auto mb-3 opacity-20" />
+                          <p className="font-condensed font-bold uppercase">Lineups Unavailable</p>
+                      </div>
+                  )}
+              </div>
+          )}
+
+          {/* TAB: ODDS */}
+          {activeTab === 'ODDS' && (
+              <div className="p-4 animate-in fade-in">
+                  <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-condensed font-bold uppercase text-white">Market Pulse</h3>
+                          <span className="text-[10px] font-bold bg-green-900/20 text-green-500 px-2 py-0.5 rounded">Live Updates</span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                          {/* Home */}
+                          <div className="flex justify-between items-center p-3 bg-black rounded border border-[#333]">
+                              <span className="font-bold text-sm">{match.homeTeam.name}</span>
+                              <div className="flex gap-2">
+                                  <div className="px-3 py-1 bg-[#2C2C2C] rounded text-xs font-mono text-gray-400 line-through">2.05</div>
+                                  <div className="px-3 py-1 bg-[#00FFB2] text-black rounded text-xs font-mono font-bold flex items-center gap-1">
+                                      {match.prediction?.odds?.home || 2.10} <ArrowRightLeft size={10}/>
+                                  </div>
+                              </div>
+                          </div>
+                          {/* Draw */}
+                          <div className="flex justify-between items-center p-3 bg-black rounded border border-[#333]">
+                              <span className="font-bold text-sm">Draw</span>
+                              <div className="px-3 py-1 bg-[#2C2C2C] text-white rounded text-xs font-mono font-bold">
+                                  {match.prediction?.odds?.draw || 3.20}
+                              </div>
+                          </div>
+                          {/* Away */}
+                          <div className="flex justify-between items-center p-3 bg-black rounded border border-[#333]">
+                              <span className="font-bold text-sm">{match.awayTeam.name}</span>
+                              <div className="px-3 py-1 bg-[#2C2C2C] text-white rounded text-xs font-mono font-bold">
+                                  {match.prediction?.odds?.away || 3.50}
+                              </div>
                           </div>
                       </div>
-                  ) : (
-                       <div className="py-20 text-center text-gray-500">Lineups not available</div>
-                  )}
-              </div>
-          )}
-
-          {/* TAB: ODDS & MARKET */}
-          {activeTab === 'ODDS' && (
-               <div className="p-4 animate-in fade-in">
-                   <MarketPulse trend={match.bettingTrends} />
-               </div>
-          )}
-          
-          {/* TAB: TABLE (Standings) */}
-          {activeTab === 'TABLE' && (
-              <div className="p-4 animate-in fade-in">
-                  {match.standings ? (
-                      <StandingsWidget standings={match.standings} homeId={match.homeTeam.id} awayId={match.awayTeam.id} />
-                  ) : (
-                      <div className="py-20 text-center text-gray-500">Standings not available</div>
-                  )}
-              </div>
-          )}
-
-          {/* TAB: COMMUNITY (Banter) */}
-          {activeTab === 'COMMUNITY' && (
-              <div className="animate-in fade-in flex flex-col h-[600px] relative">
-                  
-                  {/* COMMENTS LIST */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
-                      {(match.comments && match.comments.length > 0) ? (
-                          match.comments.map(comment => (
-                              <div key={comment.id} className="flex gap-3">
-                                   <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden shrink-0 border border-[#333]">
-                                       <img src={comment.userAvatar} className="w-full h-full object-cover" />
-                                   </div>
-                                   <div className="flex-1">
-                                       <div className="flex items-center gap-2 mb-1">
-                                           <span className="text-sm font-bold text-white">{comment.userName}</span>
-                                           {comment.isPro && <Crown size={12} className="text-yellow-400 fill-yellow-400" />}
-                                           <span className="text-[10px] text-gray-500">{new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                           {comment.teamSupport && (
-                                               <span className={`text-[9px] px-1.5 rounded uppercase font-black ${comment.teamSupport === 'HOME' ? 'bg-indigo-600/20 text-indigo-400' : 'bg-red-600/20 text-red-400'}`}>
-                                                   {comment.teamSupport === 'HOME' ? 'Home' : 'Away'} Fan
-                                               </span>
-                                           )}
-                                       </div>
-                                       <p className="text-sm text-gray-300 leading-relaxed mb-1">{comment.text}</p>
-                                       <button className="flex items-center gap-1 text-[10px] text-gray-500 font-bold hover:text-white transition-colors">
-                                           <ThumbsUp size={10} /> {comment.likes}
-                                       </button>
-                                   </div>
-                              </div>
-                          ))
-                      ) : (
-                          <div className="py-20 text-center text-gray-500">
-                              <MessageCircle size={40} className="mx-auto mb-3 opacity-20" />
-                              <p className="font-condensed font-bold uppercase">Start the conversation</p>
-                          </div>
-                      )}
                   </div>
+              </div>
+          )}
 
-                  {/* INPUT */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-[#121212] border-t border-[#2C2C2C]">
-                      <div className="flex items-center gap-2">
+          {/* TAB: COMMUNITY */}
+          {activeTab === 'COMMUNITY' && (
+              <div className="p-4 animate-in fade-in">
+                  <div className="mb-6">
+                      <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4">Banther Board</h3>
+                      
+                      {/* Comment Input */}
+                      <div className="flex gap-2 mb-6">
                           <input 
-                              type="text" 
+                              className="flex-1 bg-[#1E1E1E] border border-[#333] rounded-lg px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none"
+                              placeholder="Trash talk or insight..."
                               value={commentInput}
                               onChange={(e) => setCommentInput(e.target.value)}
-                              placeholder="Add a comment..." 
-                              className="flex-1 bg-black border border-[#333] rounded-lg px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none"
                               onKeyDown={(e) => e.key === 'Enter' && handlePostComment()}
                           />
-                          <button 
-                              onClick={handlePostComment}
-                              className="p-3 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500 transition-colors"
-                          >
+                          <button onClick={handlePostComment} className="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-500 transition-colors">
                               <Send size={18} />
                           </button>
                       </div>
+
+                      {/* Comments Feed */}
+                      <div className="space-y-4">
+                          {match.comments?.map(comment => (
+                              <div key={comment.id} className="flex gap-3 animate-in slide-in-from-bottom-2">
+                                  <div className="relative">
+                                      <img src={comment.userAvatar} className="w-8 h-8 rounded-full bg-gray-700" />
+                                      {comment.teamSupport && (
+                                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border border-black flex items-center justify-center text-[8px] font-black text-white ${comment.teamSupport === 'HOME' ? 'bg-blue-600' : 'bg-red-600'}`}>
+                                              {comment.teamSupport === 'HOME' ? 'H' : 'A'}
+                                          </div>
+                                      )}
+                                  </div>
+                                  <div className="flex-1 bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C]">
+                                      <div className="flex justify-between items-center mb-1">
+                                          <div className="flex items-center gap-1.5">
+                                              <span className="font-bold text-xs text-white">{comment.userName}</span>
+                                              {comment.isPro && <Crown size={10} className="text-yellow-400 fill-yellow-400" />}
+                                          </div>
+                                          <span className="text-[10px] text-gray-500">Just now</span>
+                                      </div>
+                                      <p className="text-sm text-gray-300 leading-normal">{comment.text}</p>
+                                  </div>
+                              </div>
+                          ))}
+                          {(!match.comments || match.comments.length === 0) && (
+                              <div className="text-center text-gray-600 text-xs py-4">Be the first to comment!</div>
+                          )}
+                      </div>
                   </div>
               </div>
           )}
 
       </div>
 
-      {/* 3. STICKY FOOTER ACTION */}
-      <div className="fixed bottom-[60px] md:bottom-0 left-0 right-0 md:ml-[280px] bg-[#121212] border-t border-[#2C2C2C] p-4 flex items-center gap-3 z-30">
-           <button 
-             onClick={() => handleOpenPwezaContext()}
-             className="w-12 h-12 rounded-xl bg-[#1E1E1E] flex items-center justify-center border border-[#333] text-2xl"
-           >
-               🐙
-           </button>
-           <button 
-             onClick={handleAddToSlip}
-             className={`
-                flex-1 h-12 rounded-xl flex items-center justify-center gap-2 font-condensed font-black text-xl uppercase transition-all
-                ${isInSlip 
-                    ? 'bg-green-900/30 text-green-500 border border-green-500/50'
-                    : betSlipStatus === 'CONFIRM' 
-                        ? 'bg-yellow-500 text-black' 
-                        : betSlipStatus === 'ADDED'
-                            ? 'bg-green-500 text-black'
-                            : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/40'
-                }
-             `}
-           >
-               {isInSlip ? (
-                   <>In Slip <Ticket size={20} /></>
-               ) : betSlipStatus === 'CONFIRM' ? (
-                   'Confirm Add?'
-               ) : betSlipStatus === 'ADDED' ? (
-                   <>Added <Check size={20} /></>
-               ) : (
-                   <>Add to Slip <PlusCircle size={20} /></>
-               )}
-           </button>
+      {/* FIXED BOTTOM ACTION BAR */}
+      <div className="fixed bottom-[60px] md:bottom-0 left-0 right-0 md:ml-[260px] bg-[#121212]/95 backdrop-blur-xl border-t border-[#2C2C2C] p-4 z-30 flex items-center gap-4 safe-pb">
+          <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-gray-500 uppercase">Sheena's Pick</span>
+              <div className="flex items-center gap-2">
+                  <span className="font-condensed font-black text-lg uppercase text-white">
+                      {match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.prediction?.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
+                  </span>
+                  <span className="font-mono text-xs font-bold text-[#00FFB2]">{match.prediction?.potentialReturn || '+100'}</span>
+              </div>
+          </div>
+          
+          <div className="flex-1 flex gap-2 justify-end">
+              <button onClick={() => onOpenPweza()} className="w-12 h-12 bg-[#1E1E1E] hover:bg-[#2C2C2C] rounded-xl flex items-center justify-center border border-[#333] transition-colors">
+                  <span className="text-2xl">🐙</span>
+              </button>
+              
+              <button 
+                  onClick={handleAddToSlip}
+                  disabled={isInSlip || betSlipStatus === 'ADDED'}
+                  className={`
+                      flex-1 max-w-[200px] h-12 rounded-xl font-condensed font-black text-lg uppercase flex items-center justify-center gap-2 transition-all
+                      ${isInSlip || betSlipStatus === 'ADDED'
+                          ? 'bg-green-600 text-white cursor-default' 
+                          : betSlipStatus === 'CONFIRM' 
+                              ? 'bg-yellow-500 text-black animate-pulse' 
+                              : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'
+                      }
+                  `}
+              >
+                  {isInSlip || betSlipStatus === 'ADDED' ? (
+                      <>In Slip <Check size={20} /></>
+                  ) : betSlipStatus === 'CONFIRM' ? (
+                      <>Confirm?</>
+                  ) : (
+                      <>Add to Slip <PlusCircle size={20} /></>
+                  )}
+              </button>
+          </div>
       </div>
-      
+
+      {/* SCORESHOT MODAL */}
       {showScoreShot && <ScoreShotModal match={match} onClose={() => setShowScoreShot(false)} />}
 
     </div>
   );
 };
 
-// --- SUB-COMPONENTS ---
+// --- SUB COMPONENTS ---
 
-const StreamItem: React.FC<{ event: TimelineEvent }> = ({ event }) => {
-    const isGoal = event.type === 'GOAL';
-    const isSocial = event.type === 'SOCIAL';
+const StreamItem: React.FC<{ event: TimelineEvent, dataSaver?: boolean }> = ({ event, dataSaver }) => (
+    <div className="relative animate-in fade-in slide-in-from-bottom-2">
+        <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full border-2 border-[#121212] flex items-center justify-center bg-[#2C2C2C] z-10">
+            {event.type === 'GOAL' && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
+            {event.type === 'CARD' && <div className="w-2 h-2 bg-yellow-500 rounded-[1px]"></div>}
+            {event.type === 'SOCIAL' && <div className="w-2 h-2 bg-blue-500 rounded-full"></div>}
+        </div>
+        
+        <div className="mb-1 flex items-center gap-2">
+            <span className="text-[10px] font-black text-gray-500 uppercase">{event.minute}</span>
+            {event.source && <span className="text-[10px] font-bold text-blue-400 uppercase">@{event.source}</span>}
+        </div>
+        
+        {event.mediaUrl && !dataSaver && (
+            <div className="mb-2 rounded-lg overflow-hidden border border-[#333] max-w-[200px]">
+                <img src={event.mediaUrl} className="w-full h-full object-cover" />
+            </div>
+        )}
+        
+        <p className="text-sm text-gray-300 leading-relaxed font-medium">
+            {event.description}
+        </p>
+    </div>
+);
 
-    return (
-        <div className="relative mb-6 last:mb-0 group">
-            <div className={`absolute -left-[31px] w-4 h-4 rounded-full border-2 ${isGoal ? 'bg-[#00FFB2] border-[#00FFB2]' : isSocial ? 'bg-blue-500 border-blue-500' : 'bg-[#121212] border-[#444]'} z-10`}></div>
-            
+const TimelineItem: React.FC<{ event: TimelineEvent, isLast: boolean, dataSaver?: boolean }> = ({ event, isLast, dataSaver }) => (
+    <div className="flex gap-4 relative pb-6">
+        {!isLast && <div className="absolute left-[19px] top-8 bottom-0 w-[2px] bg-[#1E1E1E]"></div>}
+        
+        <div className="w-10 h-10 rounded-full bg-[#1E1E1E] border border-[#333] flex items-center justify-center shrink-0 z-10 font-bold text-xs text-white">
+            {event.minute}
+        </div>
+        
+        <div className="flex-1 pt-1">
             <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-mono font-bold text-gray-500">{event.minute}</span>
-                {isGoal && <span className="bg-[#00FFB2] text-black text-[9px] font-black px-1.5 rounded uppercase">Goal</span>}
-                {event.type === 'CARD' && <span className="bg-yellow-500 text-black text-[9px] font-black px-1.5 rounded uppercase">Card</span>}
+                {event.type === 'GOAL' && <Goal size={14} className="text-green-500" />}
+                {event.type === 'CARD' && <div className="w-3 h-4 bg-yellow-500 rounded-[1px]"></div>}
+                {event.type === 'SUB' && <Repeat size={14} className="text-blue-500" />}
+                <span className="font-bold text-sm uppercase text-white">{event.player}</span>
             </div>
-
-            <div className={`bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg p-3 ${isGoal ? 'border-l-4 border-l-[#00FFB2]' : ''}`}>
-                
-                {isSocial && event.avatar && (
-                    <div className="flex items-center gap-2 mb-2">
-                        <img src={event.avatar} className="w-6 h-6 rounded-full" />
-                        <span className="text-xs font-bold text-gray-300">{event.source}</span>
-                        <Twitter size={12} className="text-[#1DA1F2]" />
-                    </div>
-                )}
-
-                <h4 className="font-bold text-sm text-white mb-1">
-                    {event.player && <span className="text-gray-300 mr-1">{event.player}</span>}
-                    {event.description}
-                </h4>
-
-                {event.mediaUrl && (
-                    <div className="mt-3 rounded-lg overflow-hidden relative">
-                        <img src={event.mediaUrl} className="w-full object-cover" />
-                        {isGoal && (
-                             <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                 <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center">
-                                     <Play size={20} className="fill-white text-white ml-1" />
-                                 </div>
-                             </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
-    )
-}
-
-const TimelineItem: React.FC<{ event: TimelineEvent, isLast: boolean }> = ({ event, isLast }) => {
-    // Defines icon based on type
-    let Icon = Activity;
-    let colorClass = 'text-gray-400 bg-gray-800';
-    
-    if (event.type === 'GOAL') { Icon = Goal; colorClass = 'text-black bg-[#00FFB2]'; }
-    if (event.type === 'CARD') { Icon =  Ticket; colorClass = 'text-black bg-yellow-500'; } // Using Ticket as mock for Card
-    if (event.type === 'SUB') { Icon = ArrowRightLeft; colorClass = 'text-white bg-blue-600'; }
-    if (event.type === 'PERIOD') { Icon = Timer; colorClass = 'text-white bg-gray-600'; }
-
-    return (
-        <div className="flex gap-4 relative">
-             {/* Connector Line */}
-             {!isLast && <div className="absolute left-[19px] top-8 bottom-[-16px] w-[2px] bg-[#2C2C2C]"></div>}
-             
-             {/* Icon */}
-             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-4 border-black z-10 ${colorClass}`}>
-                 <Icon size={16} strokeWidth={3} />
-             </div>
-
-             {/* Content */}
-             <div className="pb-6 flex-1">
-                 <div className="flex items-center gap-3 mb-1">
-                     <span className="font-mono font-bold text-white text-sm">{event.minute}</span>
-                     {event.type === 'GOAL' && <span className="text-[#00FFB2] font-black text-xs uppercase">GOAL</span>}
-                 </div>
-                 
-                 <div className="bg-[#121212] p-3 rounded-lg border border-[#2C2C2C]">
-                     <p className="text-sm text-gray-200 font-medium">
-                         {event.player && <span className="font-bold text-white">{event.player} </span>}
-                         <span className="text-gray-400">{event.description.replace(event.player || '', '')}</span>
-                     </p>
-                     {event.subPlayer && (
-                         <div className="flex items-center gap-2 mt-2 text-xs text-green-400">
-                             <ArrowRightLeft size={12} /> <span>IN: {event.subPlayer}</span>
-                         </div>
-                     )}
-                     {event.mediaUrl && (
-                         <div className="mt-2 w-20 h-12 rounded overflow-hidden relative border border-[#333]">
-                             <img src={event.mediaUrl} className="w-full h-full object-cover" />
-                             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                 <Play size={12} className="fill-white text-white" />
-                             </div>
-                         </div>
-                     )}
-                 </div>
-             </div>
-        </div>
-    )
-}
-
-const StatGroup = ({ title, stats }: { title: string, stats: any[] }) => (
-    <div>
-        <h4 className="font-condensed font-bold text-sm text-gray-500 uppercase mb-3 pl-1">{title}</h4>
-        <div className="space-y-3">
-            {stats.map((stat, i) => (
-                <div key={i} className="flex items-center text-xs font-bold">
-                     <div className="w-8 text-right text-white">{stat.home ?? 0}{stat.unit}</div>
-                     <div className="flex-1 mx-3 flex gap-1 h-2 bg-[#2C2C2C] rounded-full overflow-hidden">
-                         <div className="bg-white h-full" style={{ width: `${(stat.home / ((stat.home + stat.away) || 1)) * 100}%` }}></div>
-                         <div className="bg-indigo-600 h-full" style={{ width: `${(stat.away / ((stat.home + stat.away) || 1)) * 100}%` }}></div>
-                     </div>
-                     <div className="w-8 text-left text-indigo-400">{stat.away ?? 0}{stat.unit}</div>
-                </div>
-            ))}
-        </div>
-        <div className="flex justify-between text-[10px] font-bold text-gray-600 uppercase mt-1 px-1">
-             <span>{stats[0]?.label}</span>
+            <p className="text-xs text-gray-500">{event.description}</p>
         </div>
     </div>
 );
 
-const MarketPulse = ({ trend }: { trend?: any }) => {
-    if (!trend) return <div className="text-center text-gray-500 py-10">Market data unavailable</div>;
+const BoxScoreTable: React.FC<{ players?: BoxScore['home'], headers: string[] }> = ({ players, headers }) => {
+    if (!players) return null;
     return (
+        <div className="overflow-x-auto rounded-lg border border-[#2C2C2C]">
+            <table className="w-full text-xs text-left">
+                <thead className="bg-[#1E1E1E] text-gray-400 uppercase font-bold">
+                    <tr>
+                        <th className="p-3">Player</th>
+                        {headers.map(h => <th key={h} className="p-3 text-center">{h}</th>)}
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2C2C2C]">
+                    {players.map(p => (
+                        <tr key={p.id} className="hover:bg-white/5">
+                            <td className="p-3 font-bold text-white">{p.name}</td>
+                            {headers.map(h => (
+                                <td key={h} className="p-3 text-center text-gray-300 font-mono">
+                                    {p.stats[h] || '-'}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+const StatGroup: React.FC<{ title: string, stats: { label: string, home: number, away: number, isPercent?: boolean }[] }> = ({ title, stats }) => (
+    <div>
+        <h4 className="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-wider border-b border-[#2C2C2C] pb-1">{title}</h4>
         <div className="space-y-4">
-            <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-4">
-                    <Zap size={18} className="text-yellow-400" />
-                    <h3 className="font-condensed font-black text-lg uppercase">Where is the money?</h3>
-                </div>
+            {stats.map((stat, i) => {
+                const total = stat.home + stat.away || 1;
+                const homePct = stat.isPercent ? stat.home : (stat.home / total) * 100;
+                const awayPct = stat.isPercent ? stat.away : (stat.away / total) * 100;
                 
-                <div className="space-y-6">
-                    <div>
-                        <div className="flex justify-between text-xs font-bold uppercase mb-2">
-                            <span className="text-green-400">Cash Volume (Sharp)</span>
-                            <span className="text-white">{trend.homeMoneyPercent}% Home</span>
+                return (
+                    <div key={i}>
+                        <div className="flex justify-between text-xs font-bold text-gray-300 mb-1.5">
+                            <span>{stat.home}{stat.isPercent && '%'}</span>
+                            <span className="uppercase text-[10px] text-gray-500">{stat.label}</span>
+                            <span>{stat.away}{stat.isPercent && '%'}</span>
                         </div>
-                        <div className="h-4 bg-[#2C2C2C] rounded-full overflow-hidden flex relative">
-                            <div className="h-full bg-green-500" style={{ width: `${trend.homeMoneyPercent}%` }}></div>
-                            <div className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-black mix-blend-screen">
-                                VS
-                            </div>
+                        <div className="flex h-1.5 bg-[#1E1E1E] rounded-full overflow-hidden gap-0.5">
+                            <div className="bg-indigo-500" style={{ width: `${homePct}%` }}></div>
+                            <div className="bg-gray-600" style={{ width: `${awayPct}%` }}></div>
                         </div>
                     </div>
+                );
+            })}
+        </div>
+    </div>
+);
 
-                    <div>
-                        <div className="flex justify-between text-xs font-bold uppercase mb-2">
-                            <span className="text-blue-400">Ticket Count (Public)</span>
-                            <span className="text-white">{trend.homeTicketPercent}% Home</span>
-                        </div>
-                         <div className="h-4 bg-[#2C2C2C] rounded-full overflow-hidden flex relative">
-                            <div className="h-full bg-blue-500" style={{ width: `${trend.homeTicketPercent}%` }}></div>
-                        </div>
-                    </div>
+const SoccerPitch: React.FC<{ lineup: TeamLineup, teamName: string }> = ({ lineup, teamName }) => {
+    return (
+        <div className="relative w-full aspect-[3/4] bg-[#1a3c28] rounded-xl border-4 border-[#2a5a3b] overflow-hidden shadow-inner">
+            {/* Pitch Markings */}
+            <div className="absolute inset-0 flex flex-col items-center justify-between pointer-events-none opacity-30">
+                <div className="w-32 h-16 border-2 border-white border-t-0 rounded-b-lg"></div>
+                <div className="w-full h-[1px] bg-white/50 relative flex items-center justify-center">
+                    <div className="w-24 h-24 border-2 border-white rounded-full"></div>
                 </div>
+                <div className="w-32 h-16 border-2 border-white border-b-0 rounded-t-lg"></div>
+            </div>
 
-                <div className="mt-4 p-3 bg-black/40 rounded border border-white/5 text-xs text-gray-300">
-                    <span className="font-bold text-white uppercase">Consensus:</span> {trend.publicConsensus}
+            {/* Formation Display */}
+            <div className="absolute top-4 left-4 bg-black/40 px-2 py-1 rounded text-[10px] font-black text-white uppercase">
+                {teamName} • {lineup.formation}
+            </div>
+
+            {/* Players Grid (Simplified positioning logic) */}
+            <div className="absolute inset-0 p-4 flex flex-col justify-around py-12">
+                {/* FW */}
+                <div className="flex justify-center gap-8">
+                    {lineup.starting.filter(p => p.position === 'FW').map(p => <PlayerPill key={p.id} player={p} />)}
+                </div>
+                {/* MF */}
+                <div className="flex justify-center gap-8">
+                    {lineup.starting.filter(p => p.position === 'MF').map(p => <PlayerPill key={p.id} player={p} />)}
+                </div>
+                {/* DF */}
+                <div className="flex justify-center gap-8">
+                    {lineup.starting.filter(p => p.position === 'DF').map(p => <PlayerPill key={p.id} player={p} />)}
+                </div>
+                {/* GK */}
+                <div className="flex justify-center">
+                    {lineup.starting.filter(p => p.position === 'GK').map(p => <PlayerPill key={p.id} player={p} />)}
                 </div>
             </div>
         </div>
-    )
-}
-
-const StandingsWidget = ({ standings = [], homeId, awayId }: { standings: Standing[], homeId: string, awayId: string }) => (
-    <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden">
-        <table className="w-full text-left text-xs">
-            <thead className="bg-[#1E1E1E] text-gray-400 font-condensed font-bold uppercase">
-                <tr>
-                    <th className="p-3 w-10 text-center">#</th>
-                    <th className="p-3">Team</th>
-                    <th className="p-3 w-10 text-center">PL</th>
-                    <th className="p-3 w-10 text-center">PTS</th>
-                    <th className="p-3 w-20 text-center">Form</th>
-                </tr>
-            </thead>
-            <tbody>
-                {standings?.map((team) => {
-                    const isFocus = team.teamId === homeId || team.teamId === awayId;
-                    return (
-                        <tr key={team.teamId} className={`border-b border-[#2C2C2C] ${isFocus ? 'bg-indigo-900/20' : ''}`}>
-                            <td className="p-3 text-center font-bold text-gray-500">{team.rank}</td>
-                            <td className="p-3 font-bold text-white flex items-center gap-2">
-                                <img src={team.logo} className="w-5 h-5 object-contain" />
-                                {team.teamName}
-                            </td>
-                            <td className="p-3 text-center text-gray-400">{team.played}</td>
-                            <td className="p-3 text-center text-white font-black">{team.points}</td>
-                            <td className="p-3 text-center">
-                                <div className="flex justify-center gap-0.5">
-                                    {team.form?.map((res, i) => (
-                                        <div key={i} className={`w-1.5 h-1.5 rounded-full ${res === 'W' ? 'bg-green-500' : res === 'L' ? 'bg-red-500' : 'bg-gray-500'}`} />
-                                    ))}
-                                </div>
-                            </td>
-                        </tr>
-                    )
-                })}
-            </tbody>
-        </table>
-    </div>
-)
-
-const SoccerPitch: React.FC<{ lineup: TeamLineup, teamName: string }> = ({ lineup, teamName }) => {
-    // Defensive coding: Ensure starting lineup array exists
-    const starting = lineup?.starting || [];
-
-    return (
-        <div className="w-full aspect-[3/4] bg-[#1a4a25] rounded-xl border-2 border-[#2a6636] relative overflow-hidden shadow-inner">
-             {/* Pitch Markings */}
-             <div className="absolute inset-0 flex flex-col justify-between">
-                 <div className="h-[10%] border-b border-white/20 mx-[20%] border-x"></div>
-                 <div className="h-[1px] bg-white/20 w-full relative flex justify-center items-center">
-                     <div className="w-20 h-20 rounded-full border border-white/20"></div>
-                 </div>
-                 <div className="h-[10%] border-t border-white/20 mx-[20%] border-x"></div>
-             </div>
-
-             {/* Formation Layout */}
-             <div className="absolute inset-0 p-4 flex flex-col justify-around py-8">
-                 {/* GK */}
-                 <div className="flex justify-center">
-                     {starting[0] && <PlayerPill player={starting[0]} />}
-                 </div>
-                 
-                 {/* DEF */}
-                 <div className="flex justify-around px-4">
-                     {starting.filter(p => p.position === 'DF').map(p => <PlayerPill key={p.id} player={p} />)}
-                 </div>
-
-                 {/* MF */}
-                 <div className="flex justify-around px-8">
-                      {starting.filter(p => p.position === 'MF').map(p => <PlayerPill key={p.id} player={p} />)}
-                 </div>
-
-                 {/* FW */}
-                 <div className="flex justify-around px-10">
-                      {starting.filter(p => p.position === 'FW').map(p => <PlayerPill key={p.id} player={p} />)}
-                 </div>
-             </div>
-             
-             <div className="absolute bottom-2 right-2 text-[10px] font-black uppercase text-white/50">
-                 {lineup?.formation || ''}
-             </div>
-        </div>
-    )
-}
+    );
+};
 
 const PlayerPill: React.FC<{ player: LineupPlayer }> = ({ player }) => (
-    <div className="flex flex-col items-center gap-1 relative group cursor-pointer z-20">
-        <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center relative shadow-lg transition-transform group-hover:scale-110">
-             <span className="font-bold text-xs text-black">{player.number}</span>
-             
-             {/* Rating Badge */}
-             {player.rating && (
-                 <div className={`absolute -top-1 -right-2 text-[8px] font-black px-1 rounded ${player.rating >= 7.5 ? 'bg-green-500 text-black' : 'bg-gray-700 text-white'}`}>
-                     {player.rating}
-                 </div>
-             )}
-             
-             {/* Captain Badge */}
-             {player.isCaptain && (
-                 <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center text-[7px] font-black text-black">C</div>
-             )}
-
-             {/* EVENT INDICATORS (Goals, Cards) */}
-             <div className="absolute -top-1 -left-2 flex flex-col gap-0.5">
-                 {/* Goals */}
-                 {player.events?.filter(e => e.type === 'GOAL')?.map((e, i) => (
-                    <div key={`g-${i}`} className="w-3 h-3 bg-white rounded-full flex items-center justify-center border border-gray-400 shadow-sm">
-                        <div className="w-1.5 h-1.5 bg-black rounded-full"></div>
-                    </div>
-                 ))}
-                 {/* Cards */}
-                 {player.events?.filter(e => e.type === 'CARD')?.map((e, i) => (
-                    <div key={`c-${i}`} className="w-2.5 h-3 bg-yellow-500 border border-white rounded-[1px] shadow-sm"></div>
-                 ))}
-                 {/* Sub Out */}
-                 {player.events?.filter(e => e.type === 'SUB_OUT')?.map((e, i) => (
-                    <div key={`s-${i}`} className="w-3 h-3 bg-red-500 rounded-full flex items-center justify-center text-[6px] text-white font-bold border border-white">
-                        ↓
-                    </div>
-                 ))}
-             </div>
+    <div className="flex flex-col items-center gap-1 relative group cursor-pointer">
+        <div className="w-8 h-8 rounded-full bg-white text-black font-black text-xs flex items-center justify-center shadow-lg border-2 border-black z-10 relative">
+            {player.number}
+            {/* Event Indicators */}
+            {player.events?.map((ev, i) => (
+                <div key={i} className={`absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center border border-white ${ev.type === 'GOAL' ? 'bg-green-500' : 'bg-yellow-500'}`}>
+                    {ev.type === 'GOAL' && <Goal size={8} className="text-white" />}
+                </div>
+            ))}
         </div>
-        <span className="text-[9px] font-bold text-white bg-black/50 px-1.5 rounded backdrop-blur-sm truncate max-w-[60px]">
+        <span className="bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm whitespace-nowrap">
             {player.name}
         </span>
+        {/* Rating Badge */}
+        {player.rating && (
+            <div className="absolute -bottom-3 bg-green-600 text-white text-[8px] font-black px-1 rounded">
+                {player.rating}
+            </div>
+        )}
     </div>
-)
-
-const BoxScoreTable = ({ players = [], headers = [] }: { players: any[], headers: string[] }) => (
-    <div className="bg-[#121212] border border-[#2C2C2C] rounded-lg overflow-hidden">
-        <table className="w-full text-right text-xs">
-            <thead className="bg-[#1E1E1E] text-gray-500 font-condensed font-bold uppercase">
-                <tr>
-                    <th className="p-2 text-left w-[40%] text-white">Player</th>
-                    {headers?.map(h => <th key={h} className="p-2 w-[15%]">{h}</th>)}
-                </tr>
-            </thead>
-            <tbody>
-                {players?.map((p, i) => (
-                    <tr key={i} className="border-b border-[#2C2C2C] last:border-0 hover:bg-[#1A1A1A]">
-                        <td className="p-2 text-left font-bold text-white">
-                            {p.name}
-                        </td>
-                        {headers?.map(h => (
-                            <td key={h} className={`p-2 font-mono ${h === 'PTS' || h === 'G' ? 'text-white font-black' : 'text-gray-400'}`}>
-                                {p.stats[h] !== undefined ? p.stats[h] : (h === 'MIN' ? p.minutes : '-')}
-                            </td>
-                        ))}
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </div>
-)
+);
