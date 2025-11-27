@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Match, NewsStory, ArticleBlock } from "../types";
 
@@ -14,39 +15,19 @@ interface GeneratedArticle {
     title: string;
     summary: string;
     blocks: ArticleBlock[];
+    socialCaption?: string; // New field for Twitter/IG
 }
 
 // ---------------------------------------------------------------------------
 // 🚨 CRITICAL ADVICE: NEWS API INTEGRATION 🚨
 // ---------------------------------------------------------------------------
-// The AI Agent (Gemini) does NOT have real-time knowledge of events happening
-// right now (e.g., a goal scored 5 mins ago). It needs "Grounding".
-// 
-// To make this agent fully functional for live news, you MUST implement the
-// function below using a real search API.
-// 
-// Recommended APIs:
-// 1. Tavily AI (https://tavily.com) - Optimized for LLM RAG/Grounding.
-// 2. Google Custom Search JSON API.
-// ---------------------------------------------------------------------------
-
 const performGroundingSearch = async (query: string): Promise<string> => {
     console.log(`[News Agent] Simulating search for: ${query}`);
-    
-    // --- TODO: IMPLEMENT REAL SEARCH HERE ---
-    // Example Tavily Implementation:
-    // try {
-    //    const response = await fetch("https://api.tavily.com/search", {
-    //        method: "POST",
-    //        headers: { 'Content-Type': 'application/json' },
-    //        body: JSON.stringify({ query: query, api_key: "YOUR_TAVILY_KEY" })
-    //    });
-    //    const data = await response.json();
-    //    return data.results.map(r => r.content).join("\n");
-    // } catch (e) { return "Search failed"; }
-
-    // Current Mock Behavior:
-    return "Simulated Search Result: The match ended 2-1. Key goal by Striker A in the 88th minute. Controversy over a penalty decision. Fans are calling it the comeback of the season.";
+    // Simulate finding external content
+    if (query.includes('http')) {
+        return "Simulated Scraped Content: This is the content extracted from the provided URL. It talks about a major player transfer and highlights a video clip of a goal.";
+    }
+    return "Simulated Search Result: The match ended 2-1. Key goal by Striker A in the 88th minute.";
 }
 
 export const generateMatchNews = async (
@@ -55,63 +36,53 @@ export const generateMatchNews = async (
     tone: 'HYPE' | 'RECAP' | 'ANALYTICAL' | 'RUMOR',
     language: 'ENGLISH' | 'SWAHILI',
     persona: 'SHEENA' | 'ORACLE' | 'STREET' | 'JOURNALIST',
-    useGrounding: boolean = false
+    useGrounding: boolean = false,
+    externalLink?: string // New input for scraping
 ): Promise<GeneratedArticle | null> => {
     const client = getClient();
     if (!client) return null;
 
     let contextData = "";
-    if (match) {
+    if (externalLink) {
+        contextData = `SOURCE URL: ${externalLink} (Extract key info and rewrite)`;
+    } else if (match) {
         const boxScoreStr = match.boxScore ? JSON.stringify(match.boxScore) : "No box score available.";
         const scoreStr = match.score ? `${match.homeTeam.name} ${match.score.home} - ${match.score.away} ${match.awayTeam.name}` : "Match not started";
-        const statusStr = match.status;
-        contextData = `Match: ${match.homeTeam.name} vs ${match.awayTeam.name}\nLeague: ${match.league}\nScore/Status: ${scoreStr} (${statusStr})\nBox Score Data: ${boxScoreStr}`;
+        contextData = `Match: ${match.homeTeam.name} vs ${match.awayTeam.name}\nScore: ${scoreStr}\nBox Score: ${boxScoreStr}`;
     } else if (customTopic) {
-        contextData = `Custom Topic: ${customTopic}`;
+        contextData = `Topic: ${customTopic}`;
     }
 
     let groundingContext = "";
-    if (useGrounding) {
-        // Construct a query optimized for search engines
-        const query = match ? `${match.homeTeam.name} vs ${match.awayTeam.name} ${match.league} match report quotes stats today` : `${customTopic} sports news latest updates`;
+    if (useGrounding || externalLink) {
+        const query = externalLink || (match ? `${match.homeTeam.name} vs ${match.awayTeam.name} match report` : customTopic || "sports news");
         groundingContext = await performGroundingSearch(query);
     }
 
-    // Persona Logic
-    let personaInstruction = "";
-    switch (persona) {
-        case 'SHEENA':
-            personaInstruction = "You are Sheena, a sharp, data-driven, and professional sports journalist. Focus on stats, tactical shifts, and betting angles.";
-            break;
-        case 'ORACLE':
-            personaInstruction = "You are 'The Oracle'. You write in cryptic, ancient, wise metaphors. You speak of players as warriors and gladiators. Use historical references and destiny metaphors.";
-            break;
-        case 'STREET':
-            personaInstruction = "You are a hype-man. Use slang, high energy, exclamation marks, and focus on the excitement/drama. Great for social media. Use emojis.";
-            break;
-        case 'JOURNALIST':
-            personaInstruction = "Standard objective reporting style. Neutral, factual, and concise (Associated Press style).";
-            break;
-    }
-
     const prompt = `
-    ${personaInstruction}
+    You are ${persona}. ${persona === 'STREET' ? 'Use slang, emojis, high energy.' : 'Be professional but engaging.'}
 
-    Write a news article based on the following context:
+    TASK: Write a sports news article & a social media caption.
+    
+    CONTEXT:
     ${contextData}
 
-    GROUNDING CONTEXT (Real World Data - Use this for facts):
-    ${useGrounding ? groundingContext : "N/A - Use internal data only."}
+    GROUNDED FACTS:
+    ${groundingContext}
 
     TONE: ${tone}
-    LANGUAGE: ${language === 'SWAHILI' ? 'Swahili (Use engaging "Sheng" slang where appropriate for hype)' : 'English'}
+    LANGUAGE: ${language}
 
-    REQUIREMENTS:
-    1. Create a catchy Title appropriate for the persona.
-    2. Create a 1-sentence Summary.
-    3. Generate the article body as a list of "Blocks".
-    4. IF Box Score data is present, analyze the stats and mention top performers in the text.
-    5. Include a "TWEET" block at the end that is perfect for social media sharing (short, hashtags).
+    OUTPUT JSON FORMAT:
+    {
+      "title": "Catchy Headline",
+      "summary": "1 sentence hook",
+      "blocks": [ ... content blocks ... ],
+      "socialCaption": "Short, viral tweet with hashtags"
+    }
+    
+    IMPORTANT:
+    - If the input is a URL, assume it contains a video and include a VIDEO block in the article.
     `;
 
     try {
@@ -125,17 +96,20 @@ export const generateMatchNews = async (
                     properties: {
                         title: { type: Type.STRING },
                         summary: { type: Type.STRING },
+                        socialCaption: { type: Type.STRING },
                         blocks: {
                             type: Type.ARRAY,
                             items: {
                                 type: Type.OBJECT,
                                 properties: {
-                                    type: { type: Type.STRING, enum: ['TEXT', 'QUOTE', 'TWEET'] },
-                                    content: { type: Type.STRING, description: "For TEXT type" },
-                                    text: { type: Type.STRING, description: "For QUOTE or TWEET type" },
+                                    type: { type: Type.STRING, enum: ['TEXT', 'QUOTE', 'TWEET', 'VIDEO'] },
+                                    content: { type: Type.STRING },
+                                    text: { type: Type.STRING },
                                     author: { type: Type.STRING },
                                     handle: { type: Type.STRING },
-                                    role: { type: Type.STRING }
+                                    thumbnail: { type: Type.STRING },
+                                    url: { type: Type.STRING },
+                                    title: { type: Type.STRING }
                                 }
                             }
                         }
@@ -146,13 +120,22 @@ export const generateMatchNews = async (
 
         const json = JSON.parse(response.text || '{}');
         
+        // Post-process blocks to ensure valid structure
         const blocks: ArticleBlock[] = (json.blocks || []).map((b: any) => {
+            if (b.type === 'VIDEO') {
+                return {
+                    type: 'VIDEO',
+                    url: b.url || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Fallback
+                    thumbnail: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000',
+                    title: b.title || 'Watch Highlight'
+                };
+            }
             if (b.type === 'TWEET') {
                 return {
                     type: 'TWEET',
                     id: Date.now().toString(),
-                    author: persona === 'SHEENA' ? 'Sheena Sports' : (persona === 'ORACLE' ? 'The Oracle' : 'Sheena Hype'),
-                    handle: '@SheenaSports',
+                    author: 'Sheena Sports',
+                    handle: '@SheenaApp',
                     text: b.text,
                     avatar: 'https://ui-avatars.com/api/?name=Sheena&background=6366F1&color=fff'
                 };
@@ -161,17 +144,17 @@ export const generateMatchNews = async (
                 return {
                     type: 'QUOTE',
                     text: b.text,
-                    author: b.author || 'Key Player',
-                    role: b.role || 'Star'
+                    author: b.author || 'Source',
                 };
             }
-            return { type: 'TEXT', content: b.content || b.text };
+            return { type: 'TEXT', content: b.content || b.text || '' };
         });
 
         return {
             title: json.title,
             summary: json.summary,
-            blocks: blocks
+            blocks: blocks,
+            socialCaption: json.socialCaption
         };
 
     } catch (e) {

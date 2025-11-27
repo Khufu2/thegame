@@ -163,6 +163,7 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
             {slipItems.length > 0 && (
                 <div className="p-4 space-y-3 pb-40">
                     {slipItems.map((item) => (
+                        item && (
                         <div key={item.id} className="bg-[#1E1E1E] rounded-lg p-4 border border-[#2C2C2C] relative group">
                             <div className="flex justify-between items-start mb-2">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-black/30 px-1.5 py-0.5 rounded">Match Winner</span>
@@ -191,6 +192,7 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
                                 </div>
                             )}
                         </div>
+                        )
                     ))}
                     
                     {/* ADD MORE BUTTON */}

@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Home, Search, Zap, User, Ticket, Zap as ZapIcon, TrendingUp, Goal, Trophy } from 'lucide-react';
+import { Home, Search, Zap, User, Ticket, Zap as ZapIcon, TrendingUp, Goal, Trophy, Bell } from 'lucide-react';
 import { useSports } from '../context/SportsContext';
 
 interface LayoutProps {
@@ -51,6 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
           <SidebarLink icon={<Ticket size={20} />} label="My Slip" active={currentPage === 'slip'} onClick={() => onNavigate('slip')} />
           <SidebarLink icon={<Trophy size={20} />} label="Leaderboard" active={currentPage === 'leaderboard'} onClick={() => onNavigate('leaderboard')} />
           <SidebarLink icon={<User size={20} />} label="Profile" active={currentPage === 'profile'} onClick={() => onNavigate('profile')} />
+          <SidebarLink icon={<Bell size={20} />} label="Notifications" active={currentPage === 'notifications'} onClick={() => onNavigate('notifications')} />
           
           <div className="my-8 border-t border-white/10"></div>
           <div className="px-4 mb-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Following</div>
@@ -76,6 +78,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
                 <span className="font-condensed font-black text-xl tracking-tighter text-black uppercase italic leading-none pt-1">Sheena</span>
             </div>
             <div className="flex items-center gap-3">
+                <button onClick={() => onNavigate('notifications')} className="text-black/60 hover:text-black transition-colors">
+                    <Bell size={20} />
+                </button>
                 <button onClick={onOpenPweza} className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-transform">
                     <span className="text-lg">🐙</span>
                 </button>

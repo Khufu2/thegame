@@ -98,6 +98,8 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
     const shownMatchIds = new Set([featured?.id, ...top.map(m => m.id), ...value.map(m => m.id)]);
     
     const fItems = items.filter(item => {
+        if (!item) return false;
+        
         // League Filter
         let matchesLeague = false;
         
@@ -173,7 +175,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
             </div>
             <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 snap-x snap-mandatory">
                 {demoTickerMatches.map((match) => (
-                    <LivePulseCard key={match.id} match={match} onClick={() => handleMatchClick(match.id)} />
+                    match && <LivePulseCard key={match.id} match={match} onClick={() => handleMatchClick(match.id)} />
                 ))}
             </div>
           </section>
@@ -280,7 +282,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
             </div>
              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-4">
                 {topPicks.map(match => (
-                    <PremiumPredictionCard 
+                    match && <PremiumPredictionCard 
                         key={match.id} 
                         match={match} 
                         onClick={() => handleMatchClick(match.id)} 
@@ -318,7 +320,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
              */}
              <div className="grid grid-rows-4 grid-flow-col gap-2 px-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4 auto-cols-[240px]">
                  {valuePicks.map(match => (
-                     <div className="snap-start h-[60px]" key={match.id}>
+                     match && <div className="snap-start h-[60px]" key={match.id}>
                         <CompactPredictionCard 
                             match={match} 
                             onClick={() => handleMatchClick(match.id)} 
@@ -350,6 +352,8 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
              
              <div className="space-y-4">
                 {filteredStreamItems.map((item, index) => {
+                    if (!item) return null;
+
                     // RENDER: MATCH
                     if ('homeTeam' in item) {
                         return (

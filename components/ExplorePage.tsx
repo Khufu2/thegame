@@ -244,6 +244,7 @@ export const ExplorePage: React.FC = () => {
                         {/* Match List Selector */}
                         <div className="max-h-[250px] overflow-y-auto p-2 space-y-1 custom-scrollbar relative z-10 bg-black/20">
                             {sureBets.length > 0 ? sureBets.map(match => (
+                                match && (
                                 <div 
                                     key={match.id} 
                                     onClick={() => toggleAccaSelection(match.id)}
@@ -271,6 +272,7 @@ export const ExplorePage: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
+                                )
                             )) : (
                                 <div className="p-8 text-center text-gray-500 text-xs font-bold uppercase">
                                     No safe bets available today.
@@ -284,12 +286,14 @@ export const ExplorePage: React.FC = () => {
                                 {/* Selected Legs Pills */}
                                 <div className="flex flex-wrap gap-2 mb-4">
                                     {accaStats.legs.map(m => (
+                                        m && (
                                         <div key={m.id} className="flex items-center gap-1 bg-[#1E1E1E] border border-[#333] rounded px-2 py-1 shadow-sm">
                                             <span className="text-[10px] font-bold text-white uppercase">{m.homeTeam.name.substring(0,3)}/{m.awayTeam.name.substring(0,3)}</span>
                                             <button onClick={() => removeAccaLeg(m.id)} className="text-gray-500 hover:text-red-500">
                                                 <X size={12} />
                                             </button>
                                         </div>
+                                        )
                                     ))}
                                 </div>
 

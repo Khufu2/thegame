@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
-import { ArrowLeft, Bell, Globe, Shield, Moon, Monitor, MessageCircle, Mail, WifiOff, Sun } from 'lucide-react';
+import { ArrowLeft, Bell, Globe, Shield, Moon, Monitor, MessageCircle, Mail, WifiOff, Sun, HelpCircle, FileText, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const SettingsPage: React.FC = () => {
@@ -140,6 +140,37 @@ export const SettingsPage: React.FC = () => {
                  </div>
              </section>
 
+             {/* SECTION: SUPPORT & LEGAL */}
+             <section>
+                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 ml-2">Support & Legal</h3>
+                 <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
+                     <MenuItem 
+                        onClick={() => navigate('/notifications')} 
+                        icon={<Bell size={18} />} 
+                        label="Notification History" 
+                     />
+                     <MenuItem 
+                        onClick={() => navigate('/help')} 
+                        icon={<HelpCircle size={18} />} 
+                        label="Help & Support" 
+                     />
+                     <MenuItem 
+                        onClick={() => navigate('/legal')} 
+                        icon={<Shield size={18} />} 
+                        label="Terms & Privacy" 
+                     />
+                     <MenuItem 
+                        onClick={() => navigate('/legal')} 
+                        icon={<FileText size={18} />} 
+                        label="Licenses" 
+                     />
+                 </div>
+             </section>
+
+             <div className="text-center pt-4">
+                 <span className="text-[10px] font-bold text-gray-600 uppercase">Sheena Sports v2.2.0</span>
+             </div>
+
         </div>
     </div>
   );
@@ -161,4 +192,14 @@ const ToggleRow = ({ label, description, icon, active, onToggle }: any) => (
             <div className={`w-4 h-4 rounded-full bg-white transition-transform ${active ? 'translate-x-4' : ''}`}></div>
         </button>
     </div>
+);
+
+const MenuItem = ({ icon, label, onClick }: any) => (
+    <button onClick={onClick} className="w-full flex items-center justify-between p-4 border-b border-[#2C2C2C] last:border-0 hover:bg-[#252525] transition-colors group">
+        <div className="flex items-center gap-3">
+            <span className="text-gray-400 group-hover:text-white transition-colors">{icon}</span>
+            <span className="font-condensed font-bold text-sm text-white uppercase">{label}</span>
+        </div>
+        <ChevronRight size={16} className="text-gray-600" />
+    </button>
 );

@@ -18,6 +18,9 @@ import { SourceProfilePage } from './components/SourceProfilePage';
 import { CommunityPage } from './components/CommunityPage'; 
 import { LeaguePage } from './components/LeaguePage';
 import { PublicUserPage } from './components/PublicUserPage'; 
+import { NotificationsPage } from './components/NotificationsPage';
+import { HelpPage } from './components/HelpPage';
+import { LegalPage } from './components/LegalPage';
 import { SportsProvider, useSports } from './context/SportsContext';
 import { HashRouter, Routes, Route, useLocation, useNavigate, useParams, Navigate } from 'react-router-dom';
 
@@ -133,6 +136,11 @@ const AppContent = () => {
         <Route path="/community/:id" element={<CommunityPage />} />
         <Route path="/league/:id" element={<LeaguePage />} />
         <Route path="/user/:id" element={<PublicUserPage />} />
+        
+        {/* NEW PAGES */}
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/help" element={<HelpPage />} />
+        <Route path="/legal" element={<LegalPage />} />
 
         {/* PROTECTED ROUTES (Require Login) */}
         <Route path="/slip" element={
