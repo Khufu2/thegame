@@ -89,7 +89,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
              </button>
              <div className="flex items-center gap-2">
                  <span className="font-condensed font-bold text-sm tracking-widest uppercase text-gray-500">{match.league}</span>
-                 {dataSaver && <WifiOff size={12} className="text-yellow-500" title="Data Saver Mode On" />}
+                 {dataSaver && <div title="Data Saver Mode On"><WifiOff size={12} className="text-yellow-500" /></div>}
              </div>
              <button onClick={handleShare} className="w-10 h-10 flex items-center justify-center -mr-2 text-gray-400 hover:text-white transition-colors">
                 <Share2 size={24} />
@@ -736,60 +736,4 @@ const SoccerPitch: React.FC<{ lineup: TeamLineup, teamName: string }> = ({ lineu
         <div className="relative w-full aspect-[3/4] bg-[#1a3c28] rounded-xl border-4 border-[#2a5a3b] overflow-hidden shadow-inner">
             {/* Pitch Markings */}
             <div className="absolute inset-0 flex flex-col items-center justify-between pointer-events-none opacity-30">
-                <div className="w-32 h-16 border-2 border-white border-t-0 rounded-b-lg"></div>
-                <div className="w-full h-[1px] bg-white/50 relative flex items-center justify-center">
-                    <div className="w-24 h-24 border-2 border-white rounded-full"></div>
-                </div>
-                <div className="w-32 h-16 border-2 border-white border-b-0 rounded-t-lg"></div>
-            </div>
-
-            {/* Formation Display */}
-            <div className="absolute top-4 left-4 bg-black/40 px-2 py-1 rounded text-[10px] font-black text-white uppercase">
-                {teamName} • {lineup.formation}
-            </div>
-
-            {/* Players Grid (Simplified positioning logic) */}
-            <div className="absolute inset-0 p-4 flex flex-col justify-around py-12">
-                {/* FW */}
-                <div className="flex justify-center gap-8">
-                    {lineup.starting.filter(p => p.position === 'FW').map(p => <PlayerPill key={p.id} player={p} />)}
-                </div>
-                {/* MF */}
-                <div className="flex justify-center gap-8">
-                    {lineup.starting.filter(p => p.position === 'MF').map(p => <PlayerPill key={p.id} player={p} />)}
-                </div>
-                {/* DF */}
-                <div className="flex justify-center gap-8">
-                    {lineup.starting.filter(p => p.position === 'DF').map(p => <PlayerPill key={p.id} player={p} />)}
-                </div>
-                {/* GK */}
-                <div className="flex justify-center">
-                    {lineup.starting.filter(p => p.position === 'GK').map(p => <PlayerPill key={p.id} player={p} />)}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const PlayerPill: React.FC<{ player: LineupPlayer }> = ({ player }) => (
-    <div className="flex flex-col items-center gap-1 relative group cursor-pointer">
-        <div className="w-8 h-8 rounded-full bg-white text-black font-black text-xs flex items-center justify-center shadow-lg border-2 border-black z-10 relative">
-            {player.number}
-            {/* Event Indicators */}
-            {player.events?.map((ev, i) => (
-                <div key={i} className={`absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center border border-white ${ev.type === 'GOAL' ? 'bg-green-500' : 'bg-yellow-500'}`}>
-                    {ev.type === 'GOAL' && <Goal size={8} className="text-white" />}
-                </div>
-            ))}
-        </div>
-        <span className="bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm whitespace-nowrap">
-            {player.name}
-        </span>
-        {/* Rating Badge */}
-        {player.rating && (
-            <div className="absolute -bottom-3 bg-green-600 text-white text-[8px] font-black px-1 rounded">
-                {player.rating}
-            </div>
-        )}
-    </div>
-);
+                <div className="w-32 h-

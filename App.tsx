@@ -14,7 +14,10 @@ import { ExplorePage } from './components/ExplorePage';
 import { AdminPage } from './components/AdminPage';
 import { LeaderboardPage } from './components/LeaderboardPage';
 import { SettingsPage } from './components/SettingsPage';
-import { SourceProfilePage } from './components/SourceProfilePage'; // NEW
+import { SourceProfilePage } from './components/SourceProfilePage';
+import { CommunityPage } from './components/CommunityPage'; 
+import { LeaguePage } from './components/LeaguePage';
+import { PublicUserPage } from './components/PublicUserPage'; 
 import { SportsProvider, useSports } from './context/SportsContext';
 import { HashRouter, Routes, Route, useLocation, useNavigate, useParams, Navigate } from 'react-router-dom';
 
@@ -28,16 +31,11 @@ const ScrollToTop = () => {
 }
 
 // Protected Route Wrapper for Guest Handling
-const ProtectedRoute = ({ children, guestAllowed = false }: PropsWithChildren<{ guestAllowed?: boolean }>) => {
-    const { authState, user } = useSports();
+const ProtectedRoute = ({ children }: PropsWithChildren<{}>) => {
+    const { authState } = useSports();
     
-    // If not authenticated and not a guest, redirect to Auth
+    // If not authenticated, redirect to Auth
     if (authState === 'UNAUTHENTICATED') {
-        return <Navigate to="/" replace />;
-    }
-
-    // If Guest trying to access protected route
-    if (authState === 'GUEST' && !guestAllowed) {
         return <Navigate to="/" replace />;
     }
 
@@ -75,7 +73,7 @@ const AppContent = () => {
   const currentPage = location.pathname === '/' ? 'home' : location.pathname.replace('/', '');
 
   const ArticleRouteWrapper = () => {
-      const { id } = useParams();
+      const { id } = useParams<{id: string}>();
       const story = news.find(n => n.id === id);
       if (!story) return <div className="p-20 text-center text-white">Story not found</div>;
       
@@ -88,7 +86,7 @@ const AppContent = () => {
   };
 
   const MatchRouteWrapper = () => {
-      const { id } = useParams();
+      const { id } = useParams<{id: string}>();
       const match = matches.find(m => m.id === id);
       if (!match) return <div className="p-20 text-center text-white">Match not found</div>;
       
@@ -132,6 +130,9 @@ const AppContent = () => {
         <Route path="/article/:id" element={<ArticleRouteWrapper />} />
         <Route path="/match/:id" element={<MatchRouteWrapper />} />
         <Route path="/source/:id" element={<SourceProfilePage />} />
+        <Route path="/community/:id" element={<CommunityPage />} />
+        <Route path="/league/:id" element={<LeaguePage />} />
+        <Route path="/user/:id" element={<PublicUserPage />} />
 
         {/* PROTECTED ROUTES (Require Login) */}
         <Route path="/slip" element={
@@ -156,15 +157,14 @@ const AppContent = () => {
                 <AdminPage />
             </ProtectedRoute>
         } />
-        <Route path="/leaderboard" element={
-             // Leaderboard visible to guests, but maybe limited? Allowing for now.
-             <LeaderboardPage />
-        } />
         <Route path="/settings" element={
              <ProtectedRoute>
                 <SettingsPage />
              </ProtectedRoute>
         } />
+        
+        {/* Leaderboard visible to guests */}
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
         
         <Route path="*" element={<div className="p-20 text-center text-[#A1A1A1] font-condensed font-bold text-xl">COMING SOON</div>} />
       </Routes>

@@ -1,39 +1,46 @@
 
 import React, { useState, useMemo } from 'react';
-import { Search, TrendingUp, Hash, Users, ArrowRight, Shield, CheckCircle2, Plus, X, Newspaper, Trophy, Calculator, DollarSign, Trash2, Calendar, LayoutGrid } from 'lucide-react';
+import { Search, TrendingUp, Hash, Users, ArrowRight, Shield, CheckCircle2, Plus, X, Newspaper, Trophy, Calculator, DollarSign, Trash2, Calendar, LayoutGrid, Sparkles, UserPlus, MessageCircle, Flame, Check } from 'lucide-react';
 import { useSports } from '../context/SportsContext';
 import { useNavigate } from 'react-router-dom';
 import { Match, NewsStory } from '../types';
 
 const TRENDING_TOPICS = [
-    { id: '1', name: 'LeBron Trade Rumors', category: 'NBA' },
-    { id: '2', name: 'UFC 300 Fight Card', category: 'MMA' },
-    { id: '3', name: 'Mbappe Real Madrid', category: 'Soccer' },
-    { id: '4', name: 'NFL Draft 2024', category: 'NFL' },
+    { id: '1', name: 'LeBron Trade Rumors', category: 'NBA', posts: '12K' },
+    { id: '2', name: 'UFC 300 Fight Card', category: 'MMA', posts: '8.5K' },
+    { id: '3', name: 'Mbappe Real Madrid', category: 'Soccer', posts: '45K' },
+    { id: '4', name: 'NFL Draft 2024', category: 'NFL', posts: '32K' },
 ];
 
 const SUGGESTED_ACCOUNTS = [
-    { id: 'a1', name: 'Fabrizio Romano', handle: '@FabrizioRomano', avatar: 'https://ui-avatars.com/api/?name=FR' },
-    { id: 'a2', name: 'Wojnarowski', handle: '@wojespn', avatar: 'https://ui-avatars.com/api/?name=WOJ' },
-    { id: 'a3', name: 'Sheena AI', handle: '@sheena_sports', avatar: 'https://ui-avatars.com/api/?name=AI&background=6366F1&color=fff' },
+    { id: 'a1', name: 'Fabrizio Romano', handle: '@FabrizioRomano', avatar: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/Fabrizio_Romano_2021.jpg', type: 'Journalist' },
+    { id: 'a2', name: 'Wojnarowski', handle: '@wojespn', avatar: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Adrian_Wojnarowski_%2851419747713%29_%28cropped%29.jpg/800px-Adrian_Wojnarowski_%2851419747713%29_%28cropped%29.jpg', type: 'Insider' },
+    { id: 'a3', name: 'Sheena AI', handle: '@sheena_sports', avatar: 'https://ui-avatars.com/api/?name=AI&background=6366F1&color=fff', type: 'Official Bot' },
+    { id: 'a4', name: 'Bleacher Report', handle: '@BleacherReport', avatar: 'https://upload.wikimedia.org/wikipedia/commons/c/c9/Bleacher_Report_logo.png', type: 'Media' },
 ];
 
+const COMMUNITIES = [
+    { id: 'c1', name: 'Gunners Talk', members: '145K', icon: '🔴' },
+    { id: 'c2', name: 'NBA Top Shot', members: '82K', icon: '🏀' },
+    { id: 'c3', name: 'FPL Grinders', members: '210K', icon: '📊' },
+];
+
+// Realistic Logos & Gradients
 const LEAGUES = [
-    { name: 'EPL', icon: '⚽', color: 'from-purple-600 to-indigo-600' },
-    { name: 'NBA', icon: '🏀', color: 'from-orange-600 to-red-600' },
-    { name: 'NFL', icon: '🏈', color: 'from-blue-700 to-blue-900' },
-    { name: 'LaLiga', icon: '🇪🇸', color: 'from-red-600 to-orange-500' },
-    { name: 'UFC', icon: '🥊', color: 'from-red-700 to-black' },
-    { name: 'F1', icon: '🏎️', color: 'from-red-600 to-black' },
+    { name: 'EPL', logo: 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg', color: 'bg-purple-900', accent: 'border-purple-500' },
+    { name: 'NBA', logo: 'https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg', color: 'bg-blue-900', accent: 'border-blue-500' },
+    { name: 'NFL', logo: 'https://upload.wikimedia.org/wikipedia/en/a/a2/National_Football_League_logo.svg', color: 'bg-slate-900', accent: 'border-blue-400' },
+    { name: 'LaLiga', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg', color: 'bg-red-900', accent: 'border-red-500' },
+    { name: 'UFC', logo: 'https://upload.wikimedia.org/wikipedia/commons/9/92/UFC_Logo.svg', color: 'bg-stone-900', accent: 'border-red-600' },
+    { name: 'F1', logo: 'https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg', color: 'bg-red-950', accent: 'border-red-600' },
 ];
 
 export const ExplorePage: React.FC = () => {
-  const { matches, news, addToSlip } = useSports();
+  const { matches, news, addToSlip, user, updatePreferences } = useSports();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAcca, setSelectedAcca] = useState<string[]>([]);
   const [wager, setWager] = useState<number>(10);
-  const [selectedLeague, setSelectedLeague] = useState<string | null>(null); // For League Browser Modal
 
   // --- SEARCH LOGIC ---
   const searchResults = useMemo(() => {
@@ -87,9 +94,40 @@ export const ExplorePage: React.FC = () => {
       setSelectedAcca(prev => prev.filter(x => x !== id));
   };
 
+  // AI HELPING HAND
+  const handleAiSmartBuild = () => {
+      // Logic: Pick top 4 highest confidence bets
+      const bestBets = [...sureBets]
+        .sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0))
+        .slice(0, 4)
+        .map(m => m.id);
+      
+      setSelectedAcca(bestBets);
+  };
+
   const buildAccumulator = () => {
       sureBets.filter(m => selectedAcca.includes(m.id)).forEach(m => addToSlip(m));
       navigate('/slip');
+  };
+
+  // --- FOLLOW LOGIC ---
+  const toggleFollow = (sourceName: string) => {
+      if (!user) {
+          alert("Sign up to follow sources!");
+          return;
+      }
+      const current = user.preferences.followedSources || [];
+      let newSources;
+      if (current.includes(sourceName)) {
+          newSources = current.filter(s => s !== sourceName);
+      } else {
+          newSources = [...current, sourceName];
+      }
+      updatePreferences({ followedSources: newSources });
+  };
+
+  const isFollowing = (sourceName: string) => {
+      return user?.preferences.followedSources?.includes(sourceName) || false;
   };
 
   return (
@@ -114,7 +152,7 @@ export const ExplorePage: React.FC = () => {
             </div>
         </div>
 
-        <div className="px-4 py-6 max-w-[700px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="px-4 py-6 max-w-[700px] mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             
             {/* --- SEARCH RESULTS VIEW --- */}
             {searchTerm ? (
@@ -145,59 +183,75 @@ export const ExplorePage: React.FC = () => {
                             </div>
                         </section>
                     )}
-                    {/* ... (News results similar to previous) ... */}
                 </div>
             ) : (
                 <>
-                    {/* BROWSE LEAGUES (NEW) */}
+                    {/* 1. BROWSE LEAGUES (REALISTIC) */}
                     <section>
-                        <div className="flex items-center gap-2 mb-4">
-                            <LayoutGrid size={20} className="text-indigo-500" />
-                            <h2 className="font-condensed font-black text-xl uppercase italic tracking-wide">Browse Leagues</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <LayoutGrid size={20} className="text-indigo-500" />
+                                <h2 className="font-condensed font-black text-xl uppercase italic tracking-wide">Browse Leagues</h2>
+                            </div>
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                             {LEAGUES.map(league => (
                                 <button 
                                     key={league.name} 
-                                    onClick={() => setSelectedLeague(league.name)}
+                                    onClick={() => navigate(`/league/${league.name}`)}
                                     className={`
-                                        relative overflow-hidden h-24 rounded-xl flex flex-col items-center justify-center gap-1 border border-[#333]
-                                        bg-gradient-to-br ${league.color} hover:scale-[1.02] transition-transform
+                                        relative overflow-hidden h-28 rounded-xl flex flex-col items-center justify-center border transition-all duration-300 group
+                                        ${league.color} ${league.accent} border-opacity-30 hover:border-opacity-100 hover:scale-[1.03]
                                     `}
                                 >
-                                    <span className="text-2xl">{league.icon}</span>
-                                    <span className="font-condensed font-black text-lg uppercase text-white drop-shadow-md">{league.name}</span>
+                                    {/* Glass Shine */}
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    
+                                    <div className="w-12 h-12 mb-2 relative z-10 drop-shadow-lg">
+                                        <img src={league.logo} alt={league.name} className="w-full h-full object-contain filter drop-shadow-md" />
+                                    </div>
+                                    <span className="font-condensed font-bold text-sm uppercase text-white/90 tracking-wider z-10">{league.name}</span>
                                 </button>
                             ))}
                         </div>
                     </section>
 
-                    {/* THE ACCUMULATOR BUILDER */}
-                    <section className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden shadow-2xl">
-                        <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between bg-black/20">
+                    {/* 2. DYNAMIC ACCA (AI POWERED) */}
+                    <section className="bg-gradient-to-br from-[#1E1E1E] to-[#0A0A0A] border border-[#2C2C2C] rounded-xl overflow-hidden shadow-2xl relative">
+                        {/* Background FX */}
+                        <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-green-500/5 rounded-full blur-[80px] pointer-events-none"></div>
+
+                        <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between bg-black/40 backdrop-blur-sm relative z-10">
                             <div className="flex items-center gap-2">
-                                <Shield size={20} className="text-green-500" />
+                                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                                    <Shield size={16} className="text-green-500" />
+                                </div>
                                 <div>
                                     <h2 className="font-condensed font-black text-lg uppercase italic tracking-wide text-white">Dynamic Acca</h2>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase">Build your multibet</p>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase">Smart Builder</p>
                                 </div>
                             </div>
-                            <div className="bg-[#2C2C2C] px-2 py-1 rounded text-[10px] font-bold text-gray-400 uppercase">
-                                {accaStats.count} Selected
-                            </div>
+                            
+                            {/* AI BUTTON */}
+                            <button 
+                                onClick={handleAiSmartBuild}
+                                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all shadow-lg shadow-indigo-600/20 animate-pulse"
+                            >
+                                <Sparkles size={12} /> AI Smart Build
+                            </button>
                         </div>
                         
                         {/* Match List Selector */}
-                        <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                        <div className="max-h-[250px] overflow-y-auto p-2 space-y-1 custom-scrollbar relative z-10 bg-black/20">
                             {sureBets.length > 0 ? sureBets.map(match => (
                                 <div 
                                     key={match.id} 
                                     onClick={() => toggleAccaSelection(match.id)}
-                                    className={`p-3 rounded-lg flex items-center justify-between cursor-pointer border transition-colors ${selectedAcca.includes(match.id) ? 'bg-green-900/10 border-green-500/50' : 'bg-transparent border-transparent hover:bg-[#252525]'}`}
+                                    className={`p-3 rounded-lg flex items-center justify-between cursor-pointer border transition-all ${selectedAcca.includes(match.id) ? 'bg-green-900/20 border-green-500/50' : 'bg-transparent border-transparent hover:bg-[#252525]'}`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${selectedAcca.includes(match.id) ? 'bg-green-500 border-green-500' : 'border-gray-500'}`}>
-                                            {selectedAcca.includes(match.id) && <CheckCircle2 size={14} className="text-black" />}
+                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${selectedAcca.includes(match.id) ? 'bg-green-500 border-green-500' : 'border-gray-600 bg-black/50'}`}>
+                                            {selectedAcca.includes(match.id) && <CheckCircle2 size={12} className="text-black" />}
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
@@ -219,18 +273,18 @@ export const ExplorePage: React.FC = () => {
                                 </div>
                             )) : (
                                 <div className="p-8 text-center text-gray-500 text-xs font-bold uppercase">
-                                    No safe bets available for Acca.
+                                    No safe bets available today.
                                 </div>
                             )}
                         </div>
 
                         {/* Dynamic Footer / Edit Mode */}
                         {selectedAcca.length > 0 && (
-                            <div className="bg-[#0A0A0A] border-t border-[#2C2C2C] p-4 animate-in slide-in-from-bottom-2">
-                                {/* EDIT LIST - Selected Legs Pills */}
+                            <div className="bg-[#0A0A0A] border-t border-[#2C2C2C] p-4 animate-in slide-in-from-bottom-2 relative z-10">
+                                {/* Selected Legs Pills */}
                                 <div className="flex flex-wrap gap-2 mb-4">
                                     {accaStats.legs.map(m => (
-                                        <div key={m.id} className="flex items-center gap-1 bg-[#1E1E1E] border border-[#333] rounded px-2 py-1">
+                                        <div key={m.id} className="flex items-center gap-1 bg-[#1E1E1E] border border-[#333] rounded px-2 py-1 shadow-sm">
                                             <span className="text-[10px] font-bold text-white uppercase">{m.homeTeam.name.substring(0,3)}/{m.awayTeam.name.substring(0,3)}</span>
                                             <button onClick={() => removeAccaLeg(m.id)} className="text-gray-500 hover:text-red-500">
                                                 <X size={12} />
@@ -239,7 +293,7 @@ export const ExplorePage: React.FC = () => {
                                     ))}
                                 </div>
 
-                                <div className="flex justify-between items-end mb-4">
+                                <div className="flex justify-between items-end mb-4 bg-[#121212] p-3 rounded-lg border border-[#222]">
                                     <div className="flex flex-col gap-1">
                                         <span className="text-[10px] font-bold text-gray-500 uppercase">Total Odds</span>
                                         <span className="font-mono font-black text-2xl text-white">{accaStats.totalOdds.toFixed(2)}</span>
@@ -278,110 +332,90 @@ export const ExplorePage: React.FC = () => {
                         )}
                     </section>
 
-                    {/* TRENDING NOW */}
+                    {/* 3. TRENDING NOW */}
                     <section>
-                        <div className="flex items-center gap-2 mb-4">
+                        <div className="flex items-center gap-2 mb-4 mt-8">
                             <TrendingUp size={20} className="text-[#00FFB2]" />
                             <h2 className="font-condensed font-black text-xl uppercase italic tracking-wide">Trending Now</h2>
                         </div>
                         <div className="grid gap-2">
                             {TRENDING_TOPICS.map((topic, idx) => (
-                                <div key={topic.id} onClick={() => setSearchTerm(topic.name)} className="flex items-center justify-between p-4 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] cursor-pointer hover:bg-[#252525]">
+                                <div key={topic.id} onClick={() => setSearchTerm(topic.name)} className="flex items-center justify-between p-4 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] cursor-pointer hover:bg-[#252525] group transition-colors">
                                     <div className="flex items-center gap-4">
-                                        <span className="font-mono font-bold text-gray-600 text-lg">0{idx + 1}</span>
+                                        <span className="font-mono font-bold text-gray-600 text-lg group-hover:text-white transition-colors">0{idx + 1}</span>
                                         <div>
                                             <h3 className="font-bold text-white text-sm">{topic.name}</h3>
-                                            <span className="text-[10px] font-bold text-gray-500 uppercase">{topic.category}</span>
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase">{topic.category} • {topic.posts} Posts</span>
                                         </div>
                                     </div>
-                                    <ArrowRight size={16} className="text-gray-600" />
+                                    <ArrowRight size={16} className="text-gray-600 group-hover:text-[#00FFB2] transition-colors" />
                                 </div>
                             ))}
                         </div>
                     </section>
+
+                    {/* 4. WHO TO FOLLOW (FUNCTIONAL) */}
+                    <section className="mt-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <UserPlus size={20} className="text-blue-500" />
+                                <h2 className="font-condensed font-black text-xl uppercase italic tracking-wide">Who to Follow</h2>
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory">
+                            {SUGGESTED_ACCOUNTS.map(account => {
+                                const followed = isFollowing(account.name);
+                                return (
+                                    <div onClick={() => navigate(`/source/${account.name}`)} key={account.id} className="min-w-[160px] bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 flex flex-col items-center text-center snap-center hover:border-gray-500 transition-colors cursor-pointer group">
+                                        <div className="w-14 h-14 rounded-full border-2 border-[#333] mb-3 overflow-hidden">
+                                            <img src={account.avatar} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                        </div>
+                                        <span className="font-bold text-sm text-white truncate w-full">{account.name}</span>
+                                        <span className="text-[10px] text-gray-500 mb-2">{account.handle}</span>
+                                        <span className="text-[9px] font-bold text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded uppercase mb-3">{account.type}</span>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); toggleFollow(account.name); }}
+                                            className={`w-full py-1.5 text-[10px] font-black uppercase rounded transition-colors flex items-center justify-center gap-1 ${followed ? 'bg-transparent border border-gray-500 text-white' : 'bg-white text-black hover:bg-gray-200'}`}
+                                        >
+                                            {followed ? <><Check size={12} /> Following</> : 'Follow'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+
+                    {/* 5. VIRAL COMMUNITIES (FUNCTIONAL) */}
+                    <section className="mt-6 mb-12">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Flame size={20} className="text-orange-500" />
+                            <h2 className="font-condensed font-black text-xl uppercase italic tracking-wide">Viral Communities</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {COMMUNITIES.map(comm => (
+                                <div 
+                                    key={comm.id} 
+                                    onClick={() => navigate(`/community/${comm.id}`)}
+                                    className="flex items-center gap-3 p-3 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg hover:bg-[#252525] cursor-pointer active:scale-[0.98] transition-all"
+                                >
+                                    <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center text-xl border border-[#333]">
+                                        {comm.icon}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-sm text-white">{comm.name}</h4>
+                                        <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold uppercase">
+                                            <Users size={10} /> {comm.members} Members
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
                 </>
             )}
         </div>
-
-        {/* LEAGUE MODAL */}
-        {selectedLeague && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in">
-                <div className="w-full max-w-[500px] bg-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
-                    {/* Header */}
-                    <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between bg-black/50">
-                        <div className="flex items-center gap-3">
-                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-xl shadow-lg">
-                                 {LEAGUES.find(l => l.name === selectedLeague)?.icon}
-                             </div>
-                             <div>
-                                 <h2 className="font-condensed font-black text-2xl uppercase text-white leading-none">{selectedLeague}</h2>
-                                 <span className="text-[10px] font-bold text-gray-500 uppercase">Season 2024/25</span>
-                             </div>
-                        </div>
-                        <button onClick={() => setSelectedLeague(null)} className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white">
-                            <X size={20} />
-                        </button>
-                    </div>
-
-                    {/* Content Scroll */}
-                    <div className="overflow-y-auto p-4 space-y-6">
-                        
-                        {/* Standings Table (Mock) */}
-                        <section>
-                            <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
-                                <Trophy size={14} className="text-yellow-500" /> Standings
-                            </h3>
-                            <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg overflow-hidden">
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-black text-gray-500 font-bold uppercase border-b border-[#2C2C2C]">
-                                        <tr>
-                                            <th className="p-3 text-center">#</th>
-                                            <th className="p-3">Team</th>
-                                            <th className="p-3 text-center">P</th>
-                                            <th className="p-3 text-center">Pts</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-[#2C2C2C]">
-                                        {[1,2,3,4,5].map((pos) => (
-                                            <tr key={pos} className="hover:bg-white/5">
-                                                <td className="p-3 text-center font-mono text-gray-400">{pos}</td>
-                                                <td className="p-3 font-bold text-white">
-                                                    {selectedLeague === 'EPL' ? ['Liverpool', 'Man City', 'Arsenal', 'Villa', 'Chelsea'][pos-1] : `Team ${pos}`}
-                                                </td>
-                                                <td className="p-3 text-center text-gray-400">12</td>
-                                                <td className="p-3 text-center font-bold text-white">{30 - (pos * 2)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
-
-                        {/* Upcoming Matches */}
-                        <section>
-                            <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
-                                <Calendar size={14} className="text-indigo-500" /> Upcoming
-                            </h3>
-                            <div className="space-y-2">
-                                {matches.filter(m => m.league === selectedLeague).slice(0, 3).map(m => (
-                                    <div key={m.id} onClick={() => { setSelectedLeague(null); navigate(`/match/${m.id}`); }} className="flex items-center justify-between p-3 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] cursor-pointer hover:bg-[#252525]">
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-mono text-[10px] text-gray-500 font-bold bg-black px-1.5 py-0.5 rounded">{m.time}</span>
-                                            <span className="text-xs font-bold text-white">{m.homeTeam.name} vs {m.awayTeam.name}</span>
-                                        </div>
-                                        <ArrowRight size={14} className="text-gray-600" />
-                                    </div>
-                                ))}
-                                {matches.filter(m => m.league === selectedLeague).length === 0 && (
-                                    <p className="text-xs text-gray-500 italic">No matches scheduled.</p>
-                                )}
-                            </div>
-                        </section>
-
-                    </div>
-                </div>
-            </div>
-        )}
     </div>
   );
 };

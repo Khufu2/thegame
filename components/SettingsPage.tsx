@@ -124,33 +124,23 @@ export const SettingsPage: React.FC = () => {
                          </div>
                      </div>
 
-                 </div>
-             </section>
-
-             {/* SECTION: APPEARANCE */}
-             <section>
-                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 ml-2">Appearance</h3>
-                 <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
                      <div className="p-4 flex items-center justify-between">
                          <div className="flex items-center gap-3">
-                             {user.preferences.theme === 'DARK' ? <Moon size={18} className="text-gray-400" /> : <Sun size={18} className="text-yellow-500" />}
+                             {user.preferences.theme === 'DARK' ? <Moon size={18} className="text-purple-500" /> : <Sun size={18} className="text-yellow-500" />}
                              <div>
                                  <span className="block font-bold text-sm text-white">App Theme</span>
-                                 <span className="text-xs text-gray-500">{user.preferences.theme === 'DARK' ? 'Dark Mode' : 'Light Mode'}</span>
+                                 <span className="text-xs text-gray-500">Current: {user.preferences.theme}</span>
                              </div>
                          </div>
-                         <button 
-                            onClick={toggleTheme}
-                            className={`w-12 h-6 rounded-full relative transition-colors ${user.preferences.theme === 'DARK' ? 'bg-indigo-600' : 'bg-gray-500'}`}
-                         >
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${user.preferences.theme === 'DARK' ? 'left-7' : 'left-1'}`}></div>
+                         <button onClick={toggleTheme} className="text-xs font-bold text-white bg-[#333] px-3 py-1.5 rounded uppercase hover:bg-[#444]">
+                             Toggle
                          </button>
                      </div>
+
                  </div>
              </section>
 
         </div>
-
     </div>
   );
 };
@@ -158,7 +148,7 @@ export const SettingsPage: React.FC = () => {
 const ToggleRow = ({ label, description, icon, active, onToggle }: any) => (
     <div className="p-4 border-b border-[#2C2C2C] last:border-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
-            {icon ? React.cloneElement(icon, { className: "text-gray-400" }) : <Bell size={18} className="text-gray-400" />}
+            <div className={`text-gray-500 ${active ? 'text-green-500' : ''}`}>{icon}</div>
             <div>
                 <span className="block font-bold text-sm text-white">{label}</span>
                 <span className="text-xs text-gray-500">{description}</span>
@@ -166,9 +156,9 @@ const ToggleRow = ({ label, description, icon, active, onToggle }: any) => (
         </div>
         <button 
             onClick={onToggle}
-            className={`w-12 h-6 rounded-full relative transition-colors ${active ? 'bg-indigo-600' : 'bg-gray-700'}`}
+            className={`w-10 h-6 rounded-full p-1 transition-colors ${active ? 'bg-green-600' : 'bg-[#333]'}`}
         >
-            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${active ? 'left-7' : 'left-1'}`}></div>
+            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${active ? 'translate-x-4' : ''}`}></div>
         </button>
     </div>
 );
