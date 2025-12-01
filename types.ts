@@ -366,9 +366,10 @@ export type MkekaType = 'SAFE' | 'LONGSHOT' | 'GOALS';
 export interface SportsContextType {
     user: UserProfile | null;
     authState: AuthState;
-    login: (email: string) => void;
+    login: (profile: UserProfile, token?: string) => void;
     loginAsGuest: () => void; // NEW
     logout: () => void;
+    authToken?: string | null;
     completeOnboarding: (prefs: { leagues: string[], teams: string[] }) => void;
     updatePreferences: (prefs: Partial<UserPreferences>) => void; // NEW
     

@@ -72,7 +72,7 @@ Instead of just a chatbot, use these platforms as a **Distribution Channel**.
 ## 🔌 API Checklist (To Go Live)
 
 1.  **Live Scores:** API-Football (api-sports.io)
-2.  **Betting Odds:** The Odds API (the-odds-api.com)
+2.  **Betting Odds:** API-Football Odds endpoints (api-sports.io)
 3.  **AI Grounding:** Tavily AI (tavily.com) - **MANDATORY for News Agent**
 4.  **Database:** Supabase
 5.  **Payments:** Stripe (Cards) + TronGrid (Crypto)
@@ -109,3 +109,25 @@ Instead of just a chatbot, use these platforms as a **Distribution Channel**.
 ---
 
 *Prepared by Sheena Engineering Team*
+
+---
+
+## 🔧 Supabase setup (frontend)
+
+Add the following environment variables to your project's `.env` (Vite will expose variables prefixed with `VITE_` to the frontend):
+
+- `VITE_SUPABASE_URL` — your Supabase project URL (e.g. `https://xyzcompany.supabase.co`)
+- `VITE_SUPABASE_ANON_KEY` — your Supabase anon/public API key
+
+Notes:
+- Never commit the Supabase service role key to the repo. Server-only code should use `SUPABASE_SERVICE_ROLE_KEY` with a secure runtime (server, edge function, or CI secret).
+- The frontend will use `services/supabaseClient.ts` to initialize the client with the `VITE_` variables.
+
+Important security note:
+- I noticed you added `VITE_SUPABASE_SERVICE_ROLE_KEY` to your environment. That exposes the service role key to the browser build and public clients — please remove the `VITE_` prefix and store the key as `SUPABASE_SERVICE_ROLE_KEY` in your server/CI secrets immediately. If this key was pushed or used in client builds, rotate (revoke) the service role key from the Supabase dashboard and create a new one.
+
+Server-side admin client:
+- I've added `services/supabaseAdmin.ts`, a server-only Supabase client that reads `SUPABASE_SERVICE_ROLE_KEY` from `process.env`. Use that client only in secure runtimes (server, Edge Functions, or CI), never in frontend code.
+
+
+If you want me to also scaffold server-side examples (Edge Functions or a small Express server) for admin operations and cron jobs, tell me and I'll add them next.

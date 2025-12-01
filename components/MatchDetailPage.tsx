@@ -734,6 +734,33 @@ const StatGroup: React.FC<{ title: string, stats: { label: string, home: number,
 const SoccerPitch: React.FC<{ lineup: TeamLineup, teamName: string }> = ({ lineup, teamName }) => {
     return (
         <div className="relative w-full aspect-[3/4] bg-[#1a3c28] rounded-xl border-4 border-[#2a5a3b] overflow-hidden shadow-inner">
-            {/* Pitch Markings */}
+            {/* Pitch Markings - decorative */}
             <div className="absolute inset-0 flex flex-col items-center justify-between pointer-events-none opacity-30">
-                <div className="w-32 h-
+                <div className="w-32 h-0.5 bg-white/20 rounded-full" />
+                <div className="w-full flex justify-between px-6">
+                    <div className="w-20 h-0.5 bg-white/10 rounded-full" />
+                    <div className="w-20 h-0.5 bg-white/10 rounded-full" />
+                </div>
+                <div className="w-32 h-0.5 bg-white/20 rounded-full" />
+            </div>
+
+            {/* Simple starting XI grid (safe fallback to precise pitch positioning) */}
+            <div className="relative p-4">
+                <h4 className="text-sm font-bold text-white mb-3">{teamName} — Starting XI</h4>
+                <div className="grid grid-cols-3 gap-2">
+                    {lineup.starting.map(player => (
+                        <div key={player.id} className="p-2 bg-[#153e2b] border border-[#224f39] rounded-md">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-black/30 flex items-center justify-center font-bold text-sm">{player.number}</div>
+                                <div>
+                                    <div className="text-sm font-bold text-white">{player.name}</div>
+                                    <div className="text-xs text-gray-300">{player.position}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};

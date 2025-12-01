@@ -1,0 +1,19 @@
+name: Fetch Matches Every Minute
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch-matches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Supabase Edge Function (fetch-matches)
+        run: |
+          set -e
+          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-matches" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'

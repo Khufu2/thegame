@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
 import { Mail, ArrowRight, Lock, Eye, EyeOff, User, Phone, MessageCircle, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { UserProfile, UserPreferences } from '../types';
 
 // EXPANDED COUNTRY LIST
 const COUNTRY_CODES = [
@@ -40,6 +41,7 @@ export const AuthPage: React.FC = () => {
     const navigate = useNavigate();
     const [isLogin, setIsLogin] = useState(true);
     const [authMethod, setAuthMethod] = useState<'EMAIL' | 'PHONE'>('EMAIL'); // Default to EMAIL
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
     
     // Form States
     const [email, setEmail] = useState('');
@@ -50,49 +52,220 @@ export const AuthPage: React.FC = () => {
     const [showOtpInput, setShowOtpInput] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    const ensureBackendAvailable = () => {
+        if (!backendUrl) {
+            setErrorMessage('Backend URL is not configured. Please set VITE_BACKEND_URL.');
+            return false;
+        }
+        return true;
+    };
+
+    const buildDefaultPreferences = (raw?: Partial<UserPreferences>): UserPreferences => {
+        const notifications = raw?.notifications || {};
+        return {
+            favoriteLeagues: raw?.favoriteLeagues ?? [],
+            favoriteTeams: raw?.favoriteTeams ?? [],
+            notifications: {
+                scoreUpdates: notifications.scoreUpdates ?? true,
+                lineMoves: notifications.lineMoves ?? true,
+                breakingNews: notifications.breakingNews ?? true,
+                whatsappUpdates: notifications.whatsappUpdates ?? false
+            },
+            communicationChannel: raw?.communicationChannel ?? 'EMAIL',
+            whatsappNumber: raw?.whatsappNumber ?? '',
+            oddsFormat: raw?.oddsFormat ?? 'DECIMAL',
+            dataSaver: raw?.dataSaver ?? false,
+            theme: raw?.theme ?? 'DARK',
+            hasCompletedOnboarding: raw?.hasCompletedOnboarding ?? false
+        };
+    };
+
+    const mapProfileToUser = (profile: any, fallbackEmail: string, fallbackName?: string): UserProfile => {
+        const preferences = buildDefaultPreferences(profile?.preferences);
+        const nameFromEmail = fallbackEmail ? fallbackEmail.split('@')[0] : 'Sheena User';
+
+        return {
+            id: profile?.id ?? '',
+            name: profile?.display_name || fallbackName || nameFromEmail,
+            email: profile?.email || fallbackEmail,
+            avatar: profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameFromEmail)}`,
+            isPro: Boolean(profile?.is_pro),
+            stats: {
+                betsPlaced: profile?.stats?.betsPlaced ?? 0,
+                wins: profile?.stats?.wins ?? 0,
+                losses: profile?.stats?.losses ?? 0,
+                winRate: profile?.stats?.winRate ?? 0,
+                netProfit: profile?.stats?.netProfit ?? 0
+            },
+            preferences
+        };
+    };
+
+    const fetchProfileFromBackend = async (userId: string) => {
+        if (!backendUrl) return null;
+        try {
+            const resp = await fetch(`${backendUrl}/api/users/profile/${userId}`);
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            return data;
+        } catch (err) {
+            console.warn('Failed to fetch profile from backend', err);
+            return null;
+        }
+    };
+
+    const hydrateSession = async (authPayload: any, fallbackEmail: string, fallbackName?: string) => {
+        const { user, session } = authPayload;
+        const profile = await fetchProfileFromBackend(user.id);
+        const mapped = mapProfileToUser(profile || { ...user, display_name: fallbackName }, fallbackEmail, fallbackName);
+        login(mapped, session);
+        setSuccessMessage('Welcome back!');
+        navigate('/scores');
+    };
+
+    const authenticateEmail = async (identifier: string, userPassword: string, fallbackName?: string) => {
+        if (!ensureBackendAvailable()) return;
+        const response = await fetch(`${backendUrl}/api/auth/signin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: identifier, password: userPassword })
+        });
+
+        // Safely parse response body
+        const contentType = response.headers.get('content-type') || '';
+        const rawText = await response.text().catch(() => '');
+        let result: any = null;
+        if (rawText && contentType.includes('application/json')) {
+            try {
+                result = JSON.parse(rawText);
+            } catch (e) {
+                // fall through with better message
+                throw new Error('Received malformed JSON from server. Please try again later.');
+            }
+        }
+
+        if (!response.ok) {
+            const message = (result && result.error) ? result.error : (rawText || 'Invalid credentials');
+            throw new Error(message);
+        }
+
+        if (!result) {
+            throw new Error('Empty response from server. Please try again later.');
+        }
+
+        await hydrateSession(result, identifier, fallbackName);
+    };
+
+    const registerEmail = async (identifier: string, userPassword: string, displayName?: string) => {
+        if (!ensureBackendAvailable()) return;
+        const response = await fetch(`${backendUrl}/api/auth/signup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: identifier,
+                password: userPassword,
+                display_name: displayName || identifier.split('@')[0]
+            })
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const rawText = await response.text().catch(() => '');
+        let result: any = null;
+        if (rawText && contentType.includes('application/json')) {
+            try {
+                result = JSON.parse(rawText);
+            } catch (e) {
+                throw new Error('Received malformed JSON from server during signup.');
+            }
+        }
+
+        if (!response.ok) {
+            const message = (result && result.error) ? result.error : (rawText || 'Failed to create account');
+            throw new Error(message);
+        }
+
+        setSuccessMessage('Account created successfully! Logging you in...');
+        await authenticateEmail(identifier, userPassword, displayName);
+    };
+
+    const buildPhoneEmail = () => `${countryCode.replace('+', '')}${phone}@mobile.user`;
 
     const handleGuestAccess = () => {
         loginAsGuest();
         navigate('/scores'); // Redirect to Matches page as requested
     };
 
-    const handlePhoneSubmit = (e: React.FormEvent) => {
+    const handlePhoneSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!phone || !password) return;
-        setIsLoading(true);
+        if (!phone || !password) {
+            setErrorMessage('Please enter both phone number and password.');
+            return;
+        }
 
-        setTimeout(() => {
-            // LOGIN FLOW: Phone + Password -> Direct Login
+        setIsLoading(true);
+        setErrorMessage(null);
+        setSuccessMessage(null);
+
+        try {
             if (isLogin) {
-                login(`${phone}@mobile.user`); // Simulate login
-                setIsLoading(false);
-            } 
-            // SIGNUP FLOW: Phone + Password -> Request OTP
-            else {
-                setIsLoading(false);
+                await authenticateEmail(buildPhoneEmail(), password, `${countryCode} ${phone}`);
+            } else {
                 setShowOtpInput(true);
-                alert(`OTP sent to WhatsApp: ${countryCode} ${phone}`);
+                setSuccessMessage(`Enter the OTP we sent to WhatsApp: ${countryCode} ${phone}`);
             }
-        }, 1500);
+        } catch (err) {
+            setErrorMessage(err.message || 'Unable to authenticate with phone number.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleOtpVerification = (e: React.FormEvent) => {
+    const handleOtpVerification = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        setTimeout(() => {
-            // Verify OTP -> Create Account
-            login(`${phone}@mobile.user`);
-            setIsLoading(false);
-        }, 1500);
-    }
+        if (otp.trim().length < 4) {
+            setErrorMessage('Please enter the 4-digit OTP code.');
+            return;
+        }
 
-    const handleEmailSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
         setIsLoading(true);
-        setTimeout(() => {
-            login(email);
+        setErrorMessage(null);
+
+        try {
+            await registerEmail(buildPhoneEmail(), password, `${countryCode} ${phone}`);
+            setShowOtpInput(false);
+            setOtp('');
+        } catch (err) {
+            setErrorMessage(err.message || 'Failed to verify OTP.');
+        } finally {
             setIsLoading(false);
-        }, 1000);
+        }
+    };
+
+    const handleEmailSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email || !password) {
+            setErrorMessage('Email and password are required.');
+            return;
+        }
+
+        setIsLoading(true);
+        setErrorMessage(null);
+        setSuccessMessage(null);
+
+        try {
+            if (isLogin) {
+                await authenticateEmail(email, password);
+            } else {
+                await registerEmail(email, password);
+            }
+        } catch (err) {
+            setErrorMessage(err.message || 'Authentication failed.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -124,18 +297,25 @@ export const AuthPage: React.FC = () => {
                     {/* Method Toggle */}
                     <div className="flex bg-black rounded-lg p-1 mb-6 border border-[#333]">
                         <button 
-                            onClick={() => { setAuthMethod('EMAIL'); setShowOtpInput(false); }}
+                            onClick={() => { setAuthMethod('EMAIL'); setShowOtpInput(false); setErrorMessage(null); setSuccessMessage(null); }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-bold uppercase transition-all ${authMethod === 'EMAIL' ? 'bg-[#2C2C2C] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
                         >
                             <Mail size={14} /> Email
                         </button>
                         <button 
-                            onClick={() => { setAuthMethod('PHONE'); setShowOtpInput(false); }}
+                            onClick={() => { setAuthMethod('PHONE'); setShowOtpInput(false); setErrorMessage(null); setSuccessMessage(null); }}
                             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-bold uppercase transition-all ${authMethod === 'PHONE' ? 'bg-[#2C2C2C] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
                         >
                             <Phone size={14} /> Phone
                         </button>
                     </div>
+
+                    {(errorMessage || successMessage) && (
+                        <div className="mb-4 text-center text-xs font-bold">
+                            {errorMessage && <p className="text-red-400">{errorMessage}</p>}
+                            {successMessage && <p className="text-emerald-400 mt-1">{successMessage}</p>}
+                        </div>
+                    )}
 
                     {/* PHONE AUTH FLOW */}
                     {authMethod === 'PHONE' && (
@@ -277,7 +457,7 @@ export const AuthPage: React.FC = () => {
                         <p className="text-gray-500 text-sm">
                             {isLogin ? "Don't have an account?" : "Already have an account?"}
                             <button 
-                                onClick={() => { setIsLogin(!isLogin); setShowOtpInput(false); }}
+                            onClick={() => { setIsLogin(!isLogin); setShowOtpInput(false); setErrorMessage(null); setSuccessMessage(null); }}
                                 className="ml-2 text-white font-bold hover:underline"
                             >
                                 {isLogin ? 'Sign Up' : 'Log In'}

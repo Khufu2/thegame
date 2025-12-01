@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "projects": {
+    "default": {
+      "supabase_url": "${SUPABASE_URL}",
+      "supabase_key": "${SUPABASE_ANON_KEY}",
+      "functions": [
+        {
+          "slug": "fetch-matches",
+          "description": "Fetch live and upcoming matches from API-Football",
+          "import_map": "./supabase/functions/_shared/import_map.json"
+        },
+        {
+          "slug": "fetch-standings",
+          "description": "Fetch league standings from API-Football",
+          "import_map": "./supabase/functions/_shared/import_map.json"
+        },
+        {
+          "slug": "fetch-scorers",
+          "description": "Fetch top scorers from API-Football",
+          "import_map": "./supabase/functions/_shared/import_map.json"
+        }
+      ]
+    }
+  }
+}

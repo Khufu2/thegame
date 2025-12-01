@@ -1,0 +1,29 @@
+{
+  "name": "sheena-server",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test:integration": "node tests/integration_test.js",
+    "test:concurrency": "node tests/concurrency_test.js",
+    "test:e2e": "node tests/e2e_test.js",
+    "test:all": "npm run test:integration && npm run test:concurrency && npm run test:e2e",
+    "worker:settle": "node worker_settle.js",
+    "worker:ingest": "node worker_ingest.js",
+    "ingest:now": "node worker_ingest.js",
+    "seed": "node quick-seed.js",
+    "verify": "node verify_db.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.31.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "stripe": "^14.21.0",
+    "socket.io": "^4.7.2",
+    "express-rate-limit": "^7.1.5"
+  }
+}
