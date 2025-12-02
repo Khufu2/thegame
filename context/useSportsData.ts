@@ -1,24 +1,27 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { Match } from '../types'
 
 const backendBaseUrl = import.meta.env.VITE_BACKEND_URL as string | undefined;
 
-export interface Match {
-  id: string
-  home_team: string
-  away_team: string
-  kickoff_time: string
-  status: 'scheduled' | 'live' | 'finished'
-  home_team_score: number | null
-  away_team_score: number | null
-  result: 'home_win' | 'draw' | 'away_win' | null
-  league: string
-  season: number
-  round: string
-  venue: string
-  odds_home: number
-  odds_draw: number
-  odds_away: number
+// Helper function to format match time
+function formatMatchTime(startTime: string, status: string): string {
+  if (status === 'finished') return 'FT';
+
+  const now = new Date();
+  const matchTime = new Date(startTime);
+
+  if (status === 'live') {
+    const diff = Math.floor((now.getTime() - matchTime.getTime()) / (1000 * 60));
+    return `${diff}'`;
+  }
+
+  // For scheduled matches, return time like "15:00"
+  return matchTime.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
 }
 
 export interface Standing {
@@ -52,10 +55,35 @@ export const useLiveMatches = () => {
           .from('matches')
           .select('*')
           .eq('status', 'live')
-          .order('kickoff_time', { ascending: true })
+          .order('start_time', { ascending: true })
 
         if (err) throw err
-        setMatches(data || [])
+
+        // Transform DB data to Match interface
+        const transformedMatches: Match[] = (data || []).map(match => ({
+          id: match.id,
+          league: match.metadata?.league || 'Unknown League',
+          homeTeam: {
+            id: match.home_team?.id?.toString() || '',
+            name: match.home_team?.name || 'Unknown',
+            logo: match.home_team?.logo || ''
+          },
+          awayTeam: {
+            id: match.away_team?.id?.toString() || '',
+            name: match.away_team?.name || 'Unknown',
+            logo: match.away_team?.logo || ''
+          },
+          status: match.status === 'live' ? 'LIVE' :
+                 match.status === 'finished' ? 'FINISHED' : 'SCHEDULED',
+          time: formatMatchTime(match.start_time, match.status),
+          score: match.score ? {
+            home: match.score.home || 0,
+            away: match.score.away || 0
+          } : undefined,
+          venue: match.venue || undefined
+        }))
+
+        setMatches(transformedMatches)
         setError(null)
       } catch (err) {
         console.error('Error fetching live matches:', err)
@@ -103,13 +131,33 @@ export const useUpcomingMatches = (daysAhead = 7, limit = 20) => {
           .from('matches')
           .select('*')
           .eq('status', 'scheduled')
-          .gte('kickoff_time', new Date().toISOString())
-          .lte('kickoff_time', futureDate.toISOString())
-          .order('kickoff_time', { ascending: true })
+          .gte('start_time', new Date().toISOString())
+          .lte('start_time', futureDate.toISOString())
+          .order('start_time', { ascending: true })
           .limit(limit)
 
         if (err) throw err
-        setMatches(data || [])
+
+        // Transform DB data to Match interface
+        const transformedMatches: Match[] = (data || []).map(match => ({
+          id: match.id,
+          league: match.metadata?.league || 'Unknown League',
+          homeTeam: {
+            id: match.home_team?.id?.toString() || '',
+            name: match.home_team?.name || 'Unknown',
+            logo: match.home_team?.logo || ''
+          },
+          awayTeam: {
+            id: match.away_team?.id?.toString() || '',
+            name: match.away_team?.name || 'Unknown',
+            logo: match.away_team?.logo || ''
+          },
+          status: 'SCHEDULED',
+          time: formatMatchTime(match.start_time, match.status),
+          venue: match.venue || undefined
+        }))
+
+        setMatches(transformedMatches)
         setError(null)
 
         if (
@@ -279,7 +327,7 @@ export const useTriggerSync = () => {
     try {
       setLoading(true)
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-matches`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-matches-footballdata`,
         {
           method: 'POST',
           headers: {
