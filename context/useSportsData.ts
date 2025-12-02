@@ -51,39 +51,25 @@ export const useLiveMatches = () => {
     const fetchMatches = async () => {
       try {
         setLoading(true)
-        const { data, error: err } = await supabase
-          .from('matches')
-          .select('*')
-          .eq('status', 'live')
-          .order('start_time', { ascending: true })
 
-        if (err) throw err
+        // Use edge function instead of direct table access
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-matches?status=live&limit=50`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        )
 
-        // Transform DB data to Match interface
-        const transformedMatches: Match[] = (data || []).map(match => ({
-          id: match.id,
-          league: match.metadata?.league || 'Unknown League',
-          homeTeam: {
-            id: match.home_team?.id?.toString() || '',
-            name: match.home_team?.name || 'Unknown',
-            logo: match.home_team?.logo || ''
-          },
-          awayTeam: {
-            id: match.away_team?.id?.toString() || '',
-            name: match.away_team?.name || 'Unknown',
-            logo: match.away_team?.logo || ''
-          },
-          status: match.status === 'live' ? 'LIVE' :
-                 match.status === 'finished' ? 'FINISHED' : 'SCHEDULED',
-          time: formatMatchTime(match.start_time, match.status),
-          score: match.score ? {
-            home: match.score.home || 0,
-            away: match.score.away || 0
-          } : undefined,
-          venue: match.venue || undefined
-        }))
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
 
-        setMatches(transformedMatches)
+        const data = await response.json()
+        setMatches(data)
         setError(null)
       } catch (err) {
         console.error('Error fetching live matches:', err)
@@ -95,17 +81,8 @@ export const useLiveMatches = () => {
 
     fetchMatches()
 
-    // Subscribe to real-time updates
-    const subscription = supabase
-      .from('matches')
-      .on('*', () => {
-        fetchMatches()
-      })
-      .subscribe()
-
-    return () => {
-      subscription.unsubscribe()
-    }
+    // For now, disable real-time updates since we're using edge functions
+    // TODO: Implement real-time updates via edge functions if needed
   }, [])
 
   return { matches, loading, error }
@@ -124,40 +101,25 @@ export const useUpcomingMatches = (daysAhead = 7, limit = 20) => {
     const fetchMatches = async (retry = false) => {
       try {
         setLoading(true)
-        const futureDate = new Date()
-        futureDate.setDate(futureDate.getDate() + daysAhead)
 
-        const { data, error: err } = await supabase
-          .from('matches')
-          .select('*')
-          .eq('status', 'scheduled')
-          .gte('start_time', new Date().toISOString())
-          .lte('start_time', futureDate.toISOString())
-          .order('start_time', { ascending: true })
-          .limit(limit)
+        // Use edge function instead of direct table access
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-matches?status=scheduled&limit=${limit}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        )
 
-        if (err) throw err
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
 
-        // Transform DB data to Match interface
-        const transformedMatches: Match[] = (data || []).map(match => ({
-          id: match.id,
-          league: match.metadata?.league || 'Unknown League',
-          homeTeam: {
-            id: match.home_team?.id?.toString() || '',
-            name: match.home_team?.name || 'Unknown',
-            logo: match.home_team?.logo || ''
-          },
-          awayTeam: {
-            id: match.away_team?.id?.toString() || '',
-            name: match.away_team?.name || 'Unknown',
-            logo: match.away_team?.logo || ''
-          },
-          status: 'SCHEDULED',
-          time: formatMatchTime(match.start_time, match.status),
-          venue: match.venue || undefined
-        }))
-
-        setMatches(transformedMatches)
+        const data = await response.json()
+        setMatches(data)
         setError(null)
 
         if (
@@ -186,16 +148,8 @@ export const useUpcomingMatches = (daysAhead = 7, limit = 20) => {
 
     fetchMatches()
 
-    const subscription = supabase
-      .from('matches')
-      .on('*', () => {
-        fetchMatches()
-      })
-      .subscribe()
-
-    return () => {
-      subscription.unsubscribe()
-    }
+    // For now, disable real-time updates since we're using edge functions
+    // TODO: Implement real-time updates via edge functions if needed
   }, [daysAhead, limit])
 
   return { matches, loading, error }
