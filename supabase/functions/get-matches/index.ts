@@ -8,7 +8,7 @@ interface Match {
   // Old fields (for backward compatibility)
   home_team?: string;
   away_team?: string;
-  start_time?: string;
+  kickoff_time?: string;
   home_team_score?: number;
   away_team_score?: number;
   league?: string;
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     let query: any = supabase
       .from("matches")
       .select("*")
-      .order("start_time", { ascending: true })
+      .order("kickoff_time", { ascending: true })
       .limit(limit);
 
     if (status) {
@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
 
     // Transform to frontend format (defensive)
     const transformedMatches = data.map((match: Partial<Match>) => {
-      // Use start_time (from database schema) or fallback to empty string
-      const start_time = match.start_time ?? "";
+      // Use kickoff_time (from database schema) or fallback to empty string
+      const start_time = match.kickoff_time ?? "";
       const statusVal = match.status ?? "scheduled";
       const scoreObj = match.score ?? undefined;
 
