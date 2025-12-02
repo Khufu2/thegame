@@ -150,19 +150,32 @@ async function saveMatches(matches: Match[]) {
       .upsert(
         {
           id: `thesportsdb-${match.idEvent}`,
-          fixture_id: parseInt(match.idEvent),
-          home_team: match.strHomeTeam,
-          away_team: match.strAwayTeam,
-          kickoff_time: kickoffTime,
+          league_id: null, // TODO: Map to league uuid
+          home_team: {
+            name: match.strHomeTeam,
+            id: null, // TheSportsDB doesn't provide team IDs in this endpoint
+            logo: match.strHomeTeamBadge
+          },
+          away_team: {
+            name: match.strAwayTeam,
+            id: null,
+            logo: match.strAwayTeamBadge
+          },
+          start_time: kickoffTime,
           status,
-          home_team_score: homeScore,
-          away_team_score: awayScore,
-          result,
-          league: match.strLeague,
-          league_id: parseInt(match.idLeague),
-          season: match.strSeason,
-          home_team_logo: match.strHomeTeamBadge,
-          away_team_logo: match.strAwayTeamBadge,
+          score: {
+            home: homeScore,
+            away: awayScore
+          },
+          venue: null,
+          venue_details: null,
+          metadata: {
+            fixture_id: parseInt(match.idEvent),
+            league: match.strLeague,
+            league_id: parseInt(match.idLeague),
+            season: match.strSeason,
+            result: status === "finished" ? result : null
+          }
         },
         { onConflict: "id" }
       );
