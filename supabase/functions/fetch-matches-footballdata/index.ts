@@ -178,21 +178,33 @@ async function saveMatches(matches: Match[]) {
       .upsert(
         {
           id: `football-data-${match.id}`,
-          fixture_id: match.id,
-          home_team: match.homeTeam.name,
-          home_team_id: match.homeTeam.id,
-          away_team: match.awayTeam.name,
-          away_team_id: match.awayTeam.id,
-          kickoff_time: match.utcDate,
+          league_id: null, // TODO: Map to league uuid
+          home_team: {
+            name: match.homeTeam.name,
+            id: match.homeTeam.id,
+            logo: null // Football-Data.org doesn't provide logos in basic plan
+          },
+          away_team: {
+            name: match.awayTeam.name,
+            id: match.awayTeam.id,
+            logo: null
+          },
+          start_time: match.utcDate,
           status,
-          home_team_score: homeScore,
-          away_team_score: awayScore,
-          result: status === "finished" ? result : null,
-          league: match.competition.name,
-          league_id: match.competition.id,
-          season: match.season.startDate ? new Date(match.season.startDate).getFullYear() : null,
-          round: match.matchday ? `Matchday ${match.matchday}` : null,
-          venue_country: match.competition.name, // Approximate
+          score: {
+            home: homeScore,
+            away: awayScore
+          },
+          venue: null, // Not provided in matches endpoint
+          venue_details: null,
+          metadata: {
+            fixture_id: match.id,
+            league: match.competition.name,
+            league_code: match.competition.code,
+            season: match.season.startDate ? new Date(match.season.startDate).getFullYear() : null,
+            round: match.matchday ? `Matchday ${match.matchday}` : null,
+            result: status === "finished" ? result : null
+          }
         },
         { onConflict: "id" }
       );
