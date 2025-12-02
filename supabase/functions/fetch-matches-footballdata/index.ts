@@ -88,18 +88,12 @@ async function rateLimitedFetch(url: string, label?: string) {
 
 async function fetchLiveMatches() {
   try {
-    // Football-Data.org doesn't have a dedicated "live" endpoint
-    // We'll fetch recent matches and filter for live ones
-    const today = new Date().toISOString().split('T')[0];
-    const res = await rateLimitedFetch(`https://api.football-data.org/v4/matches?dateFrom=${today}&dateTo=${today}`, 'live-matches');
+    const res = await rateLimitedFetch(`https://api.football-data.org/v4/matches?status=LIVE`, 'live-matches');
 
     if (!res.ok) return [];
 
     const data = await res.json();
-    const matches = data.matches || [];
-
-    // Filter for live matches (status: IN_PLAY, PAUSED)
-    return matches.filter((m: any) => m.status === 'IN_PLAY' || m.status === 'PAUSED');
+    return data.matches || [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
@@ -131,7 +125,7 @@ async function fetchUpcomingMatches() {
     let allMatches: any[] = [];
     for (const date of datesToFetch) {
       for (const leagueCode of leagues) {
-        const url = `https://api.football-data.org/v4/competitions/${leagueCode}/matches?dateFrom=${date}&dateTo=${date}`;
+        const url = `https://api.football-data.org/v4/competitions/${leagueCode}/matches?status=SCHEDULED&dateFrom=${date}&dateTo=${date}`;
         const res = await rateLimitedFetch(url, `matches-${leagueCode}-${date}`);
 
         if (!res.ok) continue;
