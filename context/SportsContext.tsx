@@ -63,26 +63,94 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     useEffect(() => {
-        // Fetch matches from Supabase
+        // Fetch matches via edge function
         const fetchMatches = async () => {
-            const { data, error } = await supabase.from('matches').select('*');
-            if (!error && data) setMatches(data);
+            try {
+                const response = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-matches?status=scheduled&limit=50`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    setMatches(data);
+                }
+            } catch (error) {
+                console.error('Error fetching matches:', error);
+            }
         };
-        // Fetch news from Supabase
+
+        // Fetch news via edge function
         const fetchNews = async () => {
-            const { data, error } = await supabase.from('news').select('*');
-            if (!error && data) setNews(data);
+            try {
+                const response = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-news`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    setNews(data);
+                }
+            } catch (error) {
+                console.error('Error fetching news:', error);
+            }
         };
-        // Fetch alerts from Supabase
+
+        // Fetch alerts via edge function
         const fetchAlerts = async () => {
-            const { data, error } = await supabase.from('alerts').select('*');
-            if (!error && data) setAlerts(data);
+            try {
+                const response = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-alerts`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    setAlerts(data);
+                }
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+            }
         };
-        // Fetch leaderboard from Supabase
+
+        // Fetch leaderboard via edge function
         const fetchLeaderboard = async () => {
-            const { data, error } = await supabase.from('leaderboard').select('*');
-            if (!error && data) setLeaderboard(data);
+            try {
+                const response = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-leaderboard`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    setLeaderboard(data);
+                }
+            } catch (error) {
+                console.error('Error fetching leaderboard:', error);
+            }
         };
+
         fetchMatches();
         fetchNews();
         fetchAlerts();
