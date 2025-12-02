@@ -182,7 +182,7 @@ async function saveMatches(matches: Match[]) {
           // Old fields for backward compatibility
           home_team: match.homeTeam.name,
           away_team: match.awayTeam.name,
-          kickoff_time: match.utcDate,
+          start_time: match.utcDate,
           status,
           home_team_score: homeScore,
           away_team_score: awayScore,

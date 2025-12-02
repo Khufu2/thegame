@@ -5,15 +5,26 @@ const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 interface Match {
   id: string;
-  league_id: string | null;
-  home_team_json: any;
-  away_team_json: any;
-  start_time: string;
+  // Old fields (for backward compatibility)
+  home_team?: string;
+  away_team?: string;
+  start_time?: string;
+  home_team_score?: number;
+  away_team_score?: number;
+  league?: string;
+  season?: number;
+  round?: string;
+  fixture_id?: number;
+  home_team_id?: number;
+  away_team_id?: number;
+  // New jsonb fields
+  home_team_json?: any;
+  away_team_json?: any;
+  score?: any;
+  venue?: string | null;
+  venue_details?: any;
+  metadata?: any;
   status: string;
-  score: any;
-  venue: string | null;
-  venue_details: any;
-  metadata: any;
   created_at: string;
 }
 
@@ -74,30 +85,42 @@ Deno.serve(async (req) => {
 
     // Transform to frontend format (defensive)
     const transformedMatches = data.map((match: Partial<Match>) => {
+      // Use start_time (from database schema) or fallback to empty string
       const start_time = match.start_time ?? "";
       const statusVal = match.status ?? "scheduled";
       const scoreObj = match.score ?? undefined;
 
+      // Prefer new jsonb fields, fallback to old string fields
+      const homeTeamData = match.home_team_json || {
+        id: (match.home_team_id ?? "").toString(),
+        name: match.home_team ?? "Unknown",
+        logo: ""
+      };
+
+      const awayTeamData = match.away_team_json || {
+        id: (match.away_team_id ?? "").toString(),
+        name: match.away_team ?? "Unknown",
+        logo: ""
+      };
+
       return {
         id: match.id ?? "",
-        league: match.metadata?.league ?? "Unknown League",
-        homeTeam: match.home_team_json
-          ? {
-              id: (match.home_team_json.id ?? "").toString(),
-              name: match.home_team_json.name ?? "Unknown",
-              logo: match.home_team_json.logo ?? ""
-            }
-          : { id: "", name: "Unknown", logo: "" },
-        awayTeam: match.away_team_json
-          ? {
-              id: (match.away_team_json.id ?? "").toString(),
-              name: match.away_team_json.name ?? "Unknown",
-              logo: match.away_team_json.logo ?? ""
-            }
-          : { id: "", name: "Unknown", logo: "" },
+        league: match.league ?? match.metadata?.league ?? "Unknown League",
+        homeTeam: {
+          id: homeTeamData.id?.toString() ?? "",
+          name: homeTeamData.name ?? "Unknown",
+          logo: homeTeamData.logo ?? ""
+        },
+        awayTeam: {
+          id: awayTeamData.id?.toString() ?? "",
+          name: awayTeamData.name ?? "Unknown",
+          logo: awayTeamData.logo ?? ""
+        },
         status: statusVal === "live" ? "LIVE" : statusVal === "finished" ? "FINISHED" : "SCHEDULED",
         time: formatMatchTime(start_time, statusVal),
-        score: scoreObj ? { home: scoreObj.home ?? 0, away: scoreObj.away ?? 0 } : undefined,
+        score: scoreObj ? { home: scoreObj.home ?? 0, away: scoreObj.away ?? 0 } :
+               (match.home_team_score !== undefined && match.away_team_score !== undefined) ?
+               { home: match.home_team_score, away: match.away_team_score } : undefined,
         venue: match.venue ?? undefined
       };
     });
