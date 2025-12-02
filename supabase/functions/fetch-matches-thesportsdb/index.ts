@@ -151,18 +151,28 @@ async function saveMatches(matches: Match[]) {
         {
           id: `thesportsdb-${match.idEvent}`,
           league_id: null, // TODO: Map to league uuid
-          home_team: {
+          // Old fields for backward compatibility
+          home_team: match.strHomeTeam,
+          away_team: match.strAwayTeam,
+          kickoff_time: kickoffTime,
+          status,
+          home_team_score: homeScore,
+          away_team_score: awayScore,
+          result: status === "finished" ? result : null,
+          league: match.strLeague,
+          season: match.strSeason,
+          fixture_id: parseInt(match.idEvent),
+          // New jsonb fields
+          home_team_json: {
             name: match.strHomeTeam,
             id: null, // TheSportsDB doesn't provide team IDs in this endpoint
             logo: match.strHomeTeamBadge
           },
-          away_team: {
+          away_team_json: {
             name: match.strAwayTeam,
             id: null,
             logo: match.strAwayTeamBadge
           },
-          start_time: kickoffTime,
-          status,
           score: {
             home: homeScore,
             away: awayScore

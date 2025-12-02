@@ -179,18 +179,31 @@ async function saveMatches(matches: Match[]) {
         {
           id: `football-data-${match.id}`,
           league_id: null, // TODO: Map to league uuid
-          home_team: {
+          // Old fields for backward compatibility
+          home_team: match.homeTeam.name,
+          away_team: match.awayTeam.name,
+          kickoff_time: match.utcDate,
+          status,
+          home_team_score: homeScore,
+          away_team_score: awayScore,
+          result: status === "finished" ? result : null,
+          league: match.competition.name,
+          season: match.season.startDate ? new Date(match.season.startDate).getFullYear() : null,
+          round: match.matchday ? `Matchday ${match.matchday}` : null,
+          fixture_id: match.id,
+          home_team_id: match.homeTeam.id,
+          away_team_id: match.awayTeam.id,
+          // New jsonb fields
+          home_team_json: {
             name: match.homeTeam.name,
             id: match.homeTeam.id,
             logo: null // Football-Data.org doesn't provide logos in basic plan
           },
-          away_team: {
+          away_team_json: {
             name: match.awayTeam.name,
             id: match.awayTeam.id,
             logo: null
           },
-          start_time: match.utcDate,
-          status,
           score: {
             home: homeScore,
             away: awayScore
