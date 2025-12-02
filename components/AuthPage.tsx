@@ -4,6 +4,7 @@ import { useSports } from '../context/SportsContext';
 import { Mail, ArrowRight, Lock, Eye, EyeOff, User, Phone, MessageCircle, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile, UserPreferences } from '../types';
+import supabase from '../services/supabaseClient';
 
 // EXPANDED COUNTRY LIST
 const COUNTRY_CODES = [
@@ -127,66 +128,92 @@ export const AuthPage: React.FC = () => {
     };
 
     const authenticateEmail = async (identifier: string, userPassword: string, fallbackName?: string) => {
-        if (!ensureBackendAvailable()) return;
-        const response = await fetch(`${backendUrl}/api/auth/signin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: identifier, password: userPassword })
-        });
-
-        // Safely parse response body
-        const contentType = response.headers.get('content-type') || '';
-        const rawText = await response.text().catch(() => '');
-        let result: any = null;
-        if (rawText && contentType.includes('application/json')) {
+        // Try backend first if configured
+        if (backendUrl) {
             try {
-                result = JSON.parse(rawText);
+                const response = await fetch(`${backendUrl}/api/auth/signin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: identifier, password: userPassword })
+                });
+
+                // Safely parse response body
+                const contentType = response.headers.get('content-type') || '';
+                const rawText = await response.text().catch(() => '');
+                let result: any = null;
+                if (rawText && contentType.includes('application/json')) {
+                    try {
+                        result = JSON.parse(rawText);
+                    } catch (e) {
+                        throw new Error('Received malformed JSON from server. Please try again later.');
+                    }
+                }
+
+                if (!response.ok) {
+                    const message = (result && result.error) ? result.error : (rawText || 'Invalid credentials');
+                    throw new Error(message);
+                }
+
+                if (!result) {
+                    throw new Error('Empty response from server. Please try again later.');
+                }
+
+                await hydrateSession(result, identifier, fallbackName);
+                return;
             } catch (e) {
-                // fall through with better message
-                throw new Error('Received malformed JSON from server. Please try again later.');
+                // Fall back to direct Supabase auth if backend unreachable or errored
+                console.warn('Backend signin failed, falling back to Supabase auth:', e);
             }
         }
 
-        if (!response.ok) {
-            const message = (result && result.error) ? result.error : (rawText || 'Invalid credentials');
-            throw new Error(message);
-        }
-
-        if (!result) {
-            throw new Error('Empty response from server. Please try again later.');
-        }
-
-        await hydrateSession(result, identifier, fallbackName);
+        // Supabase direct auth fallback
+        const { data, error } = await supabase.auth.signInWithPassword({ email: identifier, password: userPassword });
+        if (error) throw new Error(error.message || 'Authentication failed');
+        const { user, session } = data;
+        await hydrateSession({ user, session: session?.access_token }, identifier, fallbackName);
     };
 
     const registerEmail = async (identifier: string, userPassword: string, displayName?: string) => {
-        if (!ensureBackendAvailable()) return;
-        const response = await fetch(`${backendUrl}/api/auth/signup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: identifier,
-                password: userPassword,
-                display_name: displayName || identifier.split('@')[0]
-            })
-        });
-
-        const contentType = response.headers.get('content-type') || '';
-        const rawText = await response.text().catch(() => '');
-        let result: any = null;
-        if (rawText && contentType.includes('application/json')) {
+        // Try backend first if configured
+        if (backendUrl) {
             try {
-                result = JSON.parse(rawText);
+                const response = await fetch(`${backendUrl}/api/auth/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: identifier,
+                        password: userPassword,
+                        display_name: displayName || identifier.split('@')[0]
+                    })
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                const rawText = await response.text().catch(() => '');
+                let result: any = null;
+                if (rawText && contentType.includes('application/json')) {
+                    try {
+                        result = JSON.parse(rawText);
+                    } catch (e) {
+                        throw new Error('Received malformed JSON from server during signup.');
+                    }
+                }
+
+                if (!response.ok) {
+                    const message = (result && result.error) ? result.error : (rawText || 'Failed to create account');
+                    throw new Error(message);
+                }
+
+                setSuccessMessage('Account created successfully! Logging you in...');
+                await authenticateEmail(identifier, userPassword, displayName);
+                return;
             } catch (e) {
-                throw new Error('Received malformed JSON from server during signup.');
+                console.warn('Backend signup failed, falling back to Supabase auth:', e);
             }
         }
 
-        if (!response.ok) {
-            const message = (result && result.error) ? result.error : (rawText || 'Failed to create account');
-            throw new Error(message);
-        }
-
+        // Supabase direct signup fallback
+        const { data, error } = await supabase.auth.signUp({ email: identifier, password: userPassword });
+        if (error) throw new Error(error.message || 'Failed to create account');
         setSuccessMessage('Account created successfully! Logging you in...');
         await authenticateEmail(identifier, userPassword, displayName);
     };

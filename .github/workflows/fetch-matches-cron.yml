@@ -2,17 +2,17 @@ name: Fetch Matches Every Minute
 
 on:
   schedule:
-    - cron: '*/1 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
   fetch-matches:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Supabase Edge Function (fetch-matches)
+      - name: Trigger Supabase Edge Function (fetch-matches-footballdata)
         run: |
           set -e
-          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-matches" \
+          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-matches-footballdata" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \

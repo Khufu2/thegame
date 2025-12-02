@@ -9,10 +9,10 @@ jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
-      - name: Refresh odds via API-Football
+      - name: Refresh odds via SportsData.io
         run: |
           set -e
-          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-odds" \
+          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-odds-sportsdata" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json"
