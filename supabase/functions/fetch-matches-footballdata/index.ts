@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const FOOTBALL_DATA_API_KEY = Deno.env.get("FOOTBALL_DATA_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const LEAGUE_IDS = (Deno.env.get('LEAGUE_IDS') || '').trim(); // e.g. "PL,BL1,SA,PD"
+const LEAGUE_IDS = (Deno.env.get('LEAGUE_IDS') || 'PL,BL1').trim(); // Conservative default: Premier League, Bundesliga only
 const SEASON = (Deno.env.get('SEASON') || '').trim(); // e.g. "2024"
 
 function assertEnv() {
@@ -61,8 +61,9 @@ async function rateLimitedFetch(url: string, label?: string) {
     windowStart = now;
   }
 
-  if (reqCount >= 10) { // 10 per minute for free tier
-    const wait = 60_000 - (now - windowStart) + 200;
+  // More conservative: 6 requests per minute instead of 10
+  if (reqCount >= 6) {
+    const wait = 60_000 - (now - windowStart) + 1000; // 1 second buffer
     console.log(`[rateLimit] Waiting ${wait}ms before calling ${label}`);
     await sleep(wait);
     reqCount = 0;
@@ -77,6 +78,37 @@ async function rateLimitedFetch(url: string, label?: string) {
       'Accept': 'application/json'
     },
   });
+
+  // Handle rate limiting response
+  if (res.status === 429) {
+    const body = await res.text();
+    console.warn(`[rateLimit:${label}] 429 received, body="${body}"`);
+
+    // Extract wait time from response if available
+    const waitMatch = body.match(/Wait (\d+) seconds/);
+    const waitSeconds = waitMatch ? parseInt(waitMatch[1]) : 5; // Default 5 seconds
+
+    console.log(`[rateLimit] API says wait ${waitSeconds} seconds, complying...`);
+    await sleep(waitSeconds * 1000);
+
+    // Retry once after waiting
+    console.log(`[rateLimit] Retrying ${label}...`);
+    const retryRes = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Auth-Token': FOOTBALL_DATA_API_KEY || '',
+        'Accept': 'application/json'
+      },
+    });
+
+    if (retryRes.ok) {
+      console.log(`[rateLimit] Retry successful for ${label}`);
+      return retryRes;
+    }
+
+    console.warn(`[rateLimit] Retry failed for ${label}, status=${retryRes.status}`);
+    return retryRes;
+  }
 
   if (!res.ok) {
     const body = await res.text();
@@ -114,13 +146,14 @@ async function fetchUpcomingMatches() {
 
     const datesToFetch = [];
     const today = new Date();
-    for (let i = 0; i < 3; i++) {
+    // Fetch today and next 6 days to find matches
+    for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
       datesToFetch.push(date.toISOString().split('T')[0]);
     }
 
-    console.log(`[upcoming] Fetching for dates: ${datesToFetch.join(', ')}, leagues: ${leagues.join(', ')}`);
+    console.log(`[upcoming] Fetching for dates: ${datesToFetch.slice(0, 3).join(', ')}... (7 days total), leagues: ${leagues.join(', ')}`);
 
     let allMatches: any[] = [];
     for (const date of datesToFetch) {
@@ -132,7 +165,13 @@ async function fetchUpcomingMatches() {
 
         const data = await res.json();
         const matches = data.matches || [];
-        console.log(`[league ${leagueCode}] date=${date} count=${matches.length}`);
+        console.log(`[league ${leagueCode}] date=${date} count=${matches.length}, api_result_count=${data.resultSet?.count || 'unknown'}`);
+
+        // Debug: log first match if any
+        if (matches.length > 0) {
+          console.log(`[debug] First match: ${matches[0].homeTeam.name} vs ${matches[0].awayTeam.name} at ${matches[0].utcDate}`);
+        }
+
         allMatches.push(...matches);
       }
     }
