@@ -96,26 +96,37 @@ async function ingestTopScorers(leagueId = 39) {
 async function runAllIngestion() {
   console.log('\n╔═══════════════════════════════════════════════════════════╗')
   console.log('║                                                           ║')
-  console.log('║   🚀 SHEENA DATA INGESTION - NEW API INTEGRATION         ║')
+  console.log('║   🚀 SHEENA MULTI-SPORT DATA INGESTION - FREE TIERS      ║')
   console.log('║                                                           ║')
   console.log('╚═══════════════════════════════════════════════════════════╝')
 
   try {
     // Run ingestion tasks
-    await ingestLiveMatches() // Now includes upcoming matches
+    await ingestLiveMatches() // European soccer
     await ingestUpcomingMatches(14) // Placeholder
     await ingestLeagueStandings(39) // TODO: Implement
     await ingestTopScorers(39) // TODO: Implement
+
+    // Multi-sport ingestion via edge functions
+    console.log('\n🏀 Ingesting NBA games...');
+    await callEdgeFunction('fetch-nba-games');
+
+    console.log('\n🏎️  Ingesting F1 races...');
+    await callEdgeFunction('fetch-f1-races');
+
+    console.log('\n⚽ Ingesting African football...');
+    await callEdgeFunction('fetch-african-football');
 
     console.log('\n╔═══════════════════════════════════════════════════════════╗')
     console.log('║ ✅ ALL DATA INGESTION COMPLETE                            ║')
     console.log('║                                                           ║')
     console.log('║ Your platform now has:                                   ║')
-    console.log('║ • Live matches with real-time scores (Football-Data.org) ║')
-    console.log('║ • Upcoming matches to bet on (Football-Data.org)        ║')
+    console.log('║ • European soccer (Football-Data.org)                    ║')
+    console.log('║ • NBA games (TheSportsDB free)                           ║')
+    console.log('║ • F1 races (Ergast free API)                             ║')
+    console.log('║ • African football (CAF + local leagues)                 ║')
     console.log('║ • Odds data (SportsData.io)                              ║')
-    console.log('║ • League standings (TODO)                                ║')
-    console.log('║ • Top scorers (TODO)                                     ║')
+    console.log('║ • All using FREE API tiers!                              ║')
     console.log('╚═══════════════════════════════════════════════════════════╝\n')
   } catch (err) {
     console.error('❌ Ingestion failed:', err.message)

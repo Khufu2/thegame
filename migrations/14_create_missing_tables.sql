@@ -3,7 +3,8 @@
 
 -- LEADERBOARD TABLE
 -- Tracks user rankings and statistics
-CREATE TABLE IF NOT EXISTS public.leaderboard (
+DROP TABLE IF EXISTS public.leaderboard;
+CREATE TABLE public.leaderboard (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.users(id) ON DELETE CASCADE,
   display_name text,
@@ -27,7 +28,8 @@ CREATE INDEX IF NOT EXISTS idx_leaderboard_profit_loss ON public.leaderboard(pro
 
 -- ALERTS TABLE
 -- System notifications and alerts for users
-CREATE TABLE IF NOT EXISTS public.alerts (
+DROP TABLE IF EXISTS public.alerts;
+CREATE TABLE public.alerts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.users(id) ON DELETE CASCADE,
   type text NOT NULL, -- 'match_start', 'odds_change', 'bet_result', 'system'

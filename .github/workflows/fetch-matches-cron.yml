@@ -1,4 +1,4 @@
-name: Fetch Matches Every Minute
+name: Fetch Multi-Sport Data Every 30 Minutes
 
 on:
   schedule:
@@ -6,13 +6,40 @@ on:
   workflow_dispatch:
 
 jobs:
-  fetch-matches:
+  fetch-sports-data:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Supabase Edge Function (fetch-matches-footballdata)
+      - name: Fetch European Soccer (Football-Data.org)
         run: |
           set -e
           curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-matches-footballdata" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+
+      - name: Fetch NBA Games (TheSportsDB Free)
+        run: |
+          set -e
+          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-nba-games" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+
+      - name: Fetch F1 Races (Ergast Free API)
+        run: |
+          set -e
+          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-f1-races" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+
+      - name: Fetch African Football (CAF + Local Leagues)
+        run: |
+          set -e
+          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-african-football" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \

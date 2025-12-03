@@ -262,22 +262,30 @@ async function fetchAndUpdateLogos(matches: Match[]) {
 
         if (homeLogo) {
           updateData.home_team_json = {
-            ...match.homeTeam,
+            name: match.homeTeam.name,
+            id: match.homeTeam.id,
             logo: homeLogo
           };
         }
 
         if (awayLogo) {
           updateData.away_team_json = {
-            ...match.awayTeam,
+            name: match.awayTeam.name,
+            id: match.awayTeam.id,
             logo: awayLogo
           };
         }
 
-        await supabase
+        const { error } = await supabase
           .from("matches")
           .update(updateData)
           .eq("id", `football-data-${match.id}`);
+
+        if (error) {
+          console.error(`Error updating logos for match ${match.id}:`, error);
+        } else {
+          console.log(`Updated logos for match ${match.id}`);
+        }
       }
     } catch (error) {
       console.error(`Error updating logos for match ${match.id}:`, error);

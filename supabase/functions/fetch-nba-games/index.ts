@@ -1,0 +1,165 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+interface NBAGame {
+  idEvent: string;
+  strEvent: string;
+  strHomeTeam: string;
+  strAwayTeam: string;
+  intHomeScore?: string;
+  intAwayScore?: string;
+  dateEvent: string;
+  strTime: string;
+  strStatus: string;
+  strLeague: string;
+  idLeague: string;
+}
+
+async function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function fetchNBAGames(date?: string) {
+  try {
+    // TheSportsDB NBA endpoint (free, no rate limits)
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const url = `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${targetDate}&s=NBA`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`NBA API error: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.events || [];
+  } catch (error) {
+    console.error("Error fetching NBA games:", error);
+    return [];
+  }
+}
+
+async function saveNBAGames(games: NBAGame[]) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+  for (const game of games) {
+    const kickoffTime = `${game.dateEvent}T${game.strTime || '00:00:00'}Z`;
+
+    const status =
+      game.strStatus === "Match Finished" ? "finished" :
+      game.strStatus === "Not Started" ? "scheduled" :
+      "live";
+
+    const homeScore = game.intHomeScore ? parseInt(game.intHomeScore) : null;
+    const awayScore = game.intAwayScore ? parseInt(game.intAwayScore) : null;
+
+    const { error } = await supabase
+      .from("matches")
+      .upsert(
+        {
+          id: `nba-${game.idEvent}`,
+          sport: 'basketball',
+          event_type: 'match',
+          home_team: game.strHomeTeam,
+          away_team: game.strAwayTeam,
+          kickoff_time: kickoffTime,
+          status,
+          home_team_score: homeScore,
+          away_team_score: awayScore,
+          league: 'NBA',
+          season: new Date().getFullYear().toString(),
+          fixture_id: game.idEvent,
+        },
+        { onConflict: "id" }
+      );
+
+    if (error) console.error(`Error saving NBA game ${game.idEvent}:`, error);
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }
+
+  try {
+    const envOk = assertEnv();
+    if (!envOk.ok) {
+      return new Response(
+        JSON.stringify({ error: 'Missing environment variables', missing: envOk.missing }),
+        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
+
+    console.log("🏀 Fetching NBA games from TheSportsDB...");
+
+    // Fetch today's games
+    const todayGames = await fetchNBAGames();
+    console.log(`✅ Found ${todayGames.length} NBA games today`);
+
+    // Fetch tomorrow's games
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowGames = await fetchNBAGames(tomorrowStr);
+    console.log(`✅ Found ${tomorrowGames.length} NBA games tomorrow`);
+
+    const allGames = [...todayGames, ...tomorrowGames];
+
+    if (allGames.length > 0) {
+      console.log(`💾 Saving ${allGames.length} NBA games to database...`);
+      await saveNBAGames(allGames);
+      console.log("✅ NBA games saved successfully");
+    }
+
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        todayCount: todayGames.length,
+        tomorrowCount: tomorrowGames.length,
+        totalCount: allGames.length,
+        timestamp: new Date().toISOString(),
+        provider: "thesportsdb",
+        sport: "basketball"
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error in fetch-nba-games:", error);
+    return new Response(
+      JSON.stringify({ error: error.message, stack: error.stack }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
+  }
+});
+
+function assertEnv() {
+  const missing: string[] = [];
+  if (!SUPABASE_URL) missing.push('SUPABASE_URL');
+  if (!SUPABASE_SERVICE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missing.length) {
+    console.error(`[env] Missing: ${missing.join(', ')}`);
+    return { ok: false, missing } as const;
+  }
+  console.log(`[env] OK. NBA fetch ready`);
+  return { ok: true } as const;
+}
