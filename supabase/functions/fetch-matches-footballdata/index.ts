@@ -434,8 +434,13 @@ Deno.serve(async (req) => {
 
       // Fetch logos for the teams in these matches
       console.log("🖼️  Fetching team logos from TheSportsDB...");
-      await fetchAndUpdateLogos(allMatches);
-      console.log("✅ Logos updated");
+      try {
+        await fetchAndUpdateLogos(allMatches);
+        console.log("✅ Logos updated successfully");
+      } catch (logoError) {
+        console.error("❌ Logo fetching failed:", logoError);
+        console.log("ℹ️  Matches saved without logos - can be updated later");
+      }
     }
 
     return new Response(
