@@ -226,6 +226,91 @@ async function saveMatches(matches: Match[]) {
   }
 }
 
+// Fetch and update team logos from TheSportsDB
+async function fetchAndUpdateLogos(matches: Match[]) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+  // Collect unique team names
+  const teamNames = new Set<string>();
+  for (const match of matches) {
+    teamNames.add(match.homeTeam.name);
+    teamNames.add(match.awayTeam.name);
+  }
+
+  // Fetch logos for each team
+  const logoPromises = Array.from(teamNames).map(async (teamName) => {
+    try {
+      const logo = await fetchTeamLogo(teamName);
+      return { teamName, logo };
+    } catch (error) {
+      console.error(`Error fetching logo for ${teamName}:`, error);
+      return { teamName, logo: null };
+    }
+  });
+
+  const logoResults = await Promise.all(logoPromises);
+  const logoMap = new Map(logoResults.map(r => [r.teamName, r.logo]));
+
+  // Update matches with logos
+  for (const match of matches) {
+    try {
+      const homeLogo = logoMap.get(match.homeTeam.name);
+      const awayLogo = logoMap.get(match.awayTeam.name);
+
+      if (homeLogo || awayLogo) {
+        const updateData: any = {};
+
+        if (homeLogo) {
+          updateData.home_team_json = {
+            ...match.homeTeam,
+            logo: homeLogo
+          };
+        }
+
+        if (awayLogo) {
+          updateData.away_team_json = {
+            ...match.awayTeam,
+            logo: awayLogo
+          };
+        }
+
+        await supabase
+          .from("matches")
+          .update(updateData)
+          .eq("id", `football-data-${match.id}`);
+      }
+    } catch (error) {
+      console.error(`Error updating logos for match ${match.id}:`, error);
+    }
+  }
+}
+
+// Fetch team logo from TheSportsDB
+async function fetchTeamLogo(teamName: string): Promise<string | null> {
+  try {
+    const searchUrl = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(teamName)}`;
+    const response = await fetch(searchUrl);
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const teams = data.teams;
+
+    if (!teams || teams.length === 0) return null;
+
+    // Find best match
+    const team = teams.find((t: any) =>
+      t.strTeam.toLowerCase() === teamName.toLowerCase() ||
+      t.strTeamShort?.toLowerCase() === teamName.toLowerCase()
+    ) || teams[0];
+
+    return team.strTeamBadge || team.strTeamLogo || null;
+
+  } catch (error) {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
@@ -260,6 +345,11 @@ Deno.serve(async (req) => {
       console.log(`💾 Saving ${allMatches.length} matches to database...`);
       await saveMatches(allMatches);
       console.log("✅ Matches saved successfully");
+
+      // Fetch logos for the teams in these matches
+      console.log("🖼️  Fetching team logos from TheSportsDB...");
+      await fetchAndUpdateLogos(allMatches);
+      console.log("✅ Logos updated");
     }
 
     return new Response(
