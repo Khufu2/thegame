@@ -17,9 +17,11 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Return empty array since alerts table doesn't exist yet
-    const data = [];
-    const error = null;
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
 
     if (error) throw error;
 
