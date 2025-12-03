@@ -20,7 +20,6 @@ Deno.serve(async (req) => {
     const { data, error } = await supabase
       .from('feeds')
       .select('*')
-      .eq('type', 'news')
       .order('created_at', { ascending: false })
       .limit(10);
 

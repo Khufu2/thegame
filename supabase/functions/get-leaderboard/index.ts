@@ -17,10 +17,11 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // Get top users by balance (acting as leaderboard)
     const { data, error } = await supabase
-      .from('leaderboard')
-      .select('*')
-      .order('points', { ascending: false })
+      .from('users')
+      .select('id, display_name, balance, created_at')
+      .order('balance', { ascending: false })
       .limit(50);
 
     if (error) throw error;
