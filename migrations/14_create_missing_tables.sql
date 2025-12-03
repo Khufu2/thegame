@@ -83,7 +83,8 @@ BEGIN
     win_rate,
     total_stake,
     total_payout,
-    profit_loss
+    profit_loss,
+    rank
   )
   SELECT
     u.id,
@@ -98,7 +99,8 @@ BEGIN
     END as win_rate,
     COALESCE(stats.total_stake, 0) as total_stake,
     COALESCE(stats.total_payout, 0) as total_payout,
-    COALESCE(stats.profit_loss, 0) as profit_loss
+    COALESCE(stats.profit_loss, 0) as profit_loss,
+    null as rank  -- Will be calculated below
   FROM public.users u
   LEFT JOIN (
     SELECT
