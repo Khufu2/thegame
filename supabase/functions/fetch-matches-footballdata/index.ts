@@ -335,25 +335,64 @@ async function fetchAndUpdateLogos(matches: Match[]) {
 // Fetch team logo from TheSportsDB
 async function fetchTeamLogo(teamName: string): Promise<string | null> {
   try {
+    console.log(`[logos] Searching logo for: "${teamName}"`);
+
     const searchUrl = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(teamName)}`;
     const response = await fetch(searchUrl);
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn(`[logos] Search failed for "${teamName}": ${response.status}`);
+      return null;
+    }
 
     const data = await response.json();
     const teams = data.teams;
 
-    if (!teams || teams.length === 0) return null;
+    if (!teams || teams.length === 0) {
+      console.warn(`[logos] No teams found for "${teamName}"`);
+      return null;
+    }
 
-    // Find best match
-    const team = teams.find((t: any) =>
-      t.strTeam.toLowerCase() === teamName.toLowerCase() ||
-      t.strTeamShort?.toLowerCase() === teamName.toLowerCase()
-    ) || teams[0];
+    console.log(`[logos] Found ${teams.length} teams for "${teamName}"`);
 
-    return team.strTeamBadge || team.strTeamLogo || null;
+    // Find best match - try multiple strategies
+    let bestMatch = teams[0]; // Default to first result
+
+    // Exact name match
+    const exactMatch = teams.find((t: any) =>
+      t.strTeam?.toLowerCase() === teamName.toLowerCase()
+    );
+    if (exactMatch) bestMatch = exactMatch;
+
+    // Short name match
+    if (!exactMatch) {
+      const shortMatch = teams.find((t: any) =>
+        t.strTeamShort?.toLowerCase() === teamName.toLowerCase()
+      );
+      if (shortMatch) bestMatch = shortMatch;
+    }
+
+    // Contains match
+    if (!exactMatch) {
+      const containsMatch = teams.find((t: any) =>
+        t.strTeam?.toLowerCase().includes(teamName.toLowerCase()) ||
+        teamName.toLowerCase().includes(t.strTeam?.toLowerCase())
+      );
+      if (containsMatch) bestMatch = containsMatch;
+    }
+
+    const logoUrl = bestMatch.strTeamBadge || bestMatch.strTeamLogo;
+
+    if (logoUrl) {
+      console.log(`[logos] ✅ Found logo for "${teamName}": ${logoUrl}`);
+      return logoUrl;
+    } else {
+      console.warn(`[logos] ❌ No logo found for "${teamName}" (best match: ${bestMatch.strTeam})`);
+      return null;
+    }
 
   } catch (error) {
+    console.error(`[logos] Error fetching logo for "${teamName}":`, error);
     return null;
   }
 }
