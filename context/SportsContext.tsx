@@ -63,98 +63,113 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     useEffect(() => {
-        // Fetch matches via edge function
-        const fetchMatches = async () => {
-            try {
-                const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-matches?status=scheduled&limit=50`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
+        // Generate mock data for immediate UI testing
+        const generateMockData = () => {
+            // Mock matches
+            const mockMatches: Match[] = [
+                {
+                    id: 'arsenal-chelsea-1',
+                    league: 'EPL',
+                    homeTeam: { id: '42', name: 'Arsenal', logo: 'https://media.api-sports.io/football/teams/42.png' },
+                    awayTeam: { id: '49', name: 'Chelsea', logo: 'https://media.api-sports.io/football/teams/49.png' },
+                    status: MatchStatus.SCHEDULED,
+                    time: '15:00',
+                    prediction: {
+                        outcome: 'HOME',
+                        confidence: 78,
+                        scorePrediction: '2-1',
+                        aiReasoning: 'Arsenal has been strong at home this season',
+                        keyInsight: 'Home advantage and recent form favor Arsenal',
+                        odds: { home: 2.1, draw: 3.4, away: 3.2 },
+                        weather: 'Clear',
+                        sentiment: 'POSITIVE'
+                    },
+                    context: {
+                        headline: 'Arsenal strong at home',
+                        commentCount: 12
                     }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    setMatches(data);
+                },
+                {
+                    id: 'lakers-warriors-1',
+                    league: 'NBA',
+                    homeTeam: { id: '132', name: 'Lakers', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/LAL.png' },
+                    awayTeam: { id: '161', name: 'Warriors', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/GSW.png' },
+                    status: MatchStatus.SCHEDULED,
+                    time: '20:00',
+                    prediction: {
+                        outcome: 'AWAY',
+                        confidence: 82,
+                        scorePrediction: '112-118',
+                        aiReasoning: 'Warriors have better recent form',
+                        keyInsight: 'Away team momentum suggests upset potential',
+                        odds: { home: 1.9, draw: null, away: 1.95 },
+                        weather: 'Indoor',
+                        sentiment: 'NEGATIVE'
+                    }
                 }
-            } catch (error) {
-                console.error('Error fetching matches:', error);
-            }
+            ];
+
+            // Mock news
+            const mockNews: NewsStory[] = [
+                {
+                    id: 'arsenal-chelsea-news',
+                    title: 'Arsenal vs Chelsea Preview: Gunners Look to Extend Winning Run',
+                    summary: 'Arsenal head into this Premier League clash with Chelsea looking to maintain their impressive form at the Emirates...',
+                    imageUrl: 'https://via.placeholder.com/400x200',
+                    source: 'Sky Sports',
+                    author: 'John Smith',
+                    timestamp: '2 hours ago',
+                    tags: ['EPL', 'Arsenal', 'Chelsea'],
+                    type: 'NEWS',
+                    isHero: true,
+                    likes: 245,
+                    comments: 89
+                },
+                {
+                    id: 'lakers-warriors-news',
+                    title: 'Golden State Warriors Face Tough Test Against Lakers',
+                    summary: 'The Warriors travel to LA looking to snap their recent losing streak...',
+                    imageUrl: 'https://via.placeholder.com/400x200',
+                    source: 'ESPN',
+                    author: 'Mike Johnson',
+                    timestamp: '1 hour ago',
+                    tags: ['NBA', 'Lakers', 'Warriors'],
+                    type: 'NEWS',
+                    isHero: false,
+                    likes: 156,
+                    comments: 43
+                }
+            ];
+
+            // Mock alerts
+            const mockAlerts: SystemAlert[] = [
+                {
+                    id: 'sharp-money-alert',
+                    type: 'SYSTEM_ALERT',
+                    alertType: 'SHARP_MONEY',
+                    title: 'Sharp Money Alert',
+                    description: 'Heavy betting detected on Arsenal to win. Line movement suggests professional money.',
+                    dataPoint: '2.10 → 2.05',
+                    league: 'EPL',
+                    timestamp: '30 min ago',
+                    relatedMatchId: 'arsenal-chelsea-1'
+                }
+            ];
+
+            // Mock leaderboard
+            const mockLeaderboard: LeaderboardEntry[] = [
+                { rank: 1, userId: '1', userName: 'SportsPro2024', userAvatar: '', winRate: 68.5, netProfit: 1250 },
+                { rank: 2, userId: '2', userName: 'BetMaster', userAvatar: '', winRate: 65.2, netProfit: 1180 },
+                { rank: 3, userId: '3', userName: 'TipsterKing', userAvatar: '', winRate: 62.8, netProfit: 1120 }
+            ];
+
+            setMatches(mockMatches);
+            setNews(mockNews);
+            setAlerts(mockAlerts);
+            setLeaderboard(mockLeaderboard);
         };
 
-        // Fetch news via edge function
-        const fetchNews = async () => {
-            try {
-                const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-news`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    setNews(data);
-                }
-            } catch (error) {
-                console.error('Error fetching news:', error);
-            }
-        };
-
-        // Fetch alerts via edge function
-        const fetchAlerts = async () => {
-            try {
-                const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-alerts`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    setAlerts(data);
-                }
-            } catch (error) {
-                console.error('Error fetching alerts:', error);
-            }
-        };
-
-        // Fetch leaderboard via edge function
-        const fetchLeaderboard = async () => {
-            try {
-                const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-leaderboard`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    setLeaderboard(data);
-                }
-            } catch (error) {
-                console.error('Error fetching leaderboard:', error);
-            }
-        };
-
-        fetchMatches();
-        fetchNews();
-        fetchAlerts();
-        fetchLeaderboard();
+        generateMockData();
     }, []);
 
     useEffect(() => {
