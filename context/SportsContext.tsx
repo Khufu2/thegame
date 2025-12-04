@@ -27,7 +27,7 @@ const SportsContext = createContext<SportsContextType | undefined>(undefined);
 
 export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
-    const [authState, setAuthState] = useState<AuthState>('UNAUTHENTICATED');
+    const [authState, setAuthState] = useState<AuthState>('GUEST');
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [matches, setMatches] = useState<Match[]>([]);
     const [news, setNews] = useState<NewsStory[]>([]);
