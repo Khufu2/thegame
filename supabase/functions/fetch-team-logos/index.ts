@@ -24,11 +24,11 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Get matches that need logos
+    // Get matches that need logos (check both old and new data structures)
     const { data: matches, error: fetchError } = await supabase
       .from("matches")
-      .select("id, home_team, away_team, home_team_json, away_team_json")
-      .or("home_team_json->>logo.is.null,away_team_json->>logo.is.null")
+      .select("id, home_team, away_team, home_team_logo, away_team_logo, home_team_json, away_team_json")
+      .or("home_team_logo.is.null,away_team_logo.is.null,home_team_json->>logo.is.null,away_team_json->>logo.is.null")
       .limit(50);
 
     if (fetchError) {
@@ -49,33 +49,45 @@ Deno.serve(async (req) => {
 
     for (const match of matches) {
       try {
-        // Update home team logo
-        if (match.home_team_json && !match.home_team_json.logo) {
+        const updates: any = {};
+
+        // Update home team logo - check both data structures
+        const needsHomeLogo = !match.home_team_logo && (!match.home_team_json || !match.home_team_json.logo);
+        if (needsHomeLogo) {
           const homeLogo = await fetchTeamLogo(match.home_team);
           if (homeLogo) {
-            const { error: homeError } = await supabase
-              .from("matches")
-              .update({
-                home_team_json: { ...match.home_team_json, logo: homeLogo }
-              })
-              .eq("id", match.id);
-
-            if (!homeError) updatedCount++;
+            // Update both fields for compatibility
+            updates.home_team_logo = homeLogo;
+            if (match.home_team_json) {
+              updates.home_team_json = { ...match.home_team_json, logo: homeLogo };
+            }
           }
         }
 
-        // Update away team logo
-        if (match.away_team_json && !match.away_team_json.logo) {
+        // Update away team logo - check both data structures
+        const needsAwayLogo = !match.away_team_logo && (!match.away_team_json || !match.away_team_json.logo);
+        if (needsAwayLogo) {
           const awayLogo = await fetchTeamLogo(match.away_team);
           if (awayLogo) {
-            const { error: awayError } = await supabase
-              .from("matches")
-              .update({
-                away_team_json: { ...match.away_team_json, logo: awayLogo }
-              })
-              .eq("id", match.id);
+            // Update both fields for compatibility
+            updates.away_team_logo = awayLogo;
+            if (match.away_team_json) {
+              updates.away_team_json = { ...match.away_team_json, logo: awayLogo };
+            }
+          }
+        }
 
-            if (!awayError) updatedCount++;
+        // Only update if we have changes
+        if (Object.keys(updates).length > 0) {
+          const { error } = await supabase
+            .from("matches")
+            .update(updates)
+            .eq("id", match.id);
+
+          if (!error) {
+            updatedCount++;
+          } else {
+            console.error(`Error updating logos for match ${match.id}:`, error);
           }
         }
 

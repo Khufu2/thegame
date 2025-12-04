@@ -90,17 +90,17 @@ Deno.serve(async (req) => {
       const statusVal = match.status ?? "scheduled";
       const scoreObj = match.score ?? undefined;
 
-      // Prefer new jsonb fields, fallback to old string fields
+      // Prefer new jsonb fields, fallback to direct logo fields, then old string fields
       const homeTeamData = match.home_team_json || {
         id: (match.home_team_id ?? "").toString(),
         name: match.home_team ?? "Unknown",
-        logo: ""
+        logo: (match as any).home_team_logo ?? ""
       };
 
       const awayTeamData = match.away_team_json || {
         id: (match.away_team_id ?? "").toString(),
         name: match.away_team ?? "Unknown",
-        logo: ""
+        logo: (match as any).away_team_logo ?? ""
       };
 
       return {

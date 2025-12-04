@@ -13,15 +13,42 @@ const DATES = [
     { label: 'YEST', date: 'Yesterday' },
     { label: 'TODAY', date: 'Today', active: true },
     { label: 'TOM', date: 'Tomorrow' },
-    { label: 'SAT', date: '16 Nov' },
-    { label: 'SUN', date: '17 Nov' },
-    { label: 'MON', date: '18 Nov' },
 ];
 
 export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) => {
-  const navigate = useNavigate();
-  const [filter, setFilter] = useState<'ALL' | 'LIVE' | 'FAVORITES'>('ALL');
-  const [activeDate, setActiveDate] = useState('Today');
+   const navigate = useNavigate();
+   const [filter, setFilter] = useState<'ALL' | 'LIVE' | 'FAVORITES'>('ALL');
+   const [activeDate, setActiveDate] = useState('Today');
+
+   // Generate dynamic dates based on actual matches
+   const generateDynamicDates = () => {
+       const today = new Date();
+       const dates = [
+           { label: 'YEST', date: 'Yesterday', dateObj: new Date(today.getTime() - 24 * 60 * 60 * 1000) },
+           { label: 'TODAY', date: 'Today', dateObj: today, active: true },
+           { label: 'TOM', date: 'Tomorrow', dateObj: new Date(today.getTime() + 24 * 60 * 60 * 1000) },
+       ];
+
+       // Add upcoming dates if there are matches
+       const matchDates = matches
+           .map(m => m.time ? new Date(m.time) : null)
+           .filter(d => d && d > today)
+           .sort((a, b) => a!.getTime() - b!.getTime());
+
+       if (matchDates.length > 0) {
+           const uniqueDates = [...new Set(matchDates.map(d => d!.toDateString()))];
+           uniqueDates.slice(0, 3).forEach(dateStr => {
+               const dateObj = new Date(dateStr as string);
+               const label = dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+               const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+               dates.push({ label, date: dateLabel, dateObj });
+           });
+       }
+
+       return dates;
+   };
+
+   const dynamicDates = generateDynamicDates();
 
   // 1. Filter & Group Matches
   const groupedMatches = useMemo(() => {
@@ -30,6 +57,18 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
     // Filter by Status
     if (filter === 'LIVE') {
         filtered = matches.filter(m => m.status === MatchStatus.LIVE);
+    }
+
+    // Filter by Date
+    if (activeDate !== 'Today') {
+        const targetDate = dynamicDates.find(d => d.date === activeDate)?.dateObj;
+        if (targetDate) {
+            filtered = filtered.filter(match => {
+                if (!match.time) return false;
+                const matchDate = new Date(match.time);
+                return matchDate.toDateString() === targetDate.toDateString();
+            });
+        }
     }
 
     // Group by League
@@ -42,7 +81,7 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
     });
 
     return groups;
-  }, [matches, filter]);
+  }, [matches, filter, activeDate, dynamicDates]);
 
   const leagueKeys = Object.keys(groupedMatches);
 
@@ -73,8 +112,8 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
           {/* Date Strip */}
           <div className="flex items-center border-t border-[#2C2C2C] bg-[#0A0A0A]">
               <div className="flex-1 overflow-x-auto no-scrollbar flex items-center">
-                  {DATES.map((d, i) => (
-                      <button 
+                  {dynamicDates.map((d, i) => (
+                      <button
                         key={i}
                         onClick={() => setActiveDate(d.date)}
                         className={`

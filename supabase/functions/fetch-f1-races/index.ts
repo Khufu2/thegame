@@ -27,17 +27,43 @@ interface F1Race {
 
 async function fetchF1Races(season: string = F1_SEASON) {
   try {
-    // Ergast F1 API - completely free, no rate limits
-    const url = `https://ergast.com/api/f1/${season}.json`;
+    // OpenF1 API - free F1 data API (replacement for Ergast)
+    const url = `https://api.openf1.org/v1/sessions?year=${season}`;
 
     const response = await fetch(url);
     if (!response.ok) {
-      console.warn(`F1 API error: ${response.status}`);
+      console.warn(`OpenF1 API error: ${response.status}`);
       return [];
     }
 
-    const data = await response.json();
-    return data.MRData.RaceTable.Races || [];
+    const sessions = await response.json();
+
+    // Group by circuit and get race sessions
+    const racesMap = new Map();
+
+    for (const session of sessions) {
+      if (session.session_type === 'Race') {
+        const circuitKey = session.circuit_key;
+        if (!racesMap.has(circuitKey)) {
+          racesMap.set(circuitKey, {
+            season: season,
+            round: session.round_number.toString(),
+            raceName: session.circuit_short_name || `Round ${session.round_number}`,
+            Circuit: {
+              circuitName: session.circuit_short_name || 'Unknown Circuit',
+              Location: {
+                country: session.country_name || 'Unknown',
+                locality: session.location || 'Unknown'
+              }
+            },
+            date: session.date_start?.split('T')[0] || new Date().toISOString().split('T')[0],
+            time: session.date_start?.split('T')[1]?.substring(0, 8) || '00:00:00'
+          });
+        }
+      }
+    }
+
+    return Array.from(racesMap.values());
   } catch (error) {
     console.error("Error fetching F1 races:", error);
     return [];
@@ -104,7 +130,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`🏎️  Fetching F1 ${F1_SEASON} races from Ergast API...`);
+    console.log(`🏎️  Fetching F1 ${F1_SEASON} races from OpenF1 API...`);
 
     const races = await fetchF1Races(F1_SEASON);
     console.log(`✅ Found ${races.length} F1 races for ${F1_SEASON}`);
@@ -121,7 +147,7 @@ Deno.serve(async (req) => {
         raceCount: races.length,
         season: F1_SEASON,
         timestamp: new Date().toISOString(),
-        provider: "ergast",
+        provider: "openf1",
         sport: "formula1"
       }),
       {

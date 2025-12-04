@@ -13,17 +13,47 @@ interface MatchDetailPageProps {
 }
 
 export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenPweza, onAddToSlip }) => {
-  const navigate = useNavigate();
-  const { betSlip, addComment, user, logout } = useSports();
-  const [activeTab, setActiveTab] = useState('STREAM');
-  const [betSlipStatus, setBetSlipStatus] = useState<'IDLE' | 'CONFIRM' | 'ADDED'>('IDLE');
-  const [isShared, setIsShared] = useState(false);
-  const [userVote, setUserVote] = useState<'HOME' | 'AWAY' | null>(null);
-  const [pitchSide, setPitchSide] = useState<'HOME' | 'AWAY'>('HOME');
-  const [showScoreShot, setShowScoreShot] = useState(false);
-  const [commentInput, setCommentInput] = useState('');
-  
-  const dataSaver = user?.preferences.dataSaver || false;
+   const navigate = useNavigate();
+   const { betSlip, addComment, user, logout } = useSports();
+   const [activeTab, setActiveTab] = useState('STREAM');
+   const [betSlipStatus, setBetSlipStatus] = useState<'IDLE' | 'CONFIRM' | 'ADDED'>('IDLE');
+   const [isShared, setIsShared] = useState(false);
+   const [userVote, setUserVote] = useState<'HOME' | 'AWAY' | null>(null);
+   const [pitchSide, setPitchSide] = useState<'HOME' | 'AWAY'>('HOME');
+   const [showScoreShot, setShowScoreShot] = useState(false);
+   const [commentInput, setCommentInput] = useState('');
+   const [matchDetails, setMatchDetails] = useState<any>(null);
+   const [loadingDetails, setLoadingDetails] = useState(true);
+
+   const dataSaver = user?.preferences.dataSaver || false;
+
+   // Fetch additional match details
+   useEffect(() => {
+       const fetchMatchDetails = async () => {
+           try {
+               const response = await fetch(
+                   `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-match-details?matchId=${match.id}`,
+                   {
+                       method: 'GET',
+                       headers: {
+                           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                           'Content-Type': 'application/json',
+                       },
+                   }
+               );
+               if (response.ok) {
+                   const details = await response.json();
+                   setMatchDetails(details);
+               }
+           } catch (error) {
+               console.error('Error fetching match details:', error);
+           } finally {
+               setLoadingDetails(false);
+           }
+       };
+
+       fetchMatchDetails();
+   }, [match.id]);
 
   // Check if match is already in slip
   const existingBet = betSlip.find(b => b.matchId === match.id);
@@ -287,7 +317,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                   )}
 
                   {/* VENUE INTEL (Lite Mode Compatible) */}
-                  {match.venueDetails && (
+                  {matchDetails?.venueDetails && (
                       <div className="mx-4 mb-6">
                            <div className="flex items-center gap-2 mb-2 px-1">
                                 <MapPin size={16} className="text-gray-400" />
@@ -296,32 +326,32 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                            <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl overflow-hidden">
                                {!dataSaver && (
                                    <div className="h-32 w-full relative">
-                                       <img src={match.venueDetails.imageUrl} className="w-full h-full object-cover" />
+                                       <img src={matchDetails.venueDetails.imageUrl} className="w-full h-full object-cover" />
                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                                        <div className="absolute bottom-3 left-4">
                                            <span className="block font-black text-white text-lg leading-none">{match.venue}</span>
-                                           <span className="text-xs text-gray-300">{match.venueDetails.city}, {match.venueDetails.country}</span>
+                                           <span className="text-xs text-gray-300">{matchDetails.venueDetails.city}, {matchDetails.venueDetails.country}</span>
                                        </div>
                                    </div>
                                )}
                                {dataSaver && (
                                    <div className="p-4 bg-[#1a1a1a] border-b border-[#2C2C2C]">
                                        <span className="block font-black text-white text-lg leading-none">{match.venue}</span>
-                                       <span className="text-xs text-gray-300">{match.venueDetails.city}, {match.venueDetails.country}</span>
+                                       <span className="text-xs text-gray-300">{matchDetails.venueDetails.city}, {matchDetails.venueDetails.country}</span>
                                    </div>
                                )}
                                <div className="p-4 grid grid-cols-2 gap-4 text-xs border-b border-[#2C2C2C]">
                                    <div>
                                        <span className="block text-gray-500 font-bold uppercase">Capacity</span>
-                                       <span className="text-white font-mono">{match.venueDetails.capacity}</span>
+                                       <span className="text-white font-mono">{matchDetails.venueDetails.capacity}</span>
                                    </div>
                                    <div>
                                        <span className="block text-gray-500 font-bold uppercase">Opened</span>
-                                       <span className="text-white font-mono">{match.venueDetails.opened || 'N/A'}</span>
+                                       <span className="text-white font-mono">{matchDetails.venueDetails.opened || 'N/A'}</span>
                                    </div>
                                </div>
                                <div className="p-4 text-sm text-gray-400 leading-relaxed">
-                                   {match.venueDetails.description}
+                                   {matchDetails.venueDetails.description}
                                </div>
                            </div>
                       </div>
@@ -331,9 +361,13 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                   <div className="mt-6 px-4 pb-4">
                        <h3 className="font-condensed font-bold text-sm uppercase text-gray-400 tracking-wide mb-3 pl-1">Match Feed</h3>
                        <div className="space-y-6 border-l-2 border-[#2C2C2C] ml-3 pl-6 relative">
-                           {match.timeline?.map((event) => (
+                           {matchDetails?.timeline?.map((event: any) => (
                                <StreamItem key={event.id} event={event} dataSaver={dataSaver} />
-                           ))}
+                           )) || (
+                               <div className="text-center text-gray-500 py-8">
+                                   <p className="font-condensed font-bold uppercase">No events recorded yet</p>
+                               </div>
+                           )}
                            <div className="absolute bottom-0 -left-[5px] w-2 h-2 rounded-full bg-[#2C2C2C]"></div>
                        </div>
                   </div>
@@ -343,13 +377,13 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
           {/* TAB: TIMELINE (Detailed Play-by-Play) */}
           {activeTab === 'TIMELINE' && (
               <div className="py-4 px-4 animate-in fade-in">
-                  {match.timeline ? (
+                  {matchDetails?.timeline ? (
                       <div className="space-y-0">
-                          {match.timeline.map((event, index) => (
-                             <TimelineItem 
-                                key={event.id} 
-                                event={event} 
-                                isLast={index === (match.timeline?.length || 0) - 1} 
+                          {matchDetails.timeline.map((event: any, index: number) => (
+                             <TimelineItem
+                                key={event.id}
+                                event={event}
+                                isLast={index === matchDetails.timeline.length - 1}
                                 dataSaver={dataSaver}
                              />
                           ))}
@@ -366,7 +400,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
           {/* TAB: BOX SCORE (Stats Table) */}
           {activeTab === 'BOX SCORE' && (
               <div className="animate-in fade-in">
-                  {match.boxScore ? (
+                  {matchDetails?.boxScore ? (
                        <div className="p-4">
                            {/* HOME */}
                            <div className="mb-6">
@@ -374,16 +408,16 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                    {!dataSaver && <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" />}
                                    <h3 className="font-condensed font-black text-lg uppercase">{match.homeTeam.name}</h3>
                                </div>
-                               <BoxScoreTable players={match.boxScore.home} headers={match.boxScore.headers} />
+                               <BoxScoreTable players={matchDetails.boxScore.home} headers={matchDetails.boxScore.headers} />
                            </div>
-                           
+
                            {/* AWAY */}
                            <div>
                                <div className="flex items-center gap-2 mb-3 px-2">
                                    {!dataSaver && <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" />}
                                    <h3 className="font-condensed font-black text-lg uppercase">{match.awayTeam.name}</h3>
                                </div>
-                               <BoxScoreTable players={match.boxScore.away} headers={match.boxScore.headers} />
+                               <BoxScoreTable players={matchDetails.boxScore.away} headers={matchDetails.boxScore.headers} />
                            </div>
                        </div>
                   ) : (
@@ -398,9 +432,9 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
           {/* TAB: STATS (Granular) */}
           {activeTab === 'STATS' && (
                <div className="p-4 animate-in fade-in">
-                   {match.stats ? (
+                   {matchDetails?.stats ? (
                        <div className="space-y-6">
-                           
+
                            {/* ACTUAL PLAY TIME (365Scores Style) */}
                            <div className="bg-[#121212] border border-[#2C2C2C] rounded-lg p-4">
                                <div className="flex justify-between items-center mb-2">
@@ -418,22 +452,22 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                            </div>
 
                            <StatGroup title="Attack" stats={[
-                               { label: 'Shots', home: match.stats.shots?.home || 0, away: match.stats.shots?.away || 0 },
-                               { label: 'On Target', home: match.stats.shotsOnTarget?.home || 0, away: match.stats.shotsOnTarget?.away || 0 },
-                               { label: 'Big Chances', home: match.stats.bigChances?.home || 0, away: match.stats.bigChances?.away || 0 },
-                               { label: 'Inside Box', home: match.stats.shotsInsideBox?.home || 0, away: match.stats.shotsInsideBox?.away || 0 },
+                               { label: 'Shots', home: matchDetails.stats.shots?.home || 0, away: matchDetails.stats.shots?.away || 0 },
+                               { label: 'On Target', home: matchDetails.stats.shotsOnTarget?.home || 0, away: matchDetails.stats.shotsOnTarget?.away || 0 },
+                               { label: 'Big Chances', home: matchDetails.stats.bigChances?.home || 0, away: matchDetails.stats.bigChances?.away || 0 },
+                               { label: 'Inside Box', home: matchDetails.stats.shotsInsideBox?.home || 0, away: matchDetails.stats.shotsInsideBox?.away || 0 },
                            ]} />
 
                            <StatGroup title="Possession & Passing" stats={[
-                               { label: 'Possession %', home: match.stats.possession?.home || 50, away: match.stats.possession?.away || 50, isPercent: true },
-                               { label: 'Passes', home: match.stats.passes?.home || 0, away: match.stats.passes?.away || 0 },
-                               { label: 'Accurate Passes', home: match.stats.passesCompleted?.home || 0, away: match.stats.passesCompleted?.away || 0 },
+                               { label: 'Possession %', home: matchDetails.stats.possession?.home || 50, away: matchDetails.stats.possession?.away || 50, isPercent: true },
+                               { label: 'Passes', home: matchDetails.stats.passes?.home || 0, away: matchDetails.stats.passes?.away || 0 },
+                               { label: 'Accurate Passes', home: matchDetails.stats.passesCompleted?.home || 0, away: matchDetails.stats.passesCompleted?.away || 0 },
                            ]} />
 
                            <StatGroup title="Defense" stats={[
-                               { label: 'Tackles', home: match.stats.tackles?.home || 0, away: match.stats.tackles?.away || 0 },
-                               { label: 'Clearances', home: match.stats.clearances?.home || 0, away: match.stats.clearances?.away || 0 },
-                               { label: 'Saves', home: match.stats.saves?.home || 0, away: match.stats.saves?.away || 0 },
+                               { label: 'Tackles', home: matchDetails.stats.tackles?.home || 0, away: matchDetails.stats.tackles?.away || 0 },
+                               { label: 'Clearances', home: matchDetails.stats.clearances?.home || 0, away: matchDetails.stats.clearances?.away || 0 },
+                               { label: 'Saves', home: matchDetails.stats.saves?.home || 0, away: matchDetails.stats.saves?.away || 0 },
                            ]} />
 
                        </div>
@@ -449,18 +483,18 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
           {/* TAB: LINEUPS (Pitch View or Lite List) */}
           {activeTab === 'LINEUPS' && (
               <div className="p-4 animate-in fade-in">
-                  {match.lineups ? (
+                  {matchDetails?.lineups ? (
                       <>
                           <div className="flex justify-center mb-4 bg-[#121212] rounded-full p-1 border border-[#2C2C2C] inline-flex mx-auto w-full">
                               <button onClick={() => setPitchSide('HOME')} className={`flex-1 py-2 rounded-full text-xs font-bold uppercase transition-colors ${pitchSide === 'HOME' ? 'bg-white text-black' : 'text-gray-500'}`}>{match.homeTeam.name}</button>
                               <button onClick={() => setPitchSide('AWAY')} className={`flex-1 py-2 rounded-full text-xs font-bold uppercase transition-colors ${pitchSide === 'AWAY' ? 'bg-white text-black' : 'text-gray-500'}`}>{match.awayTeam.name}</button>
                           </div>
-                          
+
                           {/* LITE MODE CHECK */}
                           {dataSaver ? (
                               <div className="space-y-2">
                                   <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Starting XI</h4>
-                                  {match.lineups[pitchSide === 'HOME' ? 'home' : 'away'].starting.map(player => (
+                                  {matchDetails.lineups[pitchSide === 'HOME' ? 'home' : 'away'].starting.map((player: any) => (
                                       <div key={player.id} className="flex items-center justify-between p-3 bg-[#1E1E1E] rounded border border-[#333]">
                                           <div className="flex items-center gap-3">
                                               <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center text-[10px] font-bold text-gray-400 border border-[#333]">
@@ -473,9 +507,9 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                   ))}
                               </div>
                           ) : (
-                              <SoccerPitch 
-                                lineup={match.lineups[pitchSide === 'HOME' ? 'home' : 'away']} 
-                                teamName={pitchSide === 'HOME' ? match.homeTeam.name : match.awayTeam.name} 
+                              <SoccerPitch
+                                lineup={matchDetails.lineups[pitchSide === 'HOME' ? 'home' : 'away']}
+                                teamName={pitchSide === 'HOME' ? match.homeTeam.name : match.awayTeam.name}
                               />
                           )}
                       </>
@@ -549,7 +583,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
                       {/* Comments Feed */}
                       <div className="space-y-4">
-                          {match.comments?.map(comment => (
+                          {matchDetails?.comments?.map((comment: any) => (
                               <div key={comment.id} className="flex gap-3 animate-in slide-in-from-bottom-2">
                                   <div className="relative">
                                       <img src={comment.userAvatar} className="w-8 h-8 rounded-full bg-gray-700" />
@@ -565,13 +599,13 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                               <span className="font-bold text-xs text-white">{comment.userName}</span>
                                               {comment.isPro && <Crown size={10} className="text-yellow-400 fill-yellow-400" />}
                                           </div>
-                                          <span className="text-[10px] text-gray-500">Just now</span>
+                                          <span className="text-[10px] text-gray-500">{comment.timestamp || 'Just now'}</span>
                                       </div>
                                       <p className="text-sm text-gray-300 leading-normal">{comment.text}</p>
                                   </div>
                               </div>
                           ))}
-                          {(!match.comments || match.comments.length === 0) && (
+                          {(!matchDetails?.comments || matchDetails.comments.length === 0) && (
                               <div className="text-center text-gray-600 text-xs py-4">Be the first to comment!</div>
                           )}
                       </div>
