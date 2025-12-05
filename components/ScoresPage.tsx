@@ -71,13 +71,22 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
         }
     }
 
-    // Group by League
+    // Group by League and sort within each league
     const groups: Record<string, Match[]> = {};
     filtered.forEach(match => {
         if (!groups[match.league]) {
             groups[match.league] = [];
         }
         groups[match.league].push(match);
+    });
+
+    // Sort matches within each league by kickoff time
+    Object.keys(groups).forEach(league => {
+        groups[league].sort((a, b) => {
+            const timeA = a.time ? new Date(a.time).getTime() : 0;
+            const timeB = b.time ? new Date(b.time).getTime() : 0;
+            return timeA - timeB;
+        });
     });
 
     return groups;
@@ -253,22 +262,31 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
             <div className="w-[50px] flex flex-col items-center justify-center border-r border-[#1E1E1E] pr-3 mr-3 shrink-0">
                 {isLive ? (
                     <>
-                        <span className="text-[10px] font-black text-red-500 animate-pulse uppercase">Live</span>
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mb-1"></div>
+                        <span className="text-[10px] font-black text-red-500 uppercase">Live</span>
                         <span className="text-xs font-bold text-red-500">{match.time}</span>
+                    </>
+                ) : match.status === 'FINISHED' ? (
+                    <>
+                        <div className="w-2 h-2 bg-gray-500 rounded-full mb-1"></div>
+                        <span className="text-[10px] font-black text-gray-500 uppercase">FT</span>
+                        <span className="text-xs font-bold text-gray-500">Final</span>
                     </>
                 ) : (
                     <>
-                        {match.status === 'FINISHED' ? (
-                            <span className="text-xs font-bold text-gray-500 uppercase">FT</span>
-                        ) : (
-                            <span className="text-xs font-bold text-gray-300">{match.time}</span>
-                        )}
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mb-1"></div>
+                        <span className="text-xs font-bold text-blue-400">{match.time}</span>
                     </>
                 )}
             </div>
 
             {/* Middle: Teams */}
-            <div className="flex-1 flex flex-col gap-2">
+            <div className="flex-1 flex flex-col gap-2 relative">
+                {match.status === 'SCHEDULED' && (
+                    <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                        <span className="bg-black text-white px-2 py-1 rounded font-bold text-xs border border-gray-600">VS</span>
+                    </div>
+                )}
                 {/* Home Team */}
                 <div className="flex items-center justify-between h-[20px]">
                     <div className="flex items-center gap-3">
@@ -280,7 +298,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                         {/* <div className="w-2 h-3 bg-red-600 rounded-[1px]"></div> */}
                     </div>
                     <span className={`font-mono font-bold text-sm ${isLive ? 'text-red-500' : 'text-white'}`}>
-                        {match.score?.home ?? '-'}
+                        {match.status === 'SCHEDULED' ? '' : (match.score?.home ?? '-')}
                     </span>
                 </div>
 
@@ -293,7 +311,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                         </span>
                     </div>
                     <span className={`font-mono font-bold text-sm ${isLive ? 'text-red-500' : 'text-white'}`}>
-                        {match.score?.away ?? '-'}
+                        {match.status === 'SCHEDULED' ? '' : (match.score?.away ?? '-')}
                     </span>
                 </div>
             </div>

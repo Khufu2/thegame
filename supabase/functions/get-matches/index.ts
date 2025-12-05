@@ -118,7 +118,8 @@ Deno.serve(async (req) => {
         },
         status: statusVal === "live" ? "LIVE" : statusVal === "finished" ? "FINISHED" : "SCHEDULED",
         time: formatMatchTime(start_time, statusVal),
-        score: scoreObj ? { home: scoreObj.home ?? 0, away: scoreObj.away ?? 0 } :
+        score: statusVal === "scheduled" ? undefined : // Don't show scores for scheduled games
+               scoreObj ? { home: scoreObj.home ?? 0, away: scoreObj.away ?? 0 } :
                (match.home_team_score !== undefined && match.away_team_score !== undefined) ?
                { home: match.home_team_score, away: match.away_team_score } : undefined,
         venue: match.venue ?? undefined
@@ -138,7 +139,7 @@ Deno.serve(async (req) => {
   }
 });
 
-// Helper function to format match time
+// Helper function to format match time with timezone support
 function formatMatchTime(startTime: string, status: string): string {
   if (status === "finished") return "FT";
   const now = new Date();
@@ -150,7 +151,12 @@ function formatMatchTime(startTime: string, status: string): string {
     return `${diff}'`;
   }
 
-  return matchTime.toLocaleTimeString("en-GB", {
+  // Convert to user's timezone (Africa/Dar_es_Salaam is UTC+3)
+  const userTimezoneOffset = 3 * 60; // UTC+3 in minutes
+  const utcTime = matchTime.getTime() + (matchTime.getTimezoneOffset() * 60000);
+  const userTime = new Date(utcTime + (userTimezoneOffset * 60000));
+
+  return userTime.toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
