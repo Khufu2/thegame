@@ -151,10 +151,9 @@ function formatMatchTime(startTime: string, status: string): string {
     return `${diff}'`;
   }
 
-  // Convert to user's timezone (Africa/Dar_es_Salaam is UTC+3)
-  const userTimezoneOffset = 3 * 60; // UTC+3 in minutes
-  const utcTime = matchTime.getTime() + (matchTime.getTimezoneOffset() * 60000);
-  const userTime = new Date(utcTime + (userTimezoneOffset * 60000));
+  // Use UTC time (frontend will handle timezone conversion)
+  // This allows dynamic timezone handling based on user's browser location
+  const userTime = matchTime; // Keep as UTC, let frontend convert
 
   return userTime.toLocaleTimeString("en-GB", {
     hour: "2-digit",

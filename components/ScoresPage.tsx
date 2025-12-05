@@ -20,9 +20,13 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
    const [filter, setFilter] = useState<'ALL' | 'LIVE' | 'FAVORITES'>('ALL');
    const [activeDate, setActiveDate] = useState('Today');
 
-   // Generate dynamic dates based on actual matches
+   // Generate dynamic dates based on actual matches with timezone support
    const generateDynamicDates = () => {
-       const today = new Date();
+       const now = new Date();
+       const userTimezoneOffset = now.getTimezoneOffset() * 60000; // in milliseconds
+       const today = new Date(now.getTime() - userTimezoneOffset); // Adjust to user's timezone
+       today.setHours(0, 0, 0, 0); // Start of day in user's timezone
+
        const dates = [
            { label: 'YEST', date: 'Yesterday', dateObj: new Date(today.getTime() - 24 * 60 * 60 * 1000) },
            { label: 'TODAY', date: 'Today', dateObj: today, active: true },
@@ -31,12 +35,15 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
 
        // Add upcoming dates if there are matches
        const matchDates = matches
-           .map(m => m.time ? new Date(m.time) : null)
-           .filter(d => d && d > today)
+           .map(m => m.time ? new Date(m.time + 'Z') : null) // Assume UTC from backend
+           .filter(d => d && d > now)
            .sort((a, b) => a!.getTime() - b!.getTime());
 
        if (matchDates.length > 0) {
-           const uniqueDates = [...new Set(matchDates.map(d => d!.toDateString()))];
+           const uniqueDates = [...new Set(matchDates.map(d => {
+               const userDate = new Date(d!.getTime() - userTimezoneOffset);
+               return userDate.toDateString();
+           }))];
            uniqueDates.slice(0, 3).forEach(dateStr => {
                const dateObj = new Date(dateStr as string);
                const label = dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -65,8 +72,10 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
         if (targetDate) {
             filtered = filtered.filter(match => {
                 if (!match.time) return false;
-                const matchDate = new Date(match.time);
-                return matchDate.toDateString() === targetDate.toDateString();
+                const matchDate = new Date(match.time + 'Z'); // UTC from backend
+                const userTimezoneOffset = new Date().getTimezoneOffset() * 60000;
+                const userMatchDate = new Date(matchDate.getTime() - userTimezoneOffset);
+                return userMatchDate.toDateString() === targetDate.toDateString();
             });
         }
     }
@@ -80,11 +89,11 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
         groups[match.league].push(match);
     });
 
-    // Sort matches within each league by kickoff time
+    // Sort matches within each league by kickoff time (timezone adjusted)
     Object.keys(groups).forEach(league => {
         groups[league].sort((a, b) => {
-            const timeA = a.time ? new Date(a.time).getTime() : 0;
-            const timeB = b.time ? new Date(b.time).getTime() : 0;
+            const timeA = a.time ? new Date(a.time + 'Z').getTime() : 0; // UTC from backend
+            const timeB = b.time ? new Date(b.time + 'Z').getTime() : 0;
             return timeA - timeB;
         });
     });
@@ -255,6 +264,21 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
     const isWinnerHome = match.score && match.score.home > match.score.away;
     const isWinnerAway = match.score && match.score.away > match.score.home;
 
+    // Convert UTC time to user's local timezone
+    const formatLocalTime = (utcTimeStr: string) => {
+        if (!utcTimeStr) return '';
+        try {
+            const utcDate = new Date(utcTimeStr + 'Z'); // Ensure it's treated as UTC
+            return utcDate.toLocaleTimeString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+            });
+        } catch {
+            return utcTimeStr;
+        }
+    };
+
     return (
         <div onClick={onClick} className={`bg-[#000000] hover:bg-[#0A0A0A] transition-colors cursor-pointer flex items-center py-3 px-4 ${!isLast ? 'border-b border-[#1E1E1E]' : ''}`}>
             
@@ -275,7 +299,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                 ) : (
                     <>
                         <div className="w-2 h-2 bg-blue-500 rounded-full mb-1"></div>
-                        <span className="text-xs font-bold text-blue-400">{match.time}</span>
+                        <span className="text-xs font-bold text-blue-400">{formatLocalTime(match.time)}</span>
                     </>
                 )}
             </div>
@@ -298,7 +322,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                         {/* <div className="w-2 h-3 bg-red-600 rounded-[1px]"></div> */}
                     </div>
                     <span className={`font-mono font-bold text-sm ${isLive ? 'text-red-500' : 'text-white'}`}>
-                        {match.status === 'SCHEDULED' ? '' : (match.score?.home ?? '-')}
+                        {match.status === 'SCHEDULED' ? '-' : (match.score?.home ?? '-')}
                     </span>
                 </div>
 
@@ -311,7 +335,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                         </span>
                     </div>
                     <span className={`font-mono font-bold text-sm ${isLive ? 'text-red-500' : 'text-white'}`}>
-                        {match.status === 'SCHEDULED' ? '' : (match.score?.away ?? '-')}
+                        {match.status === 'SCHEDULED' ? '-' : (match.score?.away ?? '-')}
                     </span>
                 </div>
             </div>
