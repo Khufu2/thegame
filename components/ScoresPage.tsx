@@ -268,13 +268,25 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
     const formatLocalTime = (utcTimeStr: string) => {
         if (!utcTimeStr) return '';
         try {
-            const utcDate = new Date(utcTimeStr + 'Z'); // Ensure it's treated as UTC
+            // Handle different time formats from backend
+            let utcDate: Date;
+            if (utcTimeStr.includes('T')) {
+                // ISO format like "2024-12-05T19:30:00"
+                utcDate = new Date(utcTimeStr + (utcTimeStr.includes('Z') ? '' : 'Z'));
+            } else {
+                // Simple time format like "19:30"
+                const today = new Date();
+                const [hours, minutes] = utcTimeStr.split(':').map(Number);
+                utcDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, 0));
+            }
+
             return utcDate.toLocaleTimeString('en-GB', {
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: false,
             });
-        } catch {
+        } catch (error) {
+            console.warn('Time format error:', utcTimeStr, error);
             return utcTimeStr;
         }
     };
@@ -282,25 +294,20 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
     return (
         <div onClick={onClick} className={`bg-[#000000] hover:bg-[#0A0A0A] transition-colors cursor-pointer flex items-center py-3 px-4 ${!isLast ? 'border-b border-[#1E1E1E]' : ''}`}>
             
-            {/* Left: Status/Time */}
+            {/* Left: Time */}
             <div className="w-[50px] flex flex-col items-center justify-center border-r border-[#1E1E1E] pr-3 mr-3 shrink-0">
                 {isLive ? (
                     <>
-                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mb-1"></div>
                         <span className="text-[10px] font-black text-red-500 uppercase">Live</span>
-                        <span className="text-xs font-bold text-red-500">{match.time}</span>
+                        <span className="text-xs font-bold text-red-500">{formatLocalTime(match.time)}</span>
                     </>
                 ) : match.status === 'FINISHED' ? (
                     <>
-                        <div className="w-2 h-2 bg-gray-500 rounded-full mb-1"></div>
                         <span className="text-[10px] font-black text-gray-500 uppercase">FT</span>
                         <span className="text-xs font-bold text-gray-500">Final</span>
                     </>
                 ) : (
-                    <>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mb-1"></div>
-                        <span className="text-xs font-bold text-blue-400">{formatLocalTime(match.time)}</span>
-                    </>
+                    <span className="text-xs font-bold text-blue-400">{formatLocalTime(match.time)}</span>
                 )}
             </div>
 
@@ -314,7 +321,13 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                 {/* Home Team */}
                 <div className="flex items-center justify-between h-[20px]">
                     <div className="flex items-center gap-3">
-                        <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" alt={match.homeTeam.name} />
+                        {match.homeTeam.logo && match.homeTeam.logo.trim() !== '' ? (
+                            <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" alt={match.homeTeam.name} />
+                        ) : (
+                            <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                                {match.homeTeam.name.charAt(0)}
+                            </div>
+                        )}
                         <span className={`font-condensed font-bold text-[15px] uppercase ${isWinnerHome || !match.score ? 'text-white' : 'text-gray-500'}`}>
                             {match.homeTeam.name}
                         </span>
@@ -329,7 +342,13 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                 {/* Away Team */}
                 <div className="flex items-center justify-between h-[20px]">
                      <div className="flex items-center gap-3">
-                        <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" alt={match.awayTeam.name} />
+                        {match.awayTeam.logo && match.awayTeam.logo.trim() !== '' ? (
+                            <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" alt={match.awayTeam.name} />
+                        ) : (
+                            <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                                {match.awayTeam.name.charAt(0)}
+                            </div>
+                        )}
                         <span className={`font-condensed font-bold text-[15px] uppercase ${isWinnerAway || !match.score ? 'text-white' : 'text-gray-500'}`}>
                             {match.awayTeam.name}
                         </span>
