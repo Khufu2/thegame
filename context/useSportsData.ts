@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '../services/supabaseClient'
 import { Match } from '../types'
 
 const backendBaseUrl = import.meta.env.VITE_BACKEND_URL as string | undefined;
@@ -188,15 +188,17 @@ export const useLeagueStandings = (leagueId: number) => {
 
     fetchStandings()
 
-    const subscription = supabase
-      .from('standings')
-      .on('*', () => {
-        fetchStandings()
-      })
+    const channel = supabase
+      .channel('standings-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'standings' },
+        () => fetchStandings()
+      )
       .subscribe()
 
     return () => {
-      subscription.unsubscribe()
+      supabase.removeChannel(channel)
     }
   }, [leagueId])
 
@@ -254,15 +256,17 @@ export const useTopScorers = (league?: string) => {
 
     fetchScorers()
 
-    const subscription = supabase
-      .from('feeds')
-      .on('*', () => {
-        fetchScorers()
-      })
+    const channel = supabase
+      .channel('feeds-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'feeds' },
+        () => fetchScorers()
+      )
       .subscribe()
 
     return () => {
-      subscription.unsubscribe()
+      supabase.removeChannel(channel)
     }
   }, [league])
 
