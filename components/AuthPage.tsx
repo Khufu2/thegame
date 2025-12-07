@@ -65,15 +65,16 @@ export const AuthPage: React.FC = () => {
     };
 
     const buildDefaultPreferences = (raw?: Partial<UserPreferences>): UserPreferences => {
-        const notifications = raw?.notifications || {};
+        const notifications = (raw?.notifications || {}) as Partial<UserPreferences['notifications']>;
         return {
             favoriteLeagues: raw?.favoriteLeagues ?? [],
             favoriteTeams: raw?.favoriteTeams ?? [],
             notifications: {
-                scoreUpdates: notifications.scoreUpdates ?? true,
-                lineMoves: notifications.lineMoves ?? true,
-                breakingNews: notifications.breakingNews ?? true,
-                whatsappUpdates: notifications.whatsappUpdates ?? false
+                gameStart: notifications?.gameStart ?? true,
+                scoreUpdates: notifications?.scoreUpdates ?? true,
+                lineMoves: notifications?.lineMoves ?? true,
+                breakingNews: notifications?.breakingNews ?? true,
+                whatsappUpdates: notifications?.whatsappUpdates ?? false
             },
             communicationChannel: raw?.communicationChannel ?? 'EMAIL',
             whatsappNumber: raw?.whatsappNumber ?? '',

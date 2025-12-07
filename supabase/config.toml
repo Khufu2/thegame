@@ -1,1 +1,70 @@
 project_id = "ebfhyyznuzxwhirwlcds"
+
+[functions.fetch-matches-footballdata]
+verify_jwt = false
+
+[functions.fetch-standings]
+verify_jwt = false
+
+[functions.fetch-scorers]
+verify_jwt = false
+
+[functions.fetch-odds]
+verify_jwt = false
+
+[functions.fetch-odds-sportsdata]
+verify_jwt = false
+
+[functions.fetch-nba-games]
+verify_jwt = false
+
+[functions.fetch-f1-races]
+verify_jwt = false
+
+[functions.fetch-matches-thesportsdb]
+verify_jwt = false
+
+[functions.fetch-team-logos]
+verify_jwt = false
+
+[functions.fetch-weather]
+verify_jwt = false
+
+[functions.fetch-african-football]
+verify_jwt = false
+
+[functions.fetch-match-details]
+verify_jwt = false
+
+[functions.fetch-matches]
+verify_jwt = false
+
+[functions.search-news]
+verify_jwt = false
+
+[functions.generate-news]
+verify_jwt = false
+
+[functions.get-alerts]
+verify_jwt = false
+
+[functions.get-leaderboard]
+verify_jwt = false
+
+[functions.get-matches]
+verify_jwt = false
+
+[functions.get-news]
+verify_jwt = false
+
+[functions.telegram-broadcast]
+verify_jwt = false
+
+[functions.whatsapp-broadcast]
+verify_jwt = false
+
+[functions.update-logos]
+verify_jwt = false
+
+[functions.verify-tron-payment]
+verify_jwt = false
