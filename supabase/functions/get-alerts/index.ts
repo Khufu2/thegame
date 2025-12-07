@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
       },
     });
   }
@@ -17,9 +17,17 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // Get recent messages/alerts from community
     const { data, error } = await supabase
-      .from('alerts')
-      .select('*')
+      .from('messages')
+      .select(`
+        id,
+        text,
+        created_at,
+        team_support,
+        user_id,
+        profiles:profiles(display_name, avatar_url)
+      `)
       .order('created_at', { ascending: false })
       .limit(20);
 

@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
       },
     });
   }
@@ -17,16 +17,25 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // Get top users by balance for leaderboard
     const { data, error } = await supabase
-      .from('leaderboard')
-      .select('*')
-      .order('rank', { ascending: true })
+      .from('profiles')
+      .select('id, display_name, avatar_url, balance, created_at')
+      .order('balance', { ascending: false })
       .limit(50);
 
     if (error) throw error;
 
+    // Add rank to each user
+    const leaderboardData = (data || []).map((user, index) => ({
+      ...user,
+      rank: index + 1
+    }));
+
+    if (error) throw error;
+
     return new Response(
-      JSON.stringify(data || []),
+      JSON.stringify(leaderboardData),
       {
         headers: {
           "Content-Type": "application/json",
