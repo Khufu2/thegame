@@ -1,15 +1,23 @@
-
 import React, { useState } from 'react';
 import { useSports } from '../context/SportsContext';
 import { NewsStory, SystemAlert, ArticleBlock, MatchStatus } from '../types';
-import { generateMatchNews } from '../services/newsAgentService';
-import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin } from 'lucide-react';
+import { generateMatchNews, shareExternalNews } from '../services/newsAgentService';
+import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin, ExternalLink, Newspaper } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+// Popular sports news sources
+const NEWS_SOURCES = [
+    { id: 'bleacher', name: 'Bleacher Report', url: 'https://bleacherreport.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/c/c9/Bleacher_Report_logo.png' },
+    { id: 'espn', name: 'ESPN', url: 'https://espn.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/ESPN_wordmark.svg' },
+    { id: 'skysports', name: 'Sky Sports', url: 'https://skysports.com', logo: 'https://upload.wikimedia.org/wikipedia/en/a/a6/Sky_Sports_logo_2020.svg' },
+    { id: 'goal', name: 'Goal.com', url: 'https://goal.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Goal.com_logo.svg' },
+    { id: 'bbc', name: 'BBC Sport', url: 'https://bbc.com/sport', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/eb/BBC_Sport_logo.svg' },
+];
 
 export const AdminPage: React.FC = () => {
     const { addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert, user, matches, news, alerts } = useSports();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'MANAGE' | 'TEAM'>('NEWS');
+    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'SHARE_NEWS' | 'MANAGE'>('NEWS');
 
     // --- NEWS STATE ---
     const [newsTitle, setNewsTitle] = useState('');
@@ -40,6 +48,11 @@ export const AdminPage: React.FC = () => {
     const [useGrounding, setUseGrounding] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedSocial, setGeneratedSocial] = useState('');
+
+    // --- SHARE NEWS STATE ---
+    const [shareUrl, setShareUrl] = useState('');
+    const [selectedSource, setSelectedSource] = useState('');
+    const [isSharing, setIsSharing] = useState(false);
 
     // --- TEAM MANAGEMENT STATE ---
     const [inviteEmail, setInviteEmail] = useState('');
@@ -155,6 +168,28 @@ export const AdminPage: React.FC = () => {
         alert("Copied to clipboard! Ready to post on Twitter/X.");
     }
 
+    const handleShareExternalNews = async () => {
+        if (!shareUrl) {
+            alert("Please enter a URL to share");
+            return;
+        }
+        setIsSharing(true);
+        const result = await shareExternalNews(shareUrl, selectedSource || 'External');
+        setIsSharing(false);
+        
+        if (result) {
+            setNewsTitle(result.title);
+            setNewsSummary(result.summary);
+            setBlocks(result.blocks);
+            setNewsTag('News');
+            if (result.socialCaption) setGeneratedSocial(result.socialCaption);
+            setActiveTab('NEWS');
+            alert("News imported! Review and publish from News Desk.");
+        } else {
+            alert("Failed to fetch and process the article. Try again.");
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#050505] text-white pb-24 font-sans">
             
@@ -166,14 +201,80 @@ export const AdminPage: React.FC = () => {
                     </div>
                     <span className="font-condensed font-black text-xl uppercase tracking-tighter italic">Command Center</span>
                 </div>
-                <div className="flex gap-2">
-                    <button onClick={() => setActiveTab('NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded ${activeTab === 'NEWS' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>News Desk</button>
-                    <button onClick={() => setActiveTab('AI_AGENT')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 ${activeTab === 'AI_AGENT' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-white'}`}><Wand2 size={12}/> AI Agent</button>
-                    <button onClick={() => setActiveTab('WAR_ROOM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded ${activeTab === 'WAR_ROOM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>War Room</button>
+                <div className="flex gap-2 overflow-x-auto">
+                    <button onClick={() => setActiveTab('NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded whitespace-nowrap ${activeTab === 'NEWS' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>News Desk</button>
+                    <button onClick={() => setActiveTab('AI_AGENT')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'AI_AGENT' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-white'}`}><Wand2 size={12}/> AI Agent</button>
+                    <button onClick={() => setActiveTab('SHARE_NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'SHARE_NEWS' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-white'}`}><ExternalLink size={12}/> Share News</button>
+                    <button onClick={() => setActiveTab('WAR_ROOM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded whitespace-nowrap ${activeTab === 'WAR_ROOM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>War Room</button>
                 </div>
             </div>
 
             <div className="max-w-[1000px] mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                {/* --- SHARE NEWS TAB --- */}
+                {activeTab === 'SHARE_NEWS' && (
+                    <div className="col-span-2 max-w-[600px] mx-auto w-full">
+                        <div className="bg-[#121212] border border-green-500/50 rounded-xl p-6 shadow-2xl">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
+                                    <Newspaper size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">Share External News</h3>
+                                    <p className="text-xs text-green-400">Import & rewrite articles from popular sources</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Quick Source Buttons */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Quick Sources</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {NEWS_SOURCES.map(source => (
+                                            <button
+                                                key={source.id}
+                                                onClick={() => { setSelectedSource(source.name); window.open(source.url, '_blank'); }}
+                                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${selectedSource === source.name ? 'bg-green-900/30 border-green-500' : 'bg-[#1E1E1E] border-[#333] hover:border-gray-500'}`}
+                                            >
+                                                <span className="text-xs font-bold text-white">{source.name}</span>
+                                                <ExternalLink size={12} className="text-gray-500" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 mt-2">Click to open source, then copy article URL below</p>
+                                </div>
+
+                                {/* URL Input */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Paste Article URL</label>
+                                    <input 
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-green-500"
+                                        placeholder="https://bleacherreport.com/articles/..."
+                                        value={shareUrl}
+                                        onChange={(e) => setShareUrl(e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Import Button */}
+                                <button 
+                                    onClick={handleShareExternalNews}
+                                    disabled={isSharing || !shareUrl}
+                                    className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                >
+                                    {isSharing ? (
+                                        <><RefreshCw size={16} className="animate-spin" /> Processing...</>
+                                    ) : (
+                                        <><Wand2 size={16} /> Import & Rewrite with AI</>
+                                    )}
+                                </button>
+
+                                <p className="text-[10px] text-gray-500 text-center">
+                                    AI will fetch the article, extract key information, and rewrite it in Sheena's style.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* --- AI AGENT WORKFLOW --- */}
                 {activeTab === 'AI_AGENT' && (

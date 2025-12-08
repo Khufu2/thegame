@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     }
 
     // Transform to frontend format (defensive)
-    const transformedMatches = data.map((match: Partial<Match>) => {
+    const transformedMatches = data.map((match: Partial<Match> & { odds_home?: number; odds_draw?: number; odds_away?: number }) => {
       // Use kickoff_time (from database schema) or fallback to empty string
       const start_time = match.kickoff_time ?? "";
       const statusVal = match.status ?? "scheduled";
@@ -104,6 +104,26 @@ Deno.serve(async (req) => {
         logo: (match as any).away_team_logo ?? ""
       };
 
+      // Build odds object from database columns
+      const odds = (match.odds_home || match.odds_draw || match.odds_away) ? {
+        home: match.odds_home ?? 2.0,
+        draw: match.odds_draw ?? 3.5,
+        away: match.odds_away ?? 2.5
+      } : undefined;
+
+      // Generate prediction based on odds (lower odds = higher confidence)
+      let prediction = undefined;
+      if (odds && statusVal === "scheduled") {
+        const minOdds = Math.min(odds.home, odds.draw, odds.away);
+        const outcome = odds.home === minOdds ? 'HOME' : (odds.away === minOdds ? 'AWAY' : 'DRAW');
+        const confidence = Math.min(95, Math.max(50, Math.round(100 - (minOdds * 15))));
+        prediction = {
+          outcome,
+          confidence,
+          odds
+        };
+      }
+
       return {
         id: match.id ?? "",
         league: match.league ?? match.metadata?.league ?? "Unknown League",
@@ -119,11 +139,13 @@ Deno.serve(async (req) => {
         },
         status: statusVal === "live" ? "LIVE" : statusVal === "finished" ? "FINISHED" : "SCHEDULED",
         time: formatMatchTime(start_time, statusVal),
-        score: statusVal === "scheduled" ? undefined : // Don't show scores for scheduled games
+        score: statusVal === "scheduled" ? undefined :
                scoreObj ? { home: scoreObj.home ?? 0, away: scoreObj.away ?? 0 } :
                (match.home_team_score !== undefined && match.away_team_score !== undefined) ?
                { home: match.home_team_score, away: match.away_team_score } : undefined,
-        venue: match.venue ?? undefined
+        venue: match.venue ?? undefined,
+        prediction,
+        odds
       };
     });
 
