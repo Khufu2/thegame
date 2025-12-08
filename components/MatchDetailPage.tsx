@@ -1,10 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera, Send, Crown, ThumbsUp, Lock, WifiOff, ArrowRight, PlayCircle } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera, Send, Crown, ThumbsUp, Lock, WifiOff, ArrowRight, PlayCircle, RefreshCw } from 'lucide-react';
 import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore, Comment, MatchStats } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { ScoreShotModal } from './ScoreShotModal';
+import { useLivePolling } from './hooks/useLivePolling';
 
 interface MatchDetailPageProps {
   match: Match;
@@ -24,8 +25,36 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
    const [commentInput, setCommentInput] = useState('');
    const [matchDetails, setMatchDetails] = useState<any>(null);
    const [loadingDetails, setLoadingDetails] = useState(true);
+   const [liveScore, setLiveScore] = useState<{ home: number | null; away: number | null }>({ 
+     home: match.score?.home ?? null, 
+     away: match.score?.away ?? null 
+   });
 
    const dataSaver = user?.preferences.dataSaver || false;
+   const isLive = match.status === MatchStatus.LIVE;
+
+   // Live polling for live matches
+   const handleLiveUpdate = useCallback((data: any) => {
+     if (data.homeScore !== null && data.awayScore !== null) {
+       setLiveScore({ home: data.homeScore, away: data.awayScore });
+     }
+     // Merge live data into matchDetails
+     if (data.timeline && data.timeline.length > 0) {
+       setMatchDetails((prev: any) => ({
+         ...prev,
+         timeline: data.timeline,
+         stats: data.stats || prev?.stats,
+         lineups: data.lineups || prev?.lineups,
+       }));
+     }
+   }, []);
+
+   const { data: liveData, isLoading: isPolling, lastUpdate, refresh: refreshLive } = useLivePolling({
+     matchId: match.id,
+     enabled: isLive,
+     intervalMs: 30000, // Poll every 30 seconds for live matches
+     onUpdate: handleLiveUpdate
+   });
 
    // Fetch additional match details
    useEffect(() => {
@@ -131,11 +160,46 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
               <div className="px-6 mb-2">
                   <div className="flex justify-between items-center mb-1">
                       <span className="text-[9px] font-black uppercase text-red-500 animate-pulse">Live Momentum</span>
-                      <span className="text-[9px] font-bold uppercase text-gray-500">Pressure Index</span>
+                      <div className="flex items-center gap-2">
+                          {lastUpdate && (
+                            <span className="text-[9px] text-gray-500">
+                              Updated {new Date(lastUpdate).toLocaleTimeString()}
+                            </span>
+                          )}
+                          <button 
+                            onClick={refreshLive} 
+                            disabled={isPolling}
+                            className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                            title="Refresh live data"
+                          >
+                            <RefreshCw size={12} className={isPolling ? 'animate-spin' : ''} />
+                          </button>
+                      </div>
                   </div>
                   <div className="h-1.5 w-full bg-gray-800 rounded-full flex overflow-hidden">
                       <div className="bg-white transition-all duration-1000" style={{ width: `${match.momentum.home}%` }}></div>
                       <div className="bg-indigo-600 transition-all duration-1000" style={{ width: `${match.momentum.away}%` }}></div>
+                  </div>
+              </div>
+          )}
+
+          {/* Live Update Indicator for non-momentum live matches */}
+          {isLive && !match.momentum && (
+              <div className="px-6 mb-2 flex justify-end">
+                  <div className="flex items-center gap-2">
+                      {lastUpdate && (
+                        <span className="text-[9px] text-gray-500">
+                          Updated {new Date(lastUpdate).toLocaleTimeString()}
+                        </span>
+                      )}
+                      <button 
+                        onClick={refreshLive} 
+                        disabled={isPolling}
+                        className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                        title="Refresh live data"
+                      >
+                        <RefreshCw size={12} className={isPolling ? 'animate-spin' : ''} />
+                      </button>
                   </div>
               </div>
           )}
@@ -160,10 +224,10 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                       )}
                   </div>
 
-                  {/* Score/Time */}
+                  {/* Score/Time - Use live score if available */}
                   <div className="flex flex-col items-center w-1/3">
                        <span className="font-condensed font-black text-5xl tracking-tighter tabular-nums leading-none mb-1">
-                           {match.status === MatchStatus.SCHEDULED ? 'VS' : `${match.score?.home}-${match.score?.away}`}
+                           {match.status === MatchStatus.SCHEDULED ? 'VS' : `${liveScore.home ?? match.score?.home ?? 0}-${liveScore.away ?? match.score?.away ?? 0}`}
                        </span>
                        <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${match.status === MatchStatus.LIVE ? 'bg-red-600 text-white animate-pulse' : 'bg-[#2C2C2C] text-gray-400'}`}>
                            {match.time}
