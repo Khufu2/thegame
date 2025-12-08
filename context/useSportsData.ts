@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../services/supabaseClient'
 import { Match } from '../types'
 
-const backendBaseUrl = import.meta.env.VITE_BACKEND_URL as string | undefined;
+const SUPABASE_URL = "https://ebfhyyznuzxwhirwlcds.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA";
+const backendBaseUrl = undefined; // Deprecated - using edge functions now
 
 // Helper function to format match time
 function formatMatchTime(startTime: string, status: string): string {
@@ -54,11 +56,11 @@ export const useLiveMatches = () => {
 
         // Use edge function instead of direct table access
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-matches?status=live&limit=50`,
+          `${SUPABASE_URL}/functions/v1/get-matches?status=live&limit=50`,
           {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json',
             },
           }
@@ -104,11 +106,11 @@ export const useUpcomingMatches = (daysAhead = 7, limit = 20) => {
 
         // Use edge function instead of direct table access
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-matches?status=scheduled&limit=${limit}`,
+          `${SUPABASE_URL}/functions/v1/get-matches?status=scheduled&limit=${limit}`,
           {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json',
             },
           }
@@ -285,11 +287,11 @@ export const useTriggerSync = () => {
     try {
       setLoading(true)
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-matches-footballdata`,
+        `${SUPABASE_URL}/functions/v1/fetch-matches-footballdata`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({}),
@@ -308,11 +310,11 @@ export const useTriggerSync = () => {
     try {
       setLoading(true)
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-standings`,
+        `${SUPABASE_URL}/functions/v1/fetch-standings`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({}),
@@ -331,11 +333,11 @@ export const useTriggerSync = () => {
     try {
       setLoading(true)
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-scorers`,
+        `${SUPABASE_URL}/functions/v1/fetch-scorers`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({}),
