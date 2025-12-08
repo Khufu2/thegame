@@ -71,3 +71,15 @@ verify_jwt = false
 
 [functions.verify-tron-payment]
 verify_jwt = false
+
+[functions.pweza-chat]
+verify_jwt = false
+
+[functions.search-sports-news]
+verify_jwt = false
+
+[functions.place-bet]
+verify_jwt = false
+
+[functions.get-standings]
+verify_jwt = false

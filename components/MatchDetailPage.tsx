@@ -25,6 +25,8 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
    const [commentInput, setCommentInput] = useState('');
    const [matchDetails, setMatchDetails] = useState<any>(null);
    const [loadingDetails, setLoadingDetails] = useState(true);
+   const [standings, setStandings] = useState<any[]>([]);
+   const [loadingStandings, setLoadingStandings] = useState(false);
    const [liveScore, setLiveScore] = useState<{ home: number | null; away: number | null }>({ 
      home: match.score?.home ?? null, 
      away: match.score?.away ?? null 
@@ -83,6 +85,46 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
        fetchMatchDetails();
    }, [match.id]);
+
+   // Fetch standings when TABLE tab is activated
+   useEffect(() => {
+       if (activeTab === 'TABLE' && standings.length === 0 && !loadingStandings) {
+           const fetchStandings = async () => {
+               setLoadingStandings(true);
+               try {
+                   // Map league name to code
+                   const leagueMap: Record<string, string> = {
+                       'Premier League': 'PL',
+                       'Bundesliga': 'BL1',
+                       'Serie A': 'SA',
+                       'La Liga': 'PD',
+                       'Ligue 1': 'FL1',
+                       'Champions League': 'CL',
+                   };
+                   const leagueCode = leagueMap[match.league] || 'PL';
+                   
+                   const response = await fetch(
+                       `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/get-standings?league=${leagueCode}`,
+                       {
+                           headers: {
+                               'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                               'Content-Type': 'application/json',
+                           },
+                       }
+                   );
+                   if (response.ok) {
+                       const data = await response.json();
+                       setStandings(Array.isArray(data) ? data : []);
+                   }
+               } catch (error) {
+                   console.error('Error fetching standings:', error);
+               } finally {
+                   setLoadingStandings(false);
+               }
+           };
+           fetchStandings();
+       }
+   }, [activeTab, match.league, standings.length, loadingStandings]);
 
   // Check if match is already in slip
   const existingBet = betSlip.find(b => b.matchId === match.id);
@@ -622,6 +664,62 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                           </div>
                       </div>
                   </div>
+              </div>
+          )}
+
+          {/* TAB: TABLE (Standings) */}
+          {activeTab === 'TABLE' && (
+              <div className="p-4 animate-in fade-in">
+                  {loadingStandings ? (
+                      <div className="py-20 text-center">
+                          <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                          <p className="text-gray-500 text-sm">Loading standings...</p>
+                      </div>
+                  ) : standings.length > 0 ? (
+                      <div className="bg-[#121212] rounded-lg border border-[#2C2C2C] overflow-hidden">
+                          {/* Table Header */}
+                          <div className="grid grid-cols-[40px_1fr_32px_32px_32px_40px] gap-2 px-3 py-2 bg-[#0A0A0A] border-b border-[#2C2C2C] text-[10px] font-bold text-gray-500 uppercase">
+                              <span>#</span>
+                              <span>Team</span>
+                              <span className="text-center">W</span>
+                              <span className="text-center">D</span>
+                              <span className="text-center">L</span>
+                              <span className="text-center">Pts</span>
+                          </div>
+                          {/* Table Rows */}
+                          <div className="divide-y divide-[#2C2C2C]">
+                              {standings.slice(0, 10).map((team: any) => {
+                                  const isHomeTeam = team.teamName?.includes(match.homeTeam.name) || match.homeTeam.name?.includes(team.teamName);
+                                  const isAwayTeam = team.teamName?.includes(match.awayTeam.name) || match.awayTeam.name?.includes(team.teamName);
+                                  return (
+                                      <div 
+                                          key={team.teamId} 
+                                          className={`grid grid-cols-[40px_1fr_32px_32px_32px_40px] gap-2 px-3 py-2.5 items-center ${isHomeTeam || isAwayTeam ? 'bg-indigo-900/20' : ''}`}
+                                      >
+                                          <span className={`text-xs font-bold ${team.rank <= 4 ? 'text-green-400' : team.rank >= 18 ? 'text-red-400' : 'text-gray-400'}`}>
+                                              {team.rank}
+                                          </span>
+                                          <div className="flex items-center gap-2 min-w-0">
+                                              {team.logo && <img src={team.logo} className="w-5 h-5 object-contain flex-shrink-0" />}
+                                              <span className={`text-sm font-medium truncate ${isHomeTeam || isAwayTeam ? 'text-white font-bold' : 'text-gray-300'}`}>
+                                                  {team.teamName}
+                                              </span>
+                                          </div>
+                                          <span className="text-center text-xs text-gray-400">{team.won}</span>
+                                          <span className="text-center text-xs text-gray-400">{team.drawn}</span>
+                                          <span className="text-center text-xs text-gray-400">{team.lost}</span>
+                                          <span className="text-center text-sm font-bold text-white">{team.points}</span>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      </div>
+                  ) : (
+                      <div className="py-20 text-center text-gray-500">
+                          <Table size={40} className="mx-auto mb-3 opacity-20" />
+                          <p className="font-condensed font-bold uppercase">Standings Unavailable</p>
+                      </div>
+                  )}
               </div>
           )}
 
