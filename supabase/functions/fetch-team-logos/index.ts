@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
     });
   }
@@ -25,85 +25,88 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Get matches that need logos (check both old and new data structures)
+    // Get all matches - we'll filter in code since jsonb queries can be tricky
     const { data: matches, error: fetchError } = await supabase
       .from("matches")
-      .select("id, home_team, away_team, home_team_logo, away_team_logo, home_team_json, away_team_json")
-      .or("home_team_logo.is.null,away_team_logo.is.null,home_team_json->>logo.is.null,away_team_json->>logo.is.null")
-      .limit(50);
+      .select("id, home_team, away_team, home_team_json, away_team_json")
+      .limit(100);
 
     if (fetchError) {
       console.error("Error fetching matches:", fetchError);
       throw fetchError;
     }
 
-    if (!matches || matches.length === 0) {
+    // Filter matches that need logos
+    const matchesNeedingLogos = matches?.filter(m => {
+      const homeLogo = m.home_team_json?.logo;
+      const awayLogo = m.away_team_json?.logo;
+      return !homeLogo || !awayLogo;
+    }) || [];
+
+    if (matchesNeedingLogos.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No matches found needing logos" }),
+        JSON.stringify({ message: "All matches have logos" }),
         { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }
 
-    console.log(`Found ${matches.length} matches to update with logos`);
+    console.log(`Found ${matchesNeedingLogos.length} matches needing logos`);
 
     let updatedCount = 0;
+    const errors: string[] = [];
 
-    for (const match of matches) {
+    for (const match of matchesNeedingLogos) {
       try {
-        const updates: any = {};
+        let homeJson = match.home_team_json || { id: "", name: match.home_team };
+        let awayJson = match.away_team_json || { id: "", name: match.away_team };
 
-        // Update home team logo - check both data structures
-        const needsHomeLogo = !match.home_team_logo && (!match.home_team_json || !match.home_team_json.logo);
-        if (needsHomeLogo) {
+        // Fetch home logo if missing
+        if (!homeJson.logo) {
           const homeLogo = await fetchTeamLogo(match.home_team);
           if (homeLogo) {
-            // Update both fields for compatibility
-            updates.home_team_logo = homeLogo;
-            if (match.home_team_json) {
-              updates.home_team_json = { ...match.home_team_json, logo: homeLogo };
-            }
+            homeJson = { ...homeJson, logo: homeLogo };
           }
         }
 
-        // Update away team logo - check both data structures
-        const needsAwayLogo = !match.away_team_logo && (!match.away_team_json || !match.away_team_json.logo);
-        if (needsAwayLogo) {
+        // Fetch away logo if missing
+        if (!awayJson.logo) {
           const awayLogo = await fetchTeamLogo(match.away_team);
           if (awayLogo) {
-            // Update both fields for compatibility
-            updates.away_team_logo = awayLogo;
-            if (match.away_team_json) {
-              updates.away_team_json = { ...match.away_team_json, logo: awayLogo };
-            }
+            awayJson = { ...awayJson, logo: awayLogo };
           }
         }
 
-        // Only update if we have changes
-        if (Object.keys(updates).length > 0) {
+        // Update if we got any logos
+        if (homeJson.logo || awayJson.logo) {
           const { error } = await supabase
             .from("matches")
-            .update(updates)
+            .update({
+              home_team_json: homeJson,
+              away_team_json: awayJson
+            })
             .eq("id", match.id);
 
           if (!error) {
             updatedCount++;
+            console.log(`Updated logos for: ${match.home_team} vs ${match.away_team}`);
           } else {
-            console.error(`Error updating logos for match ${match.id}:`, error);
+            errors.push(`${match.id}: ${error.message}`);
           }
         }
 
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Rate limit - TheSportsDB free tier
+        await new Promise(resolve => setTimeout(resolve, 300));
 
       } catch (err) {
-        console.error(`Error updating logos for match ${match.id}:`, err);
+        console.error(`Error processing match ${match.id}:`, err);
+        errors.push(`${match.id}: ${err.message}`);
       }
     }
 
     return new Response(
       JSON.stringify({
-        message: `Logo fetch complete. Updated ${updatedCount} team logos.`,
-        matchesProcessed: matches.length
+        message: `Updated ${updatedCount}/${matchesNeedingLogos.length} matches with logos`,
+        errors: errors.length > 0 ? errors : undefined
       }),
       { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     );
@@ -120,27 +123,44 @@ Deno.serve(async (req) => {
   }
 });
 
-// Fetch team logo from TheSportsDB
+// Fetch team logo from TheSportsDB (free API)
 async function fetchTeamLogo(teamName: string): Promise<string | null> {
   try {
-    // Search for team by name
-    const searchUrl = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(teamName)}`;
-    const searchResponse = await fetch(searchUrl);
+    // Clean team name for better matching
+    const cleanName = teamName
+      .replace(/ FC$/, "")
+      .replace(/ CF$/, "")
+      .replace(/^FC /, "")
+      .trim();
 
-    if (!searchResponse.ok) return null;
+    const searchUrl = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(cleanName)}`;
+    console.log(`Searching logo for: ${cleanName}`);
+    
+    const response = await fetch(searchUrl);
+    if (!response.ok) {
+      console.warn(`TheSportsDB returned ${response.status} for ${cleanName}`);
+      return null;
+    }
 
-    const searchData = await searchResponse.json();
-    const teams = searchData.teams;
+    const data = await response.json();
+    const teams = data.teams;
 
-    if (!teams || teams.length === 0) return null;
+    if (!teams || teams.length === 0) {
+      console.warn(`No team found for: ${cleanName}`);
+      return null;
+    }
 
-    // Find the best match (exact name match preferred)
+    // Find best match
     const team = teams.find((t: any) =>
-      t.strTeam.toLowerCase() === teamName.toLowerCase() ||
-      t.strTeamShort?.toLowerCase() === teamName.toLowerCase()
+      t.strTeam?.toLowerCase().includes(cleanName.toLowerCase()) ||
+      cleanName.toLowerCase().includes(t.strTeam?.toLowerCase())
     ) || teams[0];
 
-    return team.strTeamBadge || team.strTeamLogo || null;
+    const logo = team.strBadge || team.strTeamBadge || team.strTeamLogo;
+    if (logo) {
+      console.log(`Found logo for ${cleanName}: ${logo.substring(0, 50)}...`);
+    }
+    return logo || null;
 
   } catch (error) {
     console.error(`Error fetching logo for ${teamName}:`, error);
