@@ -17,6 +17,10 @@ import {
 } from '../types';
 import supabase from '../services/supabaseClient';
 
+// Hardcoded Supabase credentials (not using VITE env vars which don't work at runtime)
+const SUPABASE_URL = "https://ebfhyyznuzxwhirwlcds.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA";
+
 // Helper Arrays for Procedural Generation
 // ...existing code...
 
@@ -67,18 +71,21 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const fetchMatches = async () => {
             try {
                 const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-matches?status=scheduled&limit=50`,
+                    `${SUPABASE_URL}/functions/v1/get-matches?limit=100`,
                     {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                             'Content-Type': 'application/json',
                         },
                     }
                 );
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Fetched matches:', data.length);
                     setMatches(data);
+                } else {
+                    console.error('Failed to fetch matches:', response.status);
                 }
             } catch (error) {
                 console.error('Error fetching matches:', error);
@@ -89,11 +96,11 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const fetchNews = async () => {
             try {
                 const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-news`,
+                    `${SUPABASE_URL}/functions/v1/get-news`,
                     {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                             'Content-Type': 'application/json',
                         },
                     }
@@ -111,11 +118,11 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const fetchAlerts = async () => {
             try {
                 const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-alerts`,
+                    `${SUPABASE_URL}/functions/v1/get-alerts`,
                     {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                             'Content-Type': 'application/json',
                         },
                     }
@@ -133,11 +140,11 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const fetchLeaderboard = async () => {
             try {
                 const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-leaderboard`,
+                    `${SUPABASE_URL}/functions/v1/get-leaderboard`,
                     {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                             'Content-Type': 'application/json',
                         },
                     }
