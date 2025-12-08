@@ -114,7 +114,7 @@ serve(async (req) => {
     }));
 
     // Cache the result
-    await supabase.from('standings').upsert({
+    const { error: upsertError } = await supabase.from('standings').upsert({
       league_code: leagueCode,
       league_id: leagueId,
       season: season,
@@ -122,7 +122,11 @@ serve(async (req) => {
       created_at: new Date().toISOString(),
     }, {
       onConflict: 'league_code,season'
-    }).catch(console.error);
+    });
+    
+    if (upsertError) {
+      console.error('Failed to cache standings:', upsertError);
+    }
 
     return new Response(
       JSON.stringify(formattedStandings),
