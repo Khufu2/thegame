@@ -29,18 +29,18 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
    // Fetch additional match details
    useEffect(() => {
-       const fetchMatchDetails = async () => {
-           try {
-               const response = await fetch(
-                   `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-match-details?matchId=${match.id}`,
-                   {
-                       method: 'GET',
-                       headers: {
-                           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                           'Content-Type': 'application/json',
-                       },
-                   }
-               );
+        const fetchMatchDetails = async () => {
+            try {
+                const response = await fetch(
+                    `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/fetch-match-details?matchId=${match.id}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
                if (response.ok) {
                    const details = await response.json();
                    setMatchDetails(details);
