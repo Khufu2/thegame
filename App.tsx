@@ -34,12 +34,17 @@ const ScrollToTop = () => {
 }
 
 // Protected Route Wrapper for Guest Handling
-const ProtectedRoute = ({ children }: PropsWithChildren<{}>) => {
+const ProtectedRoute = ({ children, requireAuth = false }: PropsWithChildren<{ requireAuth?: boolean }>) => {
     const { authState } = useSports();
     
     // If not authenticated, redirect to Auth
     if (authState === 'UNAUTHENTICATED') {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/auth" replace />;
+    }
+
+    // If requireAuth is true, also block guests
+    if (requireAuth && authState === 'GUEST') {
+        return <Navigate to="/auth" replace />;
     }
 
     return <>{children}</>;
@@ -156,10 +161,11 @@ const AppContent = () => {
             </ProtectedRoute>
         } />
         <Route path="/profile" element={
-            <ProtectedRoute>
-                {user ? <ProfilePage user={user} betHistory={betSlip} /> : <></>}
+            <ProtectedRoute requireAuth>
+                {user ? <ProfilePage user={user} betHistory={betSlip} /> : <Navigate to="/auth" replace />}
             </ProtectedRoute>
         } />
+        <Route path="/auth" element={<AuthPage />} />
         <Route path="/admin" element={
             <ProtectedRoute>
                 <AdminPage />
