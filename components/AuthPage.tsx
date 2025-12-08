@@ -1,89 +1,84 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSports } from '../context/SportsContext';
-import { Mail, ArrowRight, Lock, Eye, EyeOff, User, Phone, MessageCircle, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Mail, ArrowRight, Lock, Eye, EyeOff, ChevronDown, Check, Trophy, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile, UserPreferences } from '../types';
 import supabase from '../services/supabaseClient';
 
-// EXPANDED COUNTRY LIST
 const COUNTRY_CODES = [
-    // Major African Nations
     { code: '+234', country: 'Nigeria', flag: '🇳🇬' },
     { code: '+254', country: 'Kenya', flag: '🇰🇪' },
     { code: '+255', country: 'Tanzania', flag: '🇹🇿' },
     { code: '+27',  country: 'South Africa', flag: '🇿🇦' },
     { code: '+233', country: 'Ghana', flag: '🇬🇭' },
     { code: '+256', country: 'Uganda', flag: '🇺🇬' },
-    { code: '+20',  country: 'Egypt', flag: '🇪🇬' },
-    { code: '+212', country: 'Morocco', flag: '🇲🇦' },
-    { code: '+221', country: 'Senegal', flag: '🇸🇳' },
-    { code: '+237', country: 'Cameroon', flag: '🇨🇲' },
-    { code: '+250', country: 'Rwanda', flag: '🇷🇼' },
-    { code: '+260', country: 'Zambia', flag: '🇿🇲' },
-    { code: '+263', country: 'Zimbabwe', flag: '🇿🇼' },
-    { code: '+251', country: 'Ethiopia', flag: '🇪🇹' },
-    { code: '+225', country: 'Ivory Coast', flag: '🇨🇮' },
-    // Global Major
     { code: '+1',   country: 'USA/Canada', flag: '🇺🇸' },
     { code: '+44',  country: 'UK', flag: '🇬🇧' },
-    { code: '+91',  country: 'India', flag: '🇮🇳' },
-    { code: '+971', country: 'UAE', flag: '🇦🇪' },
-    { code: '+33',  country: 'France', flag: '🇫🇷' },
-    { code: '+49',  country: 'Germany', flag: '🇩🇪' },
-    { code: '+34',  country: 'Spain', flag: '🇪🇸' },
-    { code: '+55',  country: 'Brazil', flag: '🇧🇷' },
-    { code: '+86',  country: 'China', flag: '🇨🇳' },
-    { code: '+81',  country: 'Japan', flag: '🇯🇵' },
+];
+
+const LEAGUES = [
+    { id: 'PL', name: 'Premier League', icon: '⚽' },
+    { id: 'BL1', name: 'Bundesliga', icon: '🇩🇪' },
+    { id: 'SA', name: 'Serie A', icon: '🇮🇹' },
+    { id: 'PD', name: 'La Liga', icon: '🇪🇸' },
+    { id: 'FL1', name: 'Ligue 1', icon: '🇫🇷' },
+    { id: 'CL', name: 'Champions League', icon: '🏆' },
+];
+
+const TEAMS = [
+    { id: 't1', name: 'Arsenal', league: 'PL' },
+    { id: 't2', name: 'Chelsea', league: 'PL' },
+    { id: 't3', name: 'Manchester United', league: 'PL' },
+    { id: 't4', name: 'Liverpool', league: 'PL' },
+    { id: 't5', name: 'Real Madrid', league: 'PD' },
+    { id: 't6', name: 'Barcelona', league: 'PD' },
+    { id: 't7', name: 'Bayern Munich', league: 'BL1' },
+    { id: 't8', name: 'Juventus', league: 'SA' },
 ];
 
 export const AuthPage: React.FC = () => {
-    const { login, loginAsGuest } = useSports();
+    const { login, loginAsGuest, user } = useSports();
     const navigate = useNavigate();
+    const [step, setStep] = useState<'AUTH' | 'ONBOARDING_LEAGUES' | 'ONBOARDING_TEAMS'>('AUTH');
     const [isLogin, setIsLogin] = useState(true);
-    const [authMethod, setAuthMethod] = useState<'EMAIL' | 'PHONE'>('EMAIL'); // Default to EMAIL
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
     
     // Form States
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [phone, setPhone] = useState('');
-    const [countryCode, setCountryCode] = useState(COUNTRY_CODES[0].code);
-    const [otp, setOtp] = useState('');
-    const [showOtpInput, setShowOtpInput] = useState(false);
+    const [displayName, setDisplayName] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    const ensureBackendAvailable = () => {
-        if (!backendUrl) {
-            setErrorMessage('Backend URL is not configured. Please set VITE_BACKEND_URL.');
-            return false;
-        }
-        return true;
-    };
+    // Onboarding states
+    const [selectedLeagues, setSelectedLeagues] = useState<string[]>([]);
+    const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
-    const buildDefaultPreferences = (raw?: Partial<UserPreferences>): UserPreferences => {
-        const notifications = (raw?.notifications || {}) as Partial<UserPreferences['notifications']>;
-        return {
-            favoriteLeagues: raw?.favoriteLeagues ?? [],
-            favoriteTeams: raw?.favoriteTeams ?? [],
-            notifications: {
-                gameStart: notifications?.gameStart ?? true,
-                scoreUpdates: notifications?.scoreUpdates ?? true,
-                lineMoves: notifications?.lineMoves ?? true,
-                breakingNews: notifications?.breakingNews ?? true,
-                whatsappUpdates: notifications?.whatsappUpdates ?? false
-            },
-            communicationChannel: raw?.communicationChannel ?? 'EMAIL',
-            whatsappNumber: raw?.whatsappNumber ?? '',
-            oddsFormat: raw?.oddsFormat ?? 'DECIMAL',
-            dataSaver: raw?.dataSaver ?? false,
-            theme: raw?.theme ?? 'DARK',
-            hasCompletedOnboarding: raw?.hasCompletedOnboarding ?? false
-        };
-    };
+    // Check if already logged in
+    useEffect(() => {
+        if (user && user.preferences?.hasCompletedOnboarding) {
+            navigate('/scores');
+        }
+    }, [user, navigate]);
+
+    const buildDefaultPreferences = (raw?: Partial<UserPreferences>): UserPreferences => ({
+        favoriteLeagues: raw?.favoriteLeagues ?? [],
+        favoriteTeams: raw?.favoriteTeams ?? [],
+        notifications: {
+            gameStart: true,
+            scoreUpdates: true,
+            lineMoves: true,
+            breakingNews: true,
+            whatsappUpdates: false
+        },
+        communicationChannel: 'EMAIL',
+        whatsappNumber: '',
+        oddsFormat: 'DECIMAL',
+        dataSaver: false,
+        theme: 'DARK',
+        hasCompletedOnboarding: false
+    });
 
     const mapProfileToUser = (profile: any, fallbackEmail: string, fallbackName?: string): UserProfile => {
         const preferences = buildDefaultPreferences(profile?.preferences);
@@ -95,6 +90,7 @@ export const AuthPage: React.FC = () => {
             email: profile?.email || fallbackEmail,
             avatar: profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameFromEmail)}`,
             isPro: Boolean(profile?.is_pro),
+            isAdmin: profile?.email === 'admin@sheena.sports' || profile?.is_admin,
             stats: {
                 betsPlaced: profile?.stats?.betsPlaced ?? 0,
                 wins: profile?.stats?.wins ?? 0,
@@ -104,172 +100,6 @@ export const AuthPage: React.FC = () => {
             },
             preferences
         };
-    };
-
-    const fetchProfileFromBackend = async (userId: string) => {
-        if (!backendUrl) return null;
-        try {
-            const resp = await fetch(`${backendUrl}/api/users/profile/${userId}`);
-            if (!resp.ok) return null;
-            const data = await resp.json();
-            return data;
-        } catch (err) {
-            console.warn('Failed to fetch profile from backend', err);
-            return null;
-        }
-    };
-
-    const hydrateSession = async (authPayload: any, fallbackEmail: string, fallbackName?: string) => {
-        const { user, session } = authPayload;
-        const profile = await fetchProfileFromBackend(user.id);
-        const mapped = mapProfileToUser(profile || { ...user, display_name: fallbackName }, fallbackEmail, fallbackName);
-        login(mapped, session);
-        setSuccessMessage('Welcome back!');
-        navigate('/scores');
-    };
-
-    const authenticateEmail = async (identifier: string, userPassword: string, fallbackName?: string) => {
-        // Try backend first if configured
-        if (backendUrl) {
-            try {
-                const response = await fetch(`${backendUrl}/api/auth/signin`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: identifier, password: userPassword })
-                });
-
-                // Safely parse response body
-                const contentType = response.headers.get('content-type') || '';
-                const rawText = await response.text().catch(() => '');
-                let result: any = null;
-                if (rawText && contentType.includes('application/json')) {
-                    try {
-                        result = JSON.parse(rawText);
-                    } catch (e) {
-                        throw new Error('Received malformed JSON from server. Please try again later.');
-                    }
-                }
-
-                if (!response.ok) {
-                    const message = (result && result.error) ? result.error : (rawText || 'Invalid credentials');
-                    throw new Error(message);
-                }
-
-                if (!result) {
-                    throw new Error('Empty response from server. Please try again later.');
-                }
-
-                await hydrateSession(result, identifier, fallbackName);
-                return;
-            } catch (e) {
-                // Fall back to direct Supabase auth if backend unreachable or errored
-                console.warn('Backend signin failed, falling back to Supabase auth:', e);
-            }
-        }
-
-        // Supabase direct auth fallback
-        const { data, error } = await supabase.auth.signInWithPassword({ email: identifier, password: userPassword });
-        if (error) throw new Error(error.message || 'Authentication failed');
-        const { user, session } = data;
-        await hydrateSession({ user, session: session?.access_token }, identifier, fallbackName);
-    };
-
-    const registerEmail = async (identifier: string, userPassword: string, displayName?: string) => {
-        // Try backend first if configured
-        if (backendUrl) {
-            try {
-                const response = await fetch(`${backendUrl}/api/auth/signup`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: identifier,
-                        password: userPassword,
-                        display_name: displayName || identifier.split('@')[0]
-                    })
-                });
-
-                const contentType = response.headers.get('content-type') || '';
-                const rawText = await response.text().catch(() => '');
-                let result: any = null;
-                if (rawText && contentType.includes('application/json')) {
-                    try {
-                        result = JSON.parse(rawText);
-                    } catch (e) {
-                        throw new Error('Received malformed JSON from server during signup.');
-                    }
-                }
-
-                if (!response.ok) {
-                    const message = (result && result.error) ? result.error : (rawText || 'Failed to create account');
-                    throw new Error(message);
-                }
-
-                setSuccessMessage('Account created successfully! Logging you in...');
-                await authenticateEmail(identifier, userPassword, displayName);
-                return;
-            } catch (e) {
-                console.warn('Backend signup failed, falling back to Supabase auth:', e);
-            }
-        }
-
-        // Supabase direct signup fallback
-        const { data, error } = await supabase.auth.signUp({ email: identifier, password: userPassword });
-        if (error) throw new Error(error.message || 'Failed to create account');
-        setSuccessMessage('Account created successfully! Logging you in...');
-        await authenticateEmail(identifier, userPassword, displayName);
-    };
-
-    const buildPhoneEmail = () => `${countryCode.replace('+', '')}${phone}@mobile.user`;
-
-    const handleGuestAccess = () => {
-        loginAsGuest();
-        navigate('/scores'); // Redirect to Matches page as requested
-    };
-
-    const handlePhoneSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!phone || !password) {
-            setErrorMessage('Please enter both phone number and password.');
-            return;
-        }
-
-        setIsLoading(true);
-        setErrorMessage(null);
-        setSuccessMessage(null);
-
-        try {
-            if (isLogin) {
-                await authenticateEmail(buildPhoneEmail(), password, `${countryCode} ${phone}`);
-            } else {
-                setShowOtpInput(true);
-                setSuccessMessage(`Enter the OTP we sent to WhatsApp: ${countryCode} ${phone}`);
-            }
-        } catch (err) {
-            setErrorMessage(err.message || 'Unable to authenticate with phone number.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleOtpVerification = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (otp.trim().length < 4) {
-            setErrorMessage('Please enter the 4-digit OTP code.');
-            return;
-        }
-
-        setIsLoading(true);
-        setErrorMessage(null);
-
-        try {
-            await registerEmail(buildPhoneEmail(), password, `${countryCode} ${phone}`);
-            setShowOtpInput(false);
-            setOtp('');
-        } catch (err) {
-            setErrorMessage(err.message || 'Failed to verify OTP.');
-        } finally {
-            setIsLoading(false);
-        }
     };
 
     const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -285,16 +115,204 @@ export const AuthPage: React.FC = () => {
 
         try {
             if (isLogin) {
-                await authenticateEmail(email, password);
+                // Sign in
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) throw new Error(error.message);
+                
+                // Fetch profile
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', data.user.id)
+                    .single();
+                
+                const userProfile = mapProfileToUser(profile, email, displayName);
+                login(userProfile, data.session?.access_token);
+                
+                if (!profile?.preferences?.hasCompletedOnboarding) {
+                    setStep('ONBOARDING_LEAGUES');
+                } else {
+                    navigate('/scores');
+                }
             } else {
-                await registerEmail(email, password);
+                // Sign up
+                const redirectUrl = `${window.location.origin}/`;
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo: redirectUrl,
+                        data: {
+                            display_name: displayName || email.split('@')[0]
+                        }
+                    }
+                });
+                
+                if (error) throw new Error(error.message);
+                
+                if (data.user) {
+                    setSuccessMessage('Account created! Please check your email to confirm, or continue to set up your profile.');
+                    
+                    // Try to sign in immediately (works if email confirmation is disabled)
+                    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+                    
+                    if (!signInError && signInData.user) {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('*')
+                            .eq('id', signInData.user.id)
+                            .single();
+                        
+                        const userProfile = mapProfileToUser(profile, email, displayName);
+                        login(userProfile, signInData.session?.access_token);
+                        setStep('ONBOARDING_LEAGUES');
+                    }
+                }
             }
-        } catch (err) {
+        } catch (err: any) {
             setErrorMessage(err.message || 'Authentication failed.');
         } finally {
             setIsLoading(false);
         }
     };
+
+    const toggleLeague = (id: string) => {
+        setSelectedLeagues(prev => 
+            prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id]
+        );
+    };
+
+    const toggleTeam = (id: string) => {
+        setSelectedTeams(prev => 
+            prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+        );
+    };
+
+    const handleOnboardingNext = async () => {
+        if (step === 'ONBOARDING_LEAGUES') {
+            setStep('ONBOARDING_TEAMS');
+        } else if (step === 'ONBOARDING_TEAMS' && user) {
+            // Save preferences to profile
+            const updatedPrefs = {
+                ...user.preferences,
+                favoriteLeagues: selectedLeagues,
+                favoriteTeams: selectedTeams,
+                hasCompletedOnboarding: true
+            };
+            
+            const { error } = await supabase
+                .from('profiles')
+                .update({ preferences: updatedPrefs })
+                .eq('id', user.id);
+            
+            if (!error) {
+                login({ ...user, preferences: updatedPrefs });
+                navigate('/scores');
+            }
+        }
+    };
+
+    const handleGuestAccess = () => {
+        loginAsGuest();
+        navigate('/scores');
+    };
+
+    // Onboarding Screens
+    if (step === 'ONBOARDING_LEAGUES' || step === 'ONBOARDING_TEAMS') {
+        return (
+            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
+                <div className="w-full max-w-md animate-in slide-in-from-bottom duration-500">
+                    
+                    {/* Progress */}
+                    <div className="flex gap-2 mb-8">
+                        <div className={`h-1 flex-1 rounded-full ${step === 'ONBOARDING_LEAGUES' || step === 'ONBOARDING_TEAMS' ? 'bg-indigo-600' : 'bg-[#333]'}`}></div>
+                        <div className={`h-1 flex-1 rounded-full ${step === 'ONBOARDING_TEAMS' ? 'bg-indigo-600' : 'bg-[#333]'}`}></div>
+                    </div>
+
+                    <div className="mb-8">
+                        <h1 className="font-condensed font-black text-4xl uppercase italic leading-none mb-2">
+                            {step === 'ONBOARDING_LEAGUES' ? 'Pick Your Leagues' : 'Follow Your Teams'}
+                        </h1>
+                        <p className="text-gray-400">
+                            {step === 'ONBOARDING_LEAGUES' 
+                                ? 'We will customize your news feed and predictions based on these leagues.' 
+                                : 'Get instant alerts for match starts and final scores.'}
+                        </p>
+                    </div>
+
+                    {/* Grid */}
+                    <div className="grid grid-cols-2 gap-3 mb-8">
+                        {step === 'ONBOARDING_LEAGUES' ? (
+                            LEAGUES.map(league => (
+                                <button
+                                    key={league.id}
+                                    onClick={() => toggleLeague(league.id)}
+                                    className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all relative ${
+                                        selectedLeagues.includes(league.id) 
+                                        ? 'bg-indigo-600 border-indigo-500 text-white' 
+                                        : 'bg-[#121212] border-[#2C2C2C] text-gray-400 hover:border-gray-500'
+                                    }`}
+                                >
+                                    <span className="text-3xl">{league.icon}</span>
+                                    <span className="font-condensed font-bold uppercase text-sm">{league.name}</span>
+                                    {selectedLeagues.includes(league.id) && (
+                                        <div className="absolute top-2 right-2">
+                                            <Check size={14} className="text-white" />
+                                        </div>
+                                    )}
+                                </button>
+                            ))
+                        ) : (
+                            TEAMS.filter(t => selectedLeagues.length === 0 || selectedLeagues.includes(t.league))
+                                .map(team => (
+                                <button
+                                    key={team.id}
+                                    onClick={() => toggleTeam(team.id)}
+                                    className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all relative ${
+                                        selectedTeams.includes(team.id) 
+                                        ? 'bg-indigo-600 border-indigo-500 text-white' 
+                                        : 'bg-[#121212] border-[#2C2C2C] text-gray-400 hover:border-gray-500'
+                                    }`}
+                                >
+                                    <Heart size={24} className={selectedTeams.includes(team.id) ? 'fill-current' : ''} />
+                                    <span className="font-condensed font-bold uppercase text-sm">{team.name}</span>
+                                    <span className="text-[10px] font-bold opacity-60 uppercase">{team.league}</span>
+                                    {selectedTeams.includes(team.id) && (
+                                        <div className="absolute top-2 right-2">
+                                            <Check size={14} className="text-white" />
+                                        </div>
+                                    )}
+                                </button>
+                            ))
+                        )}
+                    </div>
+
+                    <button 
+                        onClick={handleOnboardingNext}
+                        className="w-full bg-white text-black font-condensed font-black text-xl uppercase py-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
+                    >
+                        {step === 'ONBOARDING_LEAGUES' ? 'Next Step' : 'Launch Sheena'} <ArrowRight size={20} />
+                    </button>
+
+                    {step === 'ONBOARDING_LEAGUES' && (
+                        <button 
+                            onClick={() => setStep('ONBOARDING_TEAMS')}
+                            className="w-full mt-3 text-gray-500 text-sm hover:text-white transition-colors"
+                        >
+                            Skip for now
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -322,22 +340,6 @@ export const AuthPage: React.FC = () => {
                 {/* Form Card */}
                 <div className="bg-[#121212] border border-[#2C2C2C] rounded-2xl p-6 shadow-2xl">
                     
-                    {/* Method Toggle */}
-                    <div className="flex bg-black rounded-lg p-1 mb-6 border border-[#333]">
-                        <button 
-                            onClick={() => { setAuthMethod('EMAIL'); setShowOtpInput(false); setErrorMessage(null); setSuccessMessage(null); }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-bold uppercase transition-all ${authMethod === 'EMAIL' ? 'bg-[#2C2C2C] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
-                        >
-                            <Mail size={14} /> Email
-                        </button>
-                        <button 
-                            onClick={() => { setAuthMethod('PHONE'); setShowOtpInput(false); setErrorMessage(null); setSuccessMessage(null); }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-bold uppercase transition-all ${authMethod === 'PHONE' ? 'bg-[#2C2C2C] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
-                        >
-                            <Phone size={14} /> Phone
-                        </button>
-                    </div>
-
                     {(errorMessage || successMessage) && (
                         <div className="mb-4 text-center text-xs font-bold">
                             {errorMessage && <p className="text-red-400">{errorMessage}</p>}
@@ -345,169 +347,85 @@ export const AuthPage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* PHONE AUTH FLOW */}
-                    {authMethod === 'PHONE' && (
-                        <form onSubmit={showOtpInput ? handleOtpVerification : handlePhoneSubmit} className="space-y-4">
-                            {!showOtpInput ? (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">WhatsApp Number</label>
-                                        <div className="flex gap-2">
-                                            <div className="relative w-[130px]">
-                                                <select 
-                                                    value={countryCode}
-                                                    onChange={(e) => setCountryCode(e.target.value)}
-                                                    className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 pl-3 pr-8 text-white appearance-none focus:border-indigo-500 outline-none text-xs font-bold"
-                                                >
-                                                    {COUNTRY_CODES.map(c => (
-                                                        <option key={c.code} value={c.code}>{c.flag} {c.country}</option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-                                            </div>
-                                            <input 
-                                                type="tel" 
-                                                value={phone}
-                                                onChange={(e) => setPhone(e.target.value)}
-                                                placeholder="712 345 678"
-                                                className="flex-1 bg-[#1E1E1E] border border-[#333] rounded-lg py-3 px-4 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Password</label>
-                                        <div className="relative group">
-                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={18} />
-                                            <input 
-                                                type={showPassword ? "text" : "password"} 
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                placeholder="••••••••"
-                                                className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 pl-10 pr-10 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
-                                                required
-                                            />
-                                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
-                                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                            </button>
-                                        </div>
-                                    </div>
+                    <form onSubmit={handleEmailSubmit} className="space-y-4">
+                        {!isLogin && (
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Display Name</label>
+                                <input 
+                                    type="text" 
+                                    value={displayName}
+                                    onChange={(e) => setDisplayName(e.target.value)}
+                                    placeholder="Your name"
+                                    className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 px-4 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                                />
+                            </div>
+                        )}
+                        
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Email</label>
+                            <div className="relative">
+                                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                                <input 
+                                    type="email" 
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@example.com"
+                                    className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 pl-11 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Password</label>
+                            <div className="relative">
+                                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                                <input 
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 pl-11 pr-12 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                        </div>
 
-                                    {!isLogin && (
-                                        <p className="text-[10px] text-gray-500 flex items-center gap-1">
-                                            <MessageCircle size={10} className="text-green-500" /> We'll verify this number via WhatsApp OTP.
-                                        </p>
-                                    )}
-                                </div>
+                        <button 
+                            type="submit" 
+                            disabled={isLoading}
+                            className="w-full bg-white text-black font-condensed font-black text-lg uppercase py-3.5 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-all disabled:opacity-50"
+                        >
+                            {isLoading ? (
+                                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
                             ) : (
-                                <div className="animate-in fade-in slide-in-from-right">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">WhatsApp OTP Code</label>
-                                    <input 
-                                        type="text" 
-                                        value={otp}
-                                        onChange={(e) => setOtp(e.target.value)}
-                                        placeholder="0000"
-                                        className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 px-4 text-white text-center tracking-[0.5em] font-black text-lg focus:outline-none focus:border-[#00FFB2] transition-colors"
-                                        maxLength={4}
-                                        autoFocus
-                                        required
-                                    />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setShowOtpInput(false)}
-                                        className="text-[10px] text-indigo-400 font-bold mt-2 hover:underline"
-                                    >
-                                        Wrong number? Go back.
-                                    </button>
-                                </div>
+                                <>{isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={18} /></>
                             )}
+                        </button>
+                    </form>
 
-                            <button 
-                                type="submit"
-                                disabled={isLoading}
-                                className="w-full bg-[#00FFB2] hover:bg-[#00E09E] text-black font-condensed font-black text-xl uppercase py-3.5 rounded-lg shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isLoading ? 'Processing...' : showOtpInput ? 'Verify & Create Account' : (isLogin ? 'Secure Login' : 'Send Verification Code')} 
-                                {!isLoading && !showOtpInput && (isLogin ? <ArrowRight size={20}/> : <MessageCircle size={20} />)}
-                                {!isLoading && showOtpInput && <ShieldCheck size={20} />}
-                            </button>
-                        </form>
-                    )}
-
-                    {/* EMAIL AUTH FLOW */}
-                    {authMethod === 'EMAIL' && (
-                        <form onSubmit={handleEmailSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Email Address</label>
-                                <div className="relative group">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={18} />
-                                    <input 
-                                        type="email" 
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="name@example.com"
-                                        className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Password</label>
-                                <div className="relative group">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={18} />
-                                    <input 
-                                        type={showPassword ? "text" : "password"} 
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="••••••••"
-                                        className="w-full bg-[#1E1E1E] border border-[#333] rounded-lg py-3 pl-10 pr-10 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
-                                        required
-                                    />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
-                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button 
-                                type="submit"
-                                disabled={isLoading}
-                                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-condensed font-black text-xl uppercase py-3.5 rounded-lg shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4 disabled:opacity-50"
-                            >
-                                {isLoading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')} <ArrowRight size={20} />
-                            </button>
-                        </form>
-                    )}
-
-                    <div className="mt-6 text-center">
-                        <p className="text-gray-500 text-sm">
-                            {isLogin ? "Don't have an account?" : "Already have an account?"}
-                            <button 
-                            onClick={() => { setIsLogin(!isLogin); setShowOtpInput(false); setErrorMessage(null); setSuccessMessage(null); }}
-                                className="ml-2 text-white font-bold hover:underline"
-                            >
-                                {isLogin ? 'Sign Up' : 'Log In'}
-                            </button>
-                        </p>
+                    <div className="mt-4 text-center">
+                        <button 
+                            onClick={() => { setIsLogin(!isLogin); setErrorMessage(null); setSuccessMessage(null); }}
+                            className="text-gray-500 text-sm hover:text-indigo-400 transition-colors"
+                        >
+                            {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+                        </button>
                     </div>
-
-                    <div className="my-6 border-t border-[#333]"></div>
-
-                    {/* GUEST MODE BUTTON */}
-                    <button 
-                        onClick={handleGuestAccess}
-                        className="w-full bg-white/5 hover:bg-white/10 text-gray-300 font-condensed font-bold uppercase py-3 rounded-lg border border-white/10 flex items-center justify-center gap-2 transition-colors"
-                    >
-                        <User size={16} /> Peek Inside (Guest Mode)
-                    </button>
-
                 </div>
 
-                <div className="mt-8 text-center">
-                     <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Powered by Pweza AI</span>
-                </div>
+                {/* Guest Access */}
+                <button 
+                    onClick={handleGuestAccess}
+                    className="mt-6 w-full py-3 text-gray-500 text-sm font-bold uppercase hover:text-white transition-colors"
+                >
+                    Continue as Guest
+                </button>
             </div>
         </div>
     );

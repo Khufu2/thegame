@@ -1,9 +1,17 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, TrendingUp, Hash, Users, ArrowRight, Shield, CheckCircle2, Plus, X, Newspaper, Trophy, Calculator, DollarSign, Trash2, Calendar, LayoutGrid, Sparkles, UserPlus, MessageCircle, Flame, Check } from 'lucide-react';
 import { useSports } from '../context/SportsContext';
 import { useNavigate } from 'react-router-dom';
 import { Match, NewsStory } from '../types';
+import supabase from '../services/supabaseClient';
+
+interface League {
+  id: string;
+  name: string;
+  code: string | null;
+  logo_url: string | null;
+  country: string | null;
+}
 
 const TRENDING_TOPICS = [
     { id: '1', name: 'LeBron Trade Rumors', category: 'NBA', posts: '12K' },
@@ -25,15 +33,28 @@ const COMMUNITIES = [
     { id: 'c3', name: 'FPL Grinders', members: '210K', icon: '📊' },
 ];
 
-// Realistic Logos & Gradients
-const LEAGUES = [
-    { name: 'EPL', logo: 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg', color: 'bg-purple-900', accent: 'border-purple-500' },
-    { name: 'NBA', logo: 'https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg', color: 'bg-blue-900', accent: 'border-blue-500' },
-    { name: 'NFL', logo: 'https://upload.wikimedia.org/wikipedia/en/a/a2/National_Football_League_logo.svg', color: 'bg-slate-900', accent: 'border-blue-400' },
-    { name: 'LaLiga', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg', color: 'bg-red-900', accent: 'border-red-500' },
-    { name: 'UFC', logo: 'https://upload.wikimedia.org/wikipedia/commons/9/92/UFC_Logo.svg', color: 'bg-stone-900', accent: 'border-red-600' },
-    { name: 'F1', logo: 'https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg', color: 'bg-red-950', accent: 'border-red-600' },
+// Default leagues (fallback)
+const DEFAULT_LEAGUES = [
+    { code: 'PL', name: 'Premier League', logo_url: 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg', color: 'bg-purple-900', accent: 'border-purple-500' },
+    { code: 'BL1', name: 'Bundesliga', logo_url: 'https://upload.wikimedia.org/wikipedia/en/d/df/Bundesliga_logo_%282017%29.svg', color: 'bg-red-900', accent: 'border-red-500' },
+    { code: 'SA', name: 'Serie A', logo_url: 'https://upload.wikimedia.org/wikipedia/en/e/e1/Serie_A_logo_%282019%29.svg', color: 'bg-blue-900', accent: 'border-blue-500' },
+    { code: 'PD', name: 'La Liga', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg', color: 'bg-orange-900', accent: 'border-orange-500' },
+    { code: 'FL1', name: 'Ligue 1', logo_url: 'https://upload.wikimedia.org/wikipedia/en/b/ba/Ligue_1_Uber_Eats.svg', color: 'bg-blue-800', accent: 'border-blue-400' },
+    { code: 'CL', name: 'Champions League', logo_url: 'https://upload.wikimedia.org/wikipedia/en/b/bf/UEFA_Champions_League_logo_2.svg', color: 'bg-slate-900', accent: 'border-slate-400' },
 ];
+
+const getLeagueStyle = (code: string) => {
+    const styles: Record<string, { color: string; accent: string }> = {
+        'PL': { color: 'bg-purple-900', accent: 'border-purple-500' },
+        'BL1': { color: 'bg-red-900', accent: 'border-red-500' },
+        'SA': { color: 'bg-blue-900', accent: 'border-blue-500' },
+        'PD': { color: 'bg-orange-900', accent: 'border-orange-500' },
+        'FL1': { color: 'bg-blue-800', accent: 'border-blue-400' },
+        'CL': { color: 'bg-slate-900', accent: 'border-slate-400' },
+        'EL': { color: 'bg-orange-800', accent: 'border-orange-400' },
+    };
+    return styles[code] || { color: 'bg-gray-900', accent: 'border-gray-500' };
+};
 
 export const ExplorePage: React.FC = () => {
   const { matches, news, addToSlip, user, updatePreferences } = useSports();
@@ -41,6 +62,32 @@ export const ExplorePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAcca, setSelectedAcca] = useState<string[]>([]);
   const [wager, setWager] = useState<number>(10);
+  const [leagues, setLeagues] = useState(DEFAULT_LEAGUES);
+
+  // Fetch leagues from database
+  useEffect(() => {
+    const fetchLeagues = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('leagues')
+          .select('id, name, code, logo_url, country')
+          .limit(6);
+        
+        if (!error && data && data.length > 0) {
+          const mappedLeagues = data.map(l => ({
+            code: l.code || l.id,
+            name: l.name,
+            logo_url: l.logo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=6366F1&color=fff`,
+            ...getLeagueStyle(l.code || '')
+          }));
+          setLeagues(mappedLeagues);
+        }
+      } catch (error) {
+        console.error('Error fetching leagues:', error);
+      }
+    };
+    fetchLeagues();
+  }, []);
 
   // --- SEARCH LOGIC ---
   const searchResults = useMemo(() => {
@@ -195,10 +242,10 @@ export const ExplorePage: React.FC = () => {
                             </div>
                         </div>
                         <div className="grid grid-cols-3 gap-3">
-                            {LEAGUES.map(league => (
+                            {leagues.map(league => (
                                 <button 
-                                    key={league.name} 
-                                    onClick={() => navigate(`/league/${league.name}`)}
+                                    key={league.code} 
+                                    onClick={() => navigate(`/league/${league.code}`)}
                                     className={`
                                         relative overflow-hidden h-28 rounded-xl flex flex-col items-center justify-center border transition-all duration-300 group
                                         ${league.color} ${league.accent} border-opacity-30 hover:border-opacity-100 hover:scale-[1.03]
@@ -208,7 +255,7 @@ export const ExplorePage: React.FC = () => {
                                     <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                     
                                     <div className="w-12 h-12 mb-2 relative z-10 drop-shadow-lg">
-                                        <img src={league.logo} alt={league.name} className="w-full h-full object-contain filter drop-shadow-md" />
+                                        <img src={league.logo_url} alt={league.name} className="w-full h-full object-contain filter drop-shadow-md" />
                                     </div>
                                     <span className="font-condensed font-bold text-sm uppercase text-white/90 tracking-wider z-10">{league.name}</span>
                                 </button>
