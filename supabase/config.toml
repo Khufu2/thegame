@@ -1,5 +1,8 @@
 project_id = "ebfhyyznuzxwhirwlcds"
 
+[functions.fetch-live-scores]
+verify_jwt = false
+
 [functions.fetch-matches-footballdata]
 verify_jwt = false
 
