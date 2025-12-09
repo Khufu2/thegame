@@ -463,19 +463,115 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                       </div>
                   )}
 
-                  {/* TIMELINE FEED */}
+                  {/* BLEACHER REPORT STYLE CONTENT */}
                   <div className="mt-6 px-4 pb-4">
-                       <h3 className="font-condensed font-bold text-sm uppercase text-gray-400 tracking-wide mb-3 pl-1">Match Feed</h3>
-                       <div className="space-y-6 border-l-2 border-[#2C2C2C] ml-3 pl-6 relative">
-                           {matchDetails?.timeline?.map((event: any) => (
-                               <StreamItem key={event.id} event={event} dataSaver={dataSaver} />
-                           )) || (
-                               <div className="text-center text-gray-500 py-8">
-                                   <p className="font-condensed font-bold uppercase">No events recorded yet</p>
+                       <h3 className="font-condensed font-bold text-sm uppercase text-gray-400 tracking-wide mb-3 pl-1 flex items-center gap-2">
+                           <Flame size={14} className="text-orange-500" />
+                           Match Preview
+                       </h3>
+                       
+                       {/* Editorial Match Preview Card */}
+                       <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] rounded-xl border border-[#2C2C2C] overflow-hidden mb-4">
+                           <div className="p-5">
+                               <h2 className="font-condensed font-black text-2xl uppercase italic text-white leading-tight mb-3">
+                                   {match.homeTeam.name} Host {match.awayTeam.name} in {match.league} Showdown
+                               </h2>
+                               <p className="text-gray-400 text-sm leading-relaxed mb-4">
+                                   {match.prediction?.aiReasoning || `An exciting ${match.league} clash awaits as ${match.homeTeam.name} welcome ${match.awayTeam.name}. Both sides will be looking to make a statement in what promises to be an entertaining encounter.`}
+                               </p>
+                               
+                               {/* Key Stat Callout */}
+                               <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-lg p-4 mb-4">
+                                   <div className="flex items-start gap-3">
+                                       <div className="w-8 h-8 bg-indigo-600/20 rounded-full flex items-center justify-center shrink-0">
+                                           <BarChart2 size={16} className="text-indigo-400" />
+                                       </div>
+                                       <div>
+                                           <span className="text-indigo-400 font-bold text-xs uppercase tracking-wide">Key Insight</span>
+                                           <p className="text-white font-condensed font-bold text-lg mt-1">
+                                               {match.prediction?.keyInsight || `${match.homeTeam.name} have a strong home record this season`}
+                                           </p>
+                                       </div>
+                                   </div>
                                </div>
-                           )}
-                           <div className="absolute bottom-0 -left-[5px] w-2 h-2 rounded-full bg-[#2C2C2C]"></div>
+                               
+                               {/* Betting Angle */}
+                               {match.prediction?.bettingAngle && (
+                                   <div className="bg-[#00FFB2]/5 border border-[#00FFB2]/20 rounded-lg p-4">
+                                       <div className="flex items-center gap-2 mb-2">
+                                           <TrendingUp size={14} className="text-[#00FFB2]" />
+                                           <span className="text-[#00FFB2] font-bold text-xs uppercase">Sharp Play</span>
+                                       </div>
+                                       <p className="text-white font-medium">{match.prediction.bettingAngle}</p>
+                                   </div>
+                               )}
+                           </div>
                        </div>
+
+                       {/* Form Guide Section */}
+                       <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-4 mb-4">
+                           <h4 className="font-condensed font-bold text-sm uppercase text-gray-400 mb-4">Recent Form</h4>
+                           <div className="grid grid-cols-2 gap-4">
+                               <div>
+                                   <span className="text-xs text-gray-500 font-bold uppercase mb-2 block">{match.homeTeam.name}</span>
+                                   <div className="flex gap-1">
+                                       {(match.homeTeam.form || ['W', 'D', 'W', 'L', 'W']).map((res, i) => (
+                                           <div key={i} className={`w-7 h-7 rounded flex items-center justify-center text-xs font-black ${
+                                               res === 'W' ? 'bg-green-600/20 text-green-400' : 
+                                               res === 'L' ? 'bg-red-600/20 text-red-400' : 
+                                               'bg-gray-600/20 text-gray-400'
+                                           }`}>
+                                               {res}
+                                           </div>
+                                       ))}
+                                   </div>
+                               </div>
+                               <div>
+                                   <span className="text-xs text-gray-500 font-bold uppercase mb-2 block">{match.awayTeam.name}</span>
+                                   <div className="flex gap-1">
+                                       {(match.awayTeam.form || ['L', 'W', 'W', 'D', 'W']).map((res, i) => (
+                                           <div key={i} className={`w-7 h-7 rounded flex items-center justify-center text-xs font-black ${
+                                               res === 'W' ? 'bg-green-600/20 text-green-400' : 
+                                               res === 'L' ? 'bg-red-600/20 text-red-400' : 
+                                               'bg-gray-600/20 text-gray-400'
+                                           }`}>
+                                               {res}
+                                           </div>
+                                       ))}
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+
+                       {/* Head to Head */}
+                       {matchDetails?.headToHead && matchDetails.headToHead.length > 0 && (
+                           <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-4 mb-4">
+                               <h4 className="font-condensed font-bold text-sm uppercase text-gray-400 mb-4">Head to Head</h4>
+                               <div className="space-y-2">
+                                   {matchDetails.headToHead.slice(0, 5).map((h2h: any, idx: number) => (
+                                       <div key={idx} className="flex items-center justify-between text-sm py-2 border-b border-[#2C2C2C] last:border-0">
+                                           <span className="text-gray-500 text-xs">{new Date(h2h.date).toLocaleDateString()}</span>
+                                           <div className="flex items-center gap-3">
+                                               <span className="text-white font-medium text-right w-24 truncate">{h2h.homeTeam}</span>
+                                               <span className="font-mono font-bold text-white bg-[#2C2C2C] px-2 py-1 rounded">
+                                                   {h2h.homeScore} - {h2h.awayScore}
+                                               </span>
+                                               <span className="text-white font-medium w-24 truncate">{h2h.awayTeam}</span>
+                                           </div>
+                                       </div>
+                                   ))}
+                               </div>
+                           </div>
+                       )}
+
+                       {/* Quick Action */}
+                       <button 
+                           onClick={handleOpenPwezaContext}
+                           className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold uppercase text-sm py-4 rounded-xl flex items-center justify-center gap-3 active:scale-[0.98] transition-transform"
+                       >
+                           <span className="text-lg">🐙</span>
+                           Ask Pweza for Live Analysis
+                       </button>
                   </div>
               </div>
           )}

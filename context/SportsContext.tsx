@@ -45,23 +45,31 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const rebuildFeed = (currentMatches: Match[], currentNews: NewsStory[], currentAlerts: SystemAlert[]) => {
         const mixedFeed: FeedItem[] = [];
+        
+        // Add hero news first
         const hero = currentNews.find(n => n.isHero);
         if (hero) mixedFeed.push(hero);
 
         const remainingNews = currentNews.filter(n => !n.isHero);
+        
+        // Get all predictions sorted by confidence
         const predictions = currentMatches
-            .filter(m => m.status !== MatchStatus.LIVE && m.prediction)
+            .filter(m => m.prediction)
             .sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0));
 
-        let mIdx = 60; 
+        // Interleave content for the stream (after the first 12 which go to Daily Locks rail)
+        let mIdx = 12; // Start after the Daily Locks  
         let nIdx = 0;
         let aIdx = 0;
 
+        // Build a rich mixed stream
         while (mIdx < predictions.length || nIdx < remainingNews.length || aIdx < currentAlerts.length) {
+            // Add alerts first (they're important)
             if (aIdx < currentAlerts.length) mixedFeed.push(currentAlerts[aIdx++]);
-            if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
-            if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
+            // Add news articles
             if (nIdx < remainingNews.length) mixedFeed.push(remainingNews[nIdx++]);
+            // Add match predictions
+            if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
         }
         setFeedItems(mixedFeed);
     };
