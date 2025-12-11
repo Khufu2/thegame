@@ -732,11 +732,16 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                       </div>
                                   ))}
                               </div>
-                          ) : (
+                          ) : matchDetails.lineups[pitchSide === 'HOME' ? 'home' : 'away']?.starting ? (
                               <SoccerPitch
                                 lineup={matchDetails.lineups[pitchSide === 'HOME' ? 'home' : 'away']}
                                 teamName={pitchSide === 'HOME' ? match.homeTeam.name : match.awayTeam.name}
                               />
+                          ) : (
+                              <div className="py-20 text-center text-gray-500">
+                                  <Shirt size={40} className="mx-auto mb-3 opacity-20" />
+                                  <p className="font-condensed font-bold uppercase">Lineup Data Unavailable</p>
+                              </div>
                           )}
                       </>
                   ) : (
@@ -1064,7 +1069,7 @@ const SoccerPitch: React.FC<{ lineup: TeamLineup, teamName: string }> = ({ lineu
             <div className="relative p-4">
                 <h4 className="text-sm font-bold text-white mb-3">{teamName} — Starting XI</h4>
                 <div className="grid grid-cols-3 gap-2">
-                    {lineup.starting.map(player => (
+                    {(lineup?.starting || []).map(player => (
                         <div key={player.id} className="p-2 bg-[#153e2b] border border-[#224f39] rounded-md">
                             <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-full bg-black/30 flex items-center justify-center font-bold text-sm">{player.number}</div>
