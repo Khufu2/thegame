@@ -58,10 +58,11 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
      onUpdate: handleLiveUpdate
    });
 
-   // Fetch additional match details
+   // Fetch additional match details - first from DB, then enrich with API-Football
    useEffect(() => {
         const fetchMatchDetails = async () => {
             try {
+                // First get basic details from DB
                 const response = await fetch(
                     `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/fetch-match-details?matchId=${match.id}`,
                     {
@@ -75,6 +76,29 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                if (response.ok) {
                    const details = await response.json();
                    setMatchDetails(details);
+                   
+                   // If match has a fixture_id, enrich with API-Football data
+                   const fixtureId = details?.fixture_id || match.metadata?.fixture_id;
+                   if (fixtureId) {
+                     try {
+                       const enrichResponse = await fetch(
+                         `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/enrich-match-details?fixtureId=${fixtureId}`,
+                         {
+                           method: 'GET',
+                           headers: {
+                             'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                             'Content-Type': 'application/json',
+                           },
+                         }
+                       );
+                       if (enrichResponse.ok) {
+                         const enrichedData = await enrichResponse.json();
+                         setMatchDetails(prev => ({ ...prev, ...enrichedData }));
+                       }
+                     } catch (e) {
+                       console.log('Enrichment not available:', e);
+                     }
+                   }
                }
            } catch (error) {
                console.error('Error fetching match details:', error);
@@ -84,7 +108,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
        };
 
        fetchMatchDetails();
-   }, [match.id]);
+   }, [match.id, match.metadata?.fixture_id]);
 
    // Fetch standings when TABLE tab is activated
    useEffect(() => {

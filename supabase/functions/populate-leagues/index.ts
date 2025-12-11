@@ -42,9 +42,14 @@ const LEAGUES_DATA = [
   { external_id: 12, code: "NBA", name: "NBA", country: "USA", logo_url: "https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg", sport: "basketball", season: "2024" },
   { external_id: 1, code: "NFL", name: "NFL", country: "USA", logo_url: "https://upload.wikimedia.org/wikipedia/en/a/a2/National_Football_League_logo.svg", sport: "american-football", season: "2024" },
   { external_id: 1, code: "MLB", name: "MLB", country: "USA", logo_url: "https://upload.wikimedia.org/wikipedia/en/a/a6/Major_League_Baseball_logo.svg", sport: "baseball", season: "2025" },
+  { external_id: 1, code: "NHL", name: "NHL", country: "USA", logo_url: "https://upload.wikimedia.org/wikipedia/en/3/3a/05_NHL_Shield.svg", sport: "hockey", season: "2024" },
   
   // MMA/Combat Sports
   { external_id: 1, code: "UFC", name: "UFC", country: "USA", logo_url: "https://upload.wikimedia.org/wikipedia/commons/9/92/UFC_Logo.svg", sport: "mma", season: "2024" },
+  
+  // Motorsport
+  { external_id: 1, code: "F1", name: "Formula 1", country: "World", logo_url: "https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg", sport: "formula1", season: "2024" },
+  { external_id: 1, code: "MOTOGP", name: "MotoGP", country: "World", logo_url: "https://upload.wikimedia.org/wikipedia/commons/a/a0/Moto_Gp_logo.svg", sport: "motogp", season: "2024" },
   
   // African Football
   { external_id: 12, code: "AFCON", name: "Africa Cup of Nations", country: "Africa", logo_url: "https://upload.wikimedia.org/wikipedia/en/9/92/Africa_Cup_of_Nations_logo.svg", sport: "football", season: "2025" },

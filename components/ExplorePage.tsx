@@ -69,14 +69,16 @@ const COMMUNITIES = [
     { id: 'c3', name: 'Betting Tips', members: '210K', icon: '📊' },
 ];
 
-// Default leagues (fallback)
+// Default leagues (fallback) - expanded with multi-sport
 const DEFAULT_LEAGUES = [
     { code: 'PL', name: 'Premier League', logo_url: 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg', color: 'bg-purple-900', accent: 'border-purple-500' },
-    { code: 'BL1', name: 'Bundesliga', logo_url: 'https://upload.wikimedia.org/wikipedia/en/d/df/Bundesliga_logo_%282017%29.svg', color: 'bg-red-900', accent: 'border-red-500' },
-    { code: 'SA', name: 'Serie A', logo_url: 'https://upload.wikimedia.org/wikipedia/en/e/e1/Serie_A_logo_%282019%29.svg', color: 'bg-blue-900', accent: 'border-blue-500' },
-    { code: 'PD', name: 'La Liga', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg', color: 'bg-orange-900', accent: 'border-orange-500' },
-    { code: 'FL1', name: 'Ligue 1', logo_url: 'https://upload.wikimedia.org/wikipedia/en/b/ba/Ligue_1_Uber_Eats.svg', color: 'bg-blue-800', accent: 'border-blue-400' },
     { code: 'CL', name: 'Champions League', logo_url: 'https://upload.wikimedia.org/wikipedia/en/b/bf/UEFA_Champions_League_logo_2.svg', color: 'bg-slate-900', accent: 'border-slate-400' },
+    { code: 'NBA', name: 'NBA', logo_url: 'https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg', color: 'bg-orange-900', accent: 'border-orange-500' },
+    { code: 'BL1', name: 'Bundesliga', logo_url: 'https://upload.wikimedia.org/wikipedia/en/d/df/Bundesliga_logo_%282017%29.svg', color: 'bg-red-900', accent: 'border-red-500' },
+    { code: 'PD', name: 'La Liga', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg', color: 'bg-orange-800', accent: 'border-orange-400' },
+    { code: 'SA', name: 'Serie A', logo_url: 'https://upload.wikimedia.org/wikipedia/en/e/e1/Serie_A_logo_%282019%29.svg', color: 'bg-blue-900', accent: 'border-blue-500' },
+    { code: 'FL1', name: 'Ligue 1', logo_url: 'https://upload.wikimedia.org/wikipedia/en/b/ba/Ligue_1_Uber_Eats.svg', color: 'bg-blue-800', accent: 'border-blue-400' },
+    { code: 'F1', name: 'Formula 1', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg', color: 'bg-red-800', accent: 'border-red-500' },
 ];
 
 const getLeagueStyle = (code: string) => {
@@ -88,6 +90,10 @@ const getLeagueStyle = (code: string) => {
         'FL1': { color: 'bg-blue-800', accent: 'border-blue-400' },
         'CL': { color: 'bg-slate-900', accent: 'border-slate-400' },
         'EL': { color: 'bg-orange-800', accent: 'border-orange-400' },
+        'NBA': { color: 'bg-orange-900', accent: 'border-orange-500' },
+        'F1': { color: 'bg-red-800', accent: 'border-red-500' },
+        'UFC': { color: 'bg-red-900', accent: 'border-red-600' },
+        'NHL': { color: 'bg-blue-900', accent: 'border-blue-400' },
     };
     return styles[code] || { color: 'bg-gray-900', accent: 'border-gray-500' };
 };
@@ -100,17 +106,29 @@ export const ExplorePage: React.FC = () => {
   const [wager, setWager] = useState<number>(10);
   const [leagues, setLeagues] = useState(DEFAULT_LEAGUES);
 
-  // Fetch leagues from database
+  // Fetch leagues from database with priority ordering
   useEffect(() => {
     const fetchLeagues = async () => {
       try {
         const { data, error } = await supabase
           .from('leagues')
-          .select('id, name, code, logo_url, country')
-          .limit(6);
+          .select('id, name, code, logo_url, country, sport')
+          .order('name', { ascending: true })
+          .limit(20);
         
         if (!error && data && data.length > 0) {
-          const mappedLeagues = data.map(l => ({
+          // Prioritize popular leagues
+          const priorityOrder = ['PL', 'CL', 'NBA', 'BL1', 'PD', 'SA', 'FL1', 'EL', 'F1'];
+          const sorted = [...data].sort((a, b) => {
+            const aIdx = priorityOrder.indexOf(a.code || '');
+            const bIdx = priorityOrder.indexOf(b.code || '');
+            if (aIdx === -1 && bIdx === -1) return 0;
+            if (aIdx === -1) return 1;
+            if (bIdx === -1) return -1;
+            return aIdx - bIdx;
+          });
+          
+          const mappedLeagues = sorted.slice(0, 8).map(l => ({
             code: l.code || l.id,
             name: l.name,
             logo_url: l.logo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=6366F1&color=fff`,
