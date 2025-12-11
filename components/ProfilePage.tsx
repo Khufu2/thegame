@@ -91,20 +91,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
             <div className="grid grid-cols-3 gap-3 mb-6">
                 <div className="bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C] flex flex-col items-center">
                     <span className="text-[10px] font-bold text-gray-500 uppercase">Win Rate</span>
-                    <span className={`font-condensed font-black text-2xl ${user.stats.winRate > 50 ? 'text-[#00FFB2]' : 'text-gray-200'}`}>
-                        {user.stats.winRate}%
+                    <span className={`font-condensed font-black text-2xl ${(user.stats?.winRate ?? 0) > 50 ? 'text-[#00FFB2]' : 'text-gray-200'}`}>
+                        {user.stats?.winRate ?? 0}%
                     </span>
                 </div>
                 <div className="bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C] flex flex-col items-center">
                     <span className="text-[10px] font-bold text-gray-500 uppercase">Profit (Virtual)</span>
-                    <span className={`font-condensed font-black text-2xl ${user.stats.netProfit >= 0 ? 'text-[#00FFB2]' : 'text-red-500'}`}>
-                        {user.stats.netProfit > 0 ? '+' : ''}{user.stats.netProfit}u
+                    <span className={`font-condensed font-black text-2xl ${(user.stats?.netProfit ?? 0) >= 0 ? 'text-[#00FFB2]' : 'text-red-500'}`}>
+                        {(user.stats?.netProfit ?? 0) > 0 ? '+' : ''}{user.stats?.netProfit ?? 0}u
                     </span>
                 </div>
                 <div className="bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C] flex flex-col items-center">
                     <span className="text-[10px] font-bold text-gray-500 uppercase">Bets</span>
                     <span className="font-condensed font-black text-2xl text-white">
-                        {user.stats.betsPlaced}
+                        {user.stats?.betsPlaced ?? 0}
                     </span>
                 </div>
             </div>
