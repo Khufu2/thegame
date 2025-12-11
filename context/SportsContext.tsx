@@ -428,11 +428,71 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setTimeout(() => setFlashAlert(null), 5000);
     };
 
-    const addNewsStory = (story: NewsStory) => {
-        setNews(prev => [story, ...prev]);
+    const addNewsStory = async (story: NewsStory) => {
+        // Save to database
+        try {
+            const { data, error } = await supabase
+                .from('feeds')
+                .insert({
+                    type: story.type || 'NEWS',
+                    title: story.title,
+                    excerpt: story.summary,
+                    content: JSON.stringify(story.contentBlocks || []),
+                    image_url: story.imageUrl,
+                    source: story.source,
+                    author: story.source,
+                    tags: story.tags || [],
+                    metadata: {
+                        likes: story.likes || 0,
+                        comments: story.comments || 0,
+                        isHero: story.isHero || false
+                    }
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Failed to save news to database:', error);
+                // Still update local state as fallback
+                setNews(prev => [story, ...prev]);
+            } else {
+                console.log('News saved to database:', data);
+                // Update local state with the saved story
+                setNews(prev => [story, ...prev]);
+            }
+        } catch (err) {
+            console.error('Error saving news:', err);
+            setNews(prev => [story, ...prev]);
+        }
     };
 
-    const addSystemAlert = (alert: SystemAlert) => {
+    const addSystemAlert = async (alert: SystemAlert) => {
+        // Save to database as a feed item with type ALERT
+        try {
+            const { data, error } = await supabase
+                .from('feeds')
+                .insert({
+                    type: 'ALERT',
+                    title: alert.title,
+                    excerpt: alert.description,
+                    content: JSON.stringify({ dataPoint: alert.dataPoint, signalStrength: alert.signalStrength }),
+                    tags: [alert.league],
+                    metadata: {
+                        alertType: alert.alertType
+                    }
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Failed to save alert to database:', error);
+            } else {
+                console.log('Alert saved to database:', data);
+            }
+        } catch (err) {
+            console.error('Error saving alert:', err);
+        }
+        // Always update local state
         setAlerts(prev => [alert, ...prev]);
     };
 
