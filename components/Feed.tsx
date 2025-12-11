@@ -74,10 +74,12 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
     const allMatches = safeMatches.filter(m => {
         if (isAll) return true;
         if (isForYou) {
-             // CRITICAL: Strictly obey user preferences
-             if (!user) return true; // Fallback for guest
-             const followsLeague = user.preferences.favoriteLeagues.includes(m.league);
-             const followsTeam = user.preferences.favoriteTeams.includes(m.homeTeam.id) || user.preferences.favoriteTeams.includes(m.awayTeam.id);
+             // Show all matches if no user or no preferences set
+             if (!user) return true;
+             const hasPreferences = (user.preferences.favoriteLeagues?.length > 0) || (user.preferences.favoriteTeams?.length > 0);
+             if (!hasPreferences) return true; // Show all if no preferences
+             const followsLeague = user.preferences.favoriteLeagues?.includes(m.league);
+             const followsTeam = user.preferences.favoriteTeams?.includes(m.homeTeam.id) || user.preferences.favoriteTeams?.includes(m.awayTeam.id);
              return followsLeague || followsTeam;
         }
         return m.league === activeLeague;

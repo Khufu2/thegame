@@ -84,11 +84,11 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
         filtered = filtered.filter(m => m.status === MatchStatus.LIVE);
     }
 
-    // Filter by Date - always apply date filter
+    // Filter by Date - apply date filter but show all if no matches found
     const targetDateEntry = dynamicDates.find(d => d.date === activeDate);
-    if (targetDateEntry) {
+    if (targetDateEntry && activeDate !== 'All') {
         const targetDate = targetDateEntry.dateObj;
-        filtered = filtered.filter(match => {
+        const dateFiltered = filtered.filter(match => {
             const matchDate = parseMatchDate(match.time);
             if (!matchDate) return activeDate === 'Today'; // Show timeless matches on Today
             
@@ -96,6 +96,16 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
             const targetLocal = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
             return matchLocal.getTime() === targetLocal.getTime();
         });
+        
+        // If no matches for selected date, show all upcoming matches instead
+        if (dateFiltered.length > 0) {
+            filtered = dateFiltered;
+        } else if (activeDate === 'Today') {
+            // Show upcoming scheduled matches when today has no games
+            filtered = safeMatches.filter(m => 
+                m.status === 'SCHEDULED' || m.status === 'TIMED' || m.status === 'FINISHED'
+            ).slice(0, 50);
+        }
     }
 
     // Group by League and sort within each league
