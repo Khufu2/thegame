@@ -162,11 +162,12 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 );
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Fetched matches:', data.length);
-                    setMatches(data);
+                    // Handle both { matches: [...] } and direct array responses
+                    const matchesArray = Array.isArray(data) ? data : (data.matches || []);
+                    console.log('Fetched matches:', matchesArray.length);
+                    setMatches(matchesArray);
                 } else {
                     console.error('Failed to fetch matches:', response.status);
-                    // Fallback to mock data if API fails
                     console.log('Using mock data as fallback');
                     setMatches(getMockMatches());
                 }
