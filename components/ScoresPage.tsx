@@ -261,8 +261,11 @@ interface ScoreRowProps {
 
 const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClick }) => {
     const isLive = match.status === MatchStatus.LIVE;
-    const isWinnerHome = match.score && match.score.home > match.score.away;
-    const isWinnerAway = match.score && match.score.away > match.score.home;
+    // Handle both score formats: { home, away } and { fullTime: { home, away } }
+    const homeScore = (match.score as any)?.fullTime?.home ?? match.score?.home;
+    const awayScore = (match.score as any)?.fullTime?.away ?? match.score?.away;
+    const isWinnerHome = homeScore != null && awayScore != null && homeScore > awayScore;
+    const isWinnerAway = homeScore != null && awayScore != null && awayScore > homeScore;
 
     // Convert UTC time to user's local timezone
     const formatLocalTime = (utcTimeStr: string) => {
@@ -321,40 +324,38 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                 {/* Home Team */}
                 <div className="flex items-center justify-between h-[20px]">
                     <div className="flex items-center gap-3">
-                        {match.homeTeam.logo && match.homeTeam.logo.trim() !== '' ? (
-                            <img src={match.homeTeam.logo} className="w-5 h-5 object-contain" alt={match.homeTeam.name} />
+                        {(match.homeTeam.logo || (match.homeTeam as any).crest) ? (
+                            <img src={match.homeTeam.logo || (match.homeTeam as any).crest} className="w-5 h-5 object-contain" alt={match.homeTeam.name} />
                         ) : (
                             <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
                                 {match.homeTeam.name.charAt(0)}
                             </div>
                         )}
-                        <span className={`font-condensed font-bold text-[15px] uppercase ${isWinnerHome || !match.score ? 'text-white' : 'text-gray-500'}`}>
+                        <span className={`font-condensed font-bold text-[15px] uppercase ${isWinnerHome || homeScore == null ? 'text-white' : 'text-gray-500'}`}>
                             {match.homeTeam.name}
                         </span>
-                        {/* Red Card Indicator Mock */}
-                        {/* <div className="w-2 h-3 bg-red-600 rounded-[1px]"></div> */}
                     </div>
                     <span className={`font-mono font-bold text-sm ${isLive ? 'text-red-500' : 'text-white'}`}>
-                        {match.status === 'SCHEDULED' ? '-' : (match.score?.home ?? '-')}
+                        {match.status === 'SCHEDULED' ? '-' : (homeScore ?? '-')}
                     </span>
                 </div>
 
                 {/* Away Team */}
                 <div className="flex items-center justify-between h-[20px]">
                      <div className="flex items-center gap-3">
-                        {match.awayTeam.logo && match.awayTeam.logo.trim() !== '' ? (
-                            <img src={match.awayTeam.logo} className="w-5 h-5 object-contain" alt={match.awayTeam.name} />
+                        {(match.awayTeam.logo || (match.awayTeam as any).crest) ? (
+                            <img src={match.awayTeam.logo || (match.awayTeam as any).crest} className="w-5 h-5 object-contain" alt={match.awayTeam.name} />
                         ) : (
                             <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
                                 {match.awayTeam.name.charAt(0)}
                             </div>
                         )}
-                        <span className={`font-condensed font-bold text-[15px] uppercase ${isWinnerAway || !match.score ? 'text-white' : 'text-gray-500'}`}>
+                        <span className={`font-condensed font-bold text-[15px] uppercase ${isWinnerAway || awayScore == null ? 'text-white' : 'text-gray-500'}`}>
                             {match.awayTeam.name}
                         </span>
                     </div>
                     <span className={`font-mono font-bold text-sm ${isLive ? 'text-red-500' : 'text-white'}`}>
-                        {match.status === 'SCHEDULED' ? '-' : (match.score?.away ?? '-')}
+                        {match.status === 'SCHEDULED' ? '-' : (awayScore ?? '-')}
                     </span>
                 </div>
             </div>
