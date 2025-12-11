@@ -1,41 +1,65 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
-import { ArrowLeft, Trophy, Calendar, Users, ChevronRight, TrendingUp, Shield, Target, Award, PlayCircle, Star, Filter, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { ArrowLeft, Trophy, Calendar, Users, ChevronRight, TrendingUp, Shield, Target, Award, PlayCircle, Star, Filter, ArrowRightLeft, DollarSign, Loader2 } from 'lucide-react';
 import { Match, MatchStatus } from '../types';
 import { HeroNewsCard, StandardNewsCard } from './Feed';
+import { supabase } from '../services/supabaseClient';
 
-// --- MOCK DATA GENERATORS ---
+// League code mapping for API
+const LEAGUE_CODE_MAP: Record<string, string> = {
+    'PL': 'PL',
+    'EPL': 'PL',
+    'LaLiga': 'PD',
+    'PD': 'PD',
+    'SA': 'SA',
+    'SerieA': 'SA',
+    'BL1': 'BL1',
+    'Bundesliga': 'BL1',
+    'FL1': 'FL1',
+    'Ligue1': 'FL1',
+    'CL': 'CL',
+};
+
+const LEAGUE_NAMES: Record<string, string> = {
+    'PL': 'Premier League',
+    'PD': 'La Liga',
+    'SA': 'Serie A',
+    'BL1': 'Bundesliga',
+    'FL1': 'Ligue 1',
+    'CL': 'Champions League',
+};
+
+// --- THEME COLORS ---
 const getLeagueColors = (id: string) => {
-    switch (id) {
-        case 'EPL': return { bg: 'from-[#38003C] to-[#19001F]', accent: 'text-[#00FF85]', border: 'border-[#00FF85]' };
-        case 'LaLiga': return { bg: 'from-[#FF0000] to-[#4a0000]', accent: 'text-[#FFCC00]', border: 'border-[#FF0000]' };
-        case 'NBA': return { bg: 'from-[#1D428A] to-[#000000]', accent: 'text-[#C8102E]', border: 'border-[#1D428A]' };
-        case 'NFL': return { bg: 'from-[#013369] to-[#000000]', accent: 'text-[#D50A0A]', border: 'border-[#D50A0A]' };
+    const code = LEAGUE_CODE_MAP[id] || id;
+    switch (code) {
+        case 'PL': return { bg: 'from-[#38003C] to-[#19001F]', accent: 'text-[#00FF85]', border: 'border-[#00FF85]' };
+        case 'PD': return { bg: 'from-[#FF0000] to-[#4a0000]', accent: 'text-[#FFCC00]', border: 'border-[#FF0000]' };
+        case 'SA': return { bg: 'from-[#024494] to-[#001428]', accent: 'text-[#00A651]', border: 'border-[#024494]' };
+        case 'BL1': return { bg: 'from-[#D20515] to-[#4a0000]', accent: 'text-white', border: 'border-[#D20515]' };
+        case 'FL1': return { bg: 'from-[#091c3e] to-[#000000]', accent: 'text-[#DAFF00]', border: 'border-[#DAFF00]' };
+        case 'CL': return { bg: 'from-[#1D428A] to-[#000000]', accent: 'text-[#FFC500]', border: 'border-[#1D428A]' };
         default: return { bg: 'from-gray-900 to-black', accent: 'text-white', border: 'border-gray-500' };
     }
 };
 
-const MOCK_PLAYERS = [
-    { name: 'Erling Haaland', team: 'Man City', value: '14', label: 'Goals', avatar: 'https://ui-avatars.com/api/?name=EH&background=00B5E2&color=fff' },
-    { name: 'Mohamed Salah', team: 'Liverpool', value: '10', label: 'Goals', avatar: 'https://ui-avatars.com/api/?name=MS&background=C8102E&color=fff' },
-    { name: 'Cole Palmer', team: 'Chelsea', value: '8', label: 'Goals', avatar: 'https://ui-avatars.com/api/?name=CP&background=034694&color=fff' },
-];
-
-const MOCK_ASSISTS = [
-    { name: 'Bukayo Saka', team: 'Arsenal', value: '9', label: 'Assists', avatar: 'https://ui-avatars.com/api/?name=BS&background=EF0107&color=fff' },
-    { name: 'Cole Palmer', team: 'Chelsea', value: '7', label: 'Assists', avatar: 'https://ui-avatars.com/api/?name=CP&background=034694&color=fff' },
-];
-
-const MOCK_STANDINGS = [
-    { rank: 1, team: 'Liverpool', p: 11, w: 9, d: 1, l: 1, gd: 15, pts: 28, form: ['W','W','D','W','W'] },
-    { rank: 2, team: 'Man City', p: 11, w: 7, d: 2, l: 2, gd: 9, pts: 23, form: ['L','L','W','W','W'] },
-    { rank: 3, team: 'Chelsea', p: 11, w: 5, d: 4, l: 2, gd: 8, pts: 19, form: ['D','W','D','L','W'] },
-    { rank: 4, team: 'Arsenal', p: 11, w: 5, d: 4, l: 2, gd: 6, pts: 19, form: ['D','L','D','L','W'] },
-    { rank: 5, team: 'Nottm Forest', p: 11, w: 5, d: 4, l: 2, gd: 5, pts: 19, form: ['L','W','W','W','D'] },
-    { rank: 6, team: 'Aston Villa', p: 11, w: 5, d: 3, l: 3, gd: 0, pts: 18, form: ['L','L','D','W','D'] },
-];
+interface StandingRow {
+    rank: number;
+    teamId: string;
+    teamName: string;
+    logo: string;
+    played: number;
+    won: number;
+    drawn: number;
+    lost: number;
+    points: number;
+    goalsFor: number;
+    goalsAgainst: number;
+    goalDifference: number;
+    form: string[];
+}
 
 const MOCK_TRANSFERS = [
     { id: 1, player: 'Victor Osimhen', from: 'Napoli', to: 'Chelsea', fee: '€120M', type: 'RUMOR' },
@@ -48,14 +72,108 @@ export const LeaguePage: React.FC = () => {
     const navigate = useNavigate();
     const { matches, news } = useSports();
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'MATCHES' | 'STANDINGS' | 'STATS' | 'TRANSFERS' | 'NEWS'>('OVERVIEW');
+    
+    // Real data states
+    const [standings, setStandings] = useState<StandingRow[]>([]);
+    const [loadingStandings, setLoadingStandings] = useState(false);
+    const [leagueMatches, setLeagueMatches] = useState<any[]>([]);
+    const [loadingMatches, setLoadingMatches] = useState(false);
+    const [topScorers, setTopScorers] = useState<any[]>([]);
+    const [loadingScorers, setLoadingScorers] = useState(false);
 
-    const leagueId = id || 'EPL';
+    const leagueId = id || 'PL';
+    const leagueCode = LEAGUE_CODE_MAP[leagueId] || leagueId;
+    const leagueName = LEAGUE_NAMES[leagueCode] || leagueId;
     const theme = getLeagueColors(leagueId);
 
-    // Filter content
-    const safeMatches = Array.isArray(matches) ? matches : [];
-    const leagueMatches = safeMatches.filter(m => m.league === leagueId);
-    const leagueNews = news.filter(n => n.tags?.includes(leagueId));
+    // Fetch standings from edge function
+    useEffect(() => {
+        const fetchStandings = async () => {
+            setLoadingStandings(true);
+            try {
+                const { data, error } = await supabase.functions.invoke('get-standings', {
+                    body: { league: leagueCode, season: '2024' }
+                });
+                if (!error && Array.isArray(data)) {
+                    setStandings(data);
+                } else {
+                    // Fallback: try direct DB query
+                    const { data: dbData } = await supabase
+                        .from('standings')
+                        .select('standings_data')
+                        .eq('league_code', leagueCode)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    if (dbData?.standings_data) {
+                        setStandings(dbData.standings_data as StandingRow[]);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch standings:', err);
+            } finally {
+                setLoadingStandings(false);
+            }
+        };
+        fetchStandings();
+    }, [leagueCode]);
+
+    // Fetch matches from Supabase
+    useEffect(() => {
+        const fetchMatches = async () => {
+            setLoadingMatches(true);
+            try {
+                const { data, error } = await supabase
+                    .from('matches')
+                    .select('*')
+                    .or(`league.eq.${leagueCode},league.ilike.%${leagueName}%`)
+                    .order('kickoff_time', { ascending: true })
+                    .limit(20);
+                
+                if (!error && data) {
+                    setLeagueMatches(data.map(m => ({
+                        id: m.id,
+                        homeTeam: { name: m.home_team, logo: m.home_team_json?.logo || '' },
+                        awayTeam: { name: m.away_team, logo: m.away_team_json?.logo || '' },
+                        time: m.kickoff_time ? new Date(m.kickoff_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'TBD',
+                        date: m.kickoff_time ? new Date(m.kickoff_time).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }) : '',
+                        score: { home: m.home_team_score, away: m.away_team_score },
+                        status: m.status,
+                        league: m.league,
+                        odds: { home: m.odds_home, draw: m.odds_draw, away: m.odds_away }
+                    })));
+                }
+            } catch (err) {
+                console.error('Failed to fetch matches:', err);
+            } finally {
+                setLoadingMatches(false);
+            }
+        };
+        fetchMatches();
+    }, [leagueCode, leagueName]);
+
+    // Fetch top scorers
+    useEffect(() => {
+        const fetchScorers = async () => {
+            setLoadingScorers(true);
+            try {
+                const { data, error } = await supabase.functions.invoke('fetch-scorers', {
+                    body: { league: leagueCode }
+                });
+                if (!error && Array.isArray(data)) {
+                    setTopScorers(data.slice(0, 10));
+                }
+            } catch (err) {
+                console.error('Failed to fetch scorers:', err);
+            } finally {
+                setLoadingScorers(false);
+            }
+        };
+        fetchScorers();
+    }, [leagueCode]);
+
+    // Filter news by league
+    const leagueNews = news.filter(n => n.tags?.includes(leagueId) || n.tags?.includes(leagueCode));
 
     return (
         <div className="min-h-screen bg-black text-white pb-24 font-sans">
@@ -193,11 +311,23 @@ export const LeaguePage: React.FC = () => {
                                 <h3 className="font-condensed font-black text-xl uppercase italic text-gray-400">Golden Boot Race</h3>
                                 <button onClick={() => setActiveTab('STATS')} className="text-xs font-bold text-indigo-500 uppercase">View All</button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {MOCK_PLAYERS.map((player, idx) => (
-                                    <PlayerStatCard key={idx} rank={idx+1} player={player} />
-                                ))}
-                            </div>
+                            {loadingScorers ? (
+                                <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
+                            ) : topScorers.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {topScorers.slice(0, 3).map((player, idx) => (
+                                        <PlayerStatCard key={idx} rank={idx+1} player={{
+                                            name: player.name || player.playerName,
+                                            team: player.team || player.teamName,
+                                            value: player.goals?.toString() || '0',
+                                            label: 'Goals',
+                                            avatar: player.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name || 'P')}&background=random`
+                                        }} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-6 text-center text-gray-500 bg-[#1E1E1E] rounded-xl">No scorer data available</div>
+                            )}
                         </section>
 
                         {/* Mini Standings */}
@@ -206,7 +336,13 @@ export const LeaguePage: React.FC = () => {
                                 <h3 className="font-condensed font-black text-xl uppercase italic text-gray-400">Table</h3>
                                 <button onClick={() => setActiveTab('STANDINGS')} className="text-xs font-bold text-indigo-500 uppercase">Full Table</button>
                             </div>
-                            <StandingsTable data={MOCK_STANDINGS.slice(0, 5)} compact />
+                            {loadingStandings ? (
+                                <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
+                            ) : standings.length > 0 ? (
+                                <StandingsTable data={standings.slice(0, 5)} compact />
+                            ) : (
+                                <div className="p-6 text-center text-gray-500 bg-[#1E1E1E] rounded-xl">No standings data available</div>
+                            )}
                         </section>
 
                     </div>
@@ -224,18 +360,26 @@ export const LeaguePage: React.FC = () => {
                                      <span className="flex items-center gap-1 text-[10px] font-bold text-red-500"><div className="w-2 h-2 rounded-full bg-red-500"></div> Rel</span>
                                  </div>
                              </div>
-                             <StandingsTable data={MOCK_STANDINGS} />
+                             {loadingStandings ? (
+                                 <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
+                             ) : standings.length > 0 ? (
+                                 <StandingsTable data={standings} />
+                             ) : (
+                                 <div className="p-8 text-center text-gray-500">No standings data available</div>
+                             )}
                          </div>
+                         {standings.length > 0 && (
                          <div className="mt-4 p-4 bg-indigo-900/10 border border-indigo-500/20 rounded-lg flex items-start gap-3">
                              <TrendingUp className="text-indigo-400 shrink-0 mt-0.5" size={18} />
                              <div>
                                  <h4 className="font-bold text-indigo-400 text-sm uppercase mb-1">Sheena Insight</h4>
                                  <p className="text-xs text-gray-300">
-                                     Liverpool have a 85% probability of winning the title based on current form and remaining fixtures.
-                                     Arsenal needs to win their next 3 to stay in contention.
+                                     {standings[0]?.teamName} is leading with {standings[0]?.points} points.
+                                     {standings[1] && ` ${standings[1].teamName} trails by ${standings[0]?.points - standings[1]?.points} points.`}
                                  </p>
                              </div>
                          </div>
+                         )}
                     </div>
                 )}
 
@@ -289,34 +433,46 @@ export const LeaguePage: React.FC = () => {
                         <section>
                              <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2"><Target size={20} className="text-blue-500" /> Top Scorers</h3>
                              <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
-                                 {MOCK_PLAYERS.map((p, i) => (
-                                     <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
-                                         <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
-                                         <img src={p.avatar} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
-                                         <div className="flex-1">
-                                             <span className="block font-bold text-white text-sm">{p.name}</span>
-                                             <span className="text-xs text-gray-500 uppercase">{p.team}</span>
+                                 {loadingScorers ? (
+                                     <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
+                                 ) : topScorers.length > 0 ? (
+                                     topScorers.map((p, i) => (
+                                         <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
+                                             <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
+                                             <img src={p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name || 'P')}&background=random`} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
+                                             <div className="flex-1">
+                                                 <span className="block font-bold text-white text-sm">{p.name || p.playerName}</span>
+                                                 <span className="text-xs text-gray-500 uppercase">{p.team || p.teamName}</span>
+                                             </div>
+                                             <span className="font-mono font-black text-xl text-white">{p.goals || 0}</span>
                                          </div>
-                                         <span className="font-mono font-black text-xl text-white">{p.value}</span>
-                                     </div>
-                                 ))}
+                                     ))
+                                 ) : (
+                                     <div className="p-8 text-center text-gray-500">No scorer data available</div>
+                                 )}
                              </div>
                         </section>
 
                         <section>
-                             <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2"><Users size={20} className="text-green-500" /> Assists</h3>
+                             <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2"><Users size={20} className="text-green-500" /> Top Assists</h3>
                              <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
-                                 {MOCK_ASSISTS.map((p, i) => (
-                                     <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
-                                         <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
-                                         <img src={p.avatar} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
-                                         <div className="flex-1">
-                                             <span className="block font-bold text-white text-sm">{p.name}</span>
-                                             <span className="text-xs text-gray-500 uppercase">{p.team}</span>
+                                 {loadingScorers ? (
+                                     <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
+                                 ) : topScorers.length > 0 ? (
+                                     topScorers.filter(p => (p.assists || 0) > 0).slice(0, 10).map((p, i) => (
+                                         <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
+                                             <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
+                                             <img src={p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name || 'P')}&background=random`} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
+                                             <div className="flex-1">
+                                                 <span className="block font-bold text-white text-sm">{p.name || p.playerName}</span>
+                                                 <span className="text-xs text-gray-500 uppercase">{p.team || p.teamName}</span>
+                                             </div>
+                                             <span className="font-mono font-black text-xl text-white">{p.assists || 0}</span>
                                          </div>
-                                         <span className="font-mono font-black text-xl text-white">{p.value}</span>
-                                     </div>
-                                 ))}
+                                     ))
+                                 ) : (
+                                     <div className="p-8 text-center text-gray-500">No assist data available</div>
+                                 )}
                              </div>
                         </section>
                     </div>
@@ -416,31 +572,47 @@ const StandingsTable: React.FC<{ data: any[], compact?: boolean }> = ({ data, co
             </tr>
         </thead>
         <tbody className="divide-y divide-[#2C2C2C]">
-            {data.map((row) => (
-                <tr key={row.rank} className="hover:bg-white/5 transition-colors">
-                    <td className={`p-3 text-center font-mono font-bold ${row.rank <= 4 ? 'text-green-500 border-l-2 border-green-500' : row.rank >= 18 ? 'text-red-500 border-l-2 border-red-500' : 'text-gray-500'}`}>
-                        {row.rank}
-                    </td>
-                    <td className="p-3 font-bold text-white flex items-center gap-2">
-                        {/* Mock Logo */}
-                        <div className="w-4 h-4 rounded-full bg-gray-700"></div>
-                        {row.team}
-                    </td>
-                    <td className="p-3 text-center text-gray-400">{row.p}</td>
-                    {!compact && <td className="p-3 text-center text-gray-400">{row.w}</td>}
-                    {!compact && <td className="p-3 text-center text-gray-400">{row.d}</td>}
-                    {!compact && <td className="p-3 text-center text-gray-400">{row.l}</td>}
-                    <td className="p-3 text-center text-gray-400">{row.gd > 0 ? `+${row.gd}` : row.gd}</td>
-                    <td className="p-3 text-center font-black text-white">{row.pts}</td>
-                    {!compact && (
-                        <td className="p-3 flex justify-center gap-1">
-                            {row.form.map((res: string, i: number) => (
-                                <div key={i} className={`w-1.5 h-1.5 rounded-full ${res === 'W' ? 'bg-green-500' : res === 'D' ? 'bg-gray-500' : 'bg-red-500'}`} />
-                            ))}
+            {data.map((row, idx) => {
+                const rank = row.rank || idx + 1;
+                const teamName = row.teamName || row.team;
+                const played = row.played ?? row.p;
+                const won = row.won ?? row.w;
+                const drawn = row.drawn ?? row.d;
+                const lost = row.lost ?? row.l;
+                const gd = row.goalDifference ?? row.gd;
+                const pts = row.points ?? row.pts;
+                const form = row.form || [];
+                const logo = row.logo || '';
+                
+                return (
+                    <tr key={rank} className="hover:bg-white/5 transition-colors">
+                        <td className={`p-3 text-center font-mono font-bold ${rank <= 4 ? 'text-green-500 border-l-2 border-green-500' : rank >= 18 ? 'text-red-500 border-l-2 border-red-500' : 'text-gray-500'}`}>
+                            {rank}
                         </td>
-                    )}
-                </tr>
-            ))}
+                        <td className="p-3 font-bold text-white flex items-center gap-2">
+                            {logo ? (
+                                <img src={logo} className="w-4 h-4 object-contain" alt={teamName} />
+                            ) : (
+                                <div className="w-4 h-4 rounded-full bg-gray-700"></div>
+                            )}
+                            {teamName}
+                        </td>
+                        <td className="p-3 text-center text-gray-400">{played}</td>
+                        {!compact && <td className="p-3 text-center text-gray-400">{won}</td>}
+                        {!compact && <td className="p-3 text-center text-gray-400">{drawn}</td>}
+                        {!compact && <td className="p-3 text-center text-gray-400">{lost}</td>}
+                        <td className="p-3 text-center text-gray-400">{gd > 0 ? `+${gd}` : gd}</td>
+                        <td className="p-3 text-center font-black text-white">{pts}</td>
+                        {!compact && (
+                            <td className="p-3 flex justify-center gap-1">
+                                {form.map((res: string, i: number) => (
+                                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${res === 'W' ? 'bg-green-500' : res === 'D' ? 'bg-gray-500' : 'bg-red-500'}`} />
+                                ))}
+                            </td>
+                        )}
+                    </tr>
+                );
+            })}
         </tbody>
     </table>
 );
