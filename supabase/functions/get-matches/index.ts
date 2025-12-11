@@ -269,12 +269,17 @@ serve(async (req) => {
           crest: match.away_team_json?.crest || match.away_team_json?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.away_team)}&background=random`
         },
         score: {
+          home: match.home_team_score,
+          away: match.away_team_score,
           fullTime: {
             home: match.home_team_score,
             away: match.away_team_score
           }
         },
-        utcDate: match.kickoff_time
+        utcDate: match.kickoff_time,
+        time: match.kickoff_time,
+        kickoff_time: match.kickoff_time,
+        metadata: match.metadata || {}
       };
 
       if (normalizedStatus === 'SCHEDULED') {

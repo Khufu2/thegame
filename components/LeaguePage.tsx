@@ -43,6 +43,20 @@ const MOCK_TRANSFERS = [
     { id: 3, player: 'Pedro Neto', from: 'Wolves', to: 'Chelsea', fee: '€60M', type: 'CONFIRMED' },
 ];
 
+// League code to name mapping
+const LEAGUE_CODE_MAP: Record<string, string[]> = {
+    'PL': ['Premier League'],
+    'EPL': ['Premier League'],
+    'BL1': ['Bundesliga'],
+    'SA': ['Serie A'],
+    'PD': ['La Liga'],
+    'FL1': ['Ligue 1'],
+    'CL': ['Champions League'],
+    'EL': ['Europa League'],
+    'NBA': ['NBA'],
+    'F1': ['Formula 1'],
+};
+
 export const LeaguePage: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -51,9 +65,15 @@ export const LeaguePage: React.FC = () => {
 
     const leagueId = id || 'EPL';
     const theme = getLeagueColors(leagueId);
+    
+    // Get league names that match this code
+    const leagueNames = LEAGUE_CODE_MAP[leagueId] || [leagueId];
 
-    // Filter content - safeguard against undefined
-    const leagueMatches = (matches || []).filter(m => m.league === leagueId);
+    // Filter content - match by league name or code
+    const leagueMatches = (matches || []).filter(m => 
+        leagueNames.some(name => m.league?.toLowerCase().includes(name.toLowerCase())) ||
+        m.league === leagueId
+    );
     const leagueNews = (news || []).filter(n => n.tags?.includes(leagueId));
 
     return (
