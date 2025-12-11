@@ -58,7 +58,7 @@ const WeatherIcon = ({ condition, size = 14 }: { condition?: string, size?: numb
 
 export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOpenPweza, onTailBet }) => {
   const { user } = useSports(); 
-  const [activeLeague, setActiveLeague] = useState("For You"); // Default to For You
+  const [activeLeague, setActiveLeague] = useState("All"); // Default to All to show all matches
   const navigate = useNavigate();
   const dataSaver = user?.preferences.dataSaver || false;
 
