@@ -20,6 +20,7 @@ const LEAGUE_CODE_MAP: Record<string, string> = {
     'FL1': 'FL1',
     'Ligue1': 'FL1',
     'CL': 'CL',
+    'NBA': 'NBA',
 };
 
 const LEAGUE_NAMES: Record<string, string> = {
@@ -29,6 +30,11 @@ const LEAGUE_NAMES: Record<string, string> = {
     'BL1': 'Bundesliga',
     'FL1': 'Ligue 1',
     'CL': 'Champions League',
+    'NBA': 'NBA',
+};
+
+const LEAGUE_SPORTS: Record<string, 'football' | 'basketball'> = {
+    'NBA': 'basketball',
 };
 
 // --- THEME COLORS ---
@@ -41,6 +47,7 @@ const getLeagueColors = (id: string) => {
         case 'BL1': return { bg: 'from-[#D20515] to-[#4a0000]', accent: 'text-white', border: 'border-[#D20515]' };
         case 'FL1': return { bg: 'from-[#091c3e] to-[#000000]', accent: 'text-[#DAFF00]', border: 'border-[#DAFF00]' };
         case 'CL': return { bg: 'from-[#1D428A] to-[#000000]', accent: 'text-[#FFC500]', border: 'border-[#1D428A]' };
+        case 'NBA': return { bg: 'from-[#1D428A] to-[#C9082A]', accent: 'text-[#FDB927]', border: 'border-[#FDB927]' };
         default: return { bg: 'from-gray-900 to-black', accent: 'text-white', border: 'border-gray-500' };
     }
 };
@@ -52,13 +59,27 @@ interface StandingRow {
     logo: string;
     played: number;
     won: number;
-    drawn: number;
+    drawn?: number;  // Optional for basketball
     lost: number;
-    points: number;
-    goalsFor: number;
-    goalsAgainst: number;
-    goalDifference: number;
-    form: string[];
+    points?: number;  // Optional for basketball (use winPct instead)
+    goalsFor?: number;
+    goalsAgainst?: number;
+    goalDifference?: number;
+    form?: string[];
+    // Basketball specific
+    winPct?: number;
+    conference?: string;
+    division?: string;
+    streak?: string;
+}
+
+interface LeagueInfo {
+    id: string;
+    code: string;
+    name: string;
+    sport: 'football' | 'basketball';
+    logo_url?: string;
+    country?: string;
 }
 
 const MOCK_TRANSFERS = [
@@ -80,11 +101,37 @@ export const LeaguePage: React.FC = () => {
     const [loadingMatches, setLoadingMatches] = useState(false);
     const [topScorers, setTopScorers] = useState<any[]>([]);
     const [loadingScorers, setLoadingScorers] = useState(false);
+    const [leagueInfo, setLeagueInfo] = useState<LeagueInfo | null>(null);
 
     const leagueId = id || 'PL';
     const leagueCode = LEAGUE_CODE_MAP[leagueId] || leagueId;
     const leagueName = LEAGUE_NAMES[leagueCode] || leagueId;
+    const sport = leagueInfo?.sport || LEAGUE_SPORTS[leagueCode] || 'football';
     const theme = getLeagueColors(leagueId);
+    
+    // Fetch league info from database
+    useEffect(() => {
+        const fetchLeagueInfo = async () => {
+            const { data } = await supabase
+                .from('leagues')
+                .select('*')
+                .or(`code.eq.${leagueCode},name.ilike.%${leagueName}%`)
+                .limit(1)
+                .maybeSingle();
+            
+            if (data) {
+                setLeagueInfo({
+                    id: data.id,
+                    code: data.code || leagueCode,
+                    name: data.name,
+                    sport: (data.sport as 'football' | 'basketball') || 'football',
+                    logo_url: data.logo_url || undefined,
+                    country: data.country || undefined
+                });
+            }
+        };
+        fetchLeagueInfo();
+    }, [leagueCode, leagueName]);
 
     // Fetch standings from edge function
     useEffect(() => {
@@ -191,16 +238,22 @@ export const LeaguePage: React.FC = () => {
 
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div className="flex items-center gap-6">
-                            <div className="w-24 h-24 bg-white rounded-2xl shadow-2xl flex items-center justify-center p-2 transform rotate-3">
-                                <span className="font-black text-4xl text-black uppercase">{leagueId.substring(0,2)}</span>
-                                {/* Ideally <img src={logo} /> */}
+                            <div className="w-24 h-24 bg-white rounded-2xl shadow-2xl flex items-center justify-center p-2 transform rotate-3 overflow-hidden">
+                                {leagueInfo?.logo_url ? (
+                                    <img src={leagueInfo.logo_url} alt={leagueName} className="w-full h-full object-contain" />
+                                ) : (
+                                    <span className="font-black text-4xl text-black uppercase">{leagueId.substring(0,2)}</span>
+                                )}
                             </div>
                             <div>
-                                <h1 className="font-condensed font-black text-5xl md:text-7xl uppercase italic tracking-tighter leading-none">{leagueId}</h1>
+                                <h1 className="font-condensed font-black text-5xl md:text-7xl uppercase italic tracking-tighter leading-none">{leagueName || leagueId}</h1>
                                 <div className="flex items-center gap-3 mt-2">
-                                    <span className="bg-black/30 backdrop-blur px-3 py-1 rounded text-xs font-bold uppercase border border-white/10">Season 2024/25</span>
+                                    <span className="bg-black/30 backdrop-blur px-3 py-1 rounded text-xs font-bold uppercase border border-white/10">
+                                        Season {sport === 'basketball' ? '2024-25' : '2024/25'}
+                                    </span>
                                     <span className={`text-xs font-bold uppercase ${theme.accent} flex items-center gap-1`}>
-                                        <Trophy size={12} /> Defending Champs: Man City
+                                        <Trophy size={12} /> 
+                                        {sport === 'basketball' ? 'Defending Champs: Celtics' : 'Defending Champs: Man City'}
                                     </span>
                                 </div>
                             </div>
@@ -209,16 +262,16 @@ export const LeaguePage: React.FC = () => {
                         {/* Quick Stats Strip */}
                         <div className="flex gap-6">
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-white/60 uppercase">Matches</span>
-                                <span className="font-mono font-black text-xl">380</span>
+                                <span className="text-[10px] font-bold text-white/60 uppercase">{sport === 'basketball' ? 'Games' : 'Matches'}</span>
+                                <span className="font-mono font-black text-xl">{sport === 'basketball' ? '1230' : '380'}</span>
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-bold text-white/60 uppercase">Teams</span>
-                                <span className="font-mono font-black text-xl">20</span>
+                                <span className="font-mono font-black text-xl">{sport === 'basketball' ? '30' : '20'}</span>
                             </div>
                              <div className="flex flex-col">
                                 <span className="text-[10px] font-bold text-white/60 uppercase">Followers</span>
-                                <span className="font-mono font-black text-xl">2.4B</span>
+                                <span className="font-mono font-black text-xl">{sport === 'basketball' ? '1.8B' : '2.4B'}</span>
                             </div>
                         </div>
                     </div>
@@ -228,7 +281,7 @@ export const LeaguePage: React.FC = () => {
             {/* 2. NAVIGATION TABS */}
             <div className="sticky top-0 z-40 bg-[#121212]/95 backdrop-blur-xl border-b border-[#2C2C2C]">
                  <div className="flex overflow-x-auto no-scrollbar px-4">
-                     {['OVERVIEW', 'MATCHES', 'STANDINGS', 'STATS', 'TRANSFERS', 'NEWS'].map(tab => (
+                     {(['OVERVIEW', 'MATCHES', 'STANDINGS', 'STATS', ...(sport !== 'basketball' ? ['TRANSFERS'] : []), 'NEWS'] as const).map(tab => (
                          <button
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
@@ -308,7 +361,9 @@ export const LeaguePage: React.FC = () => {
                         {/* Top Scorers Preview */}
                         <section>
                              <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-condensed font-black text-xl uppercase italic text-gray-400">Golden Boot Race</h3>
+                                <h3 className="font-condensed font-black text-xl uppercase italic text-gray-400">
+                                    {sport === 'basketball' ? 'Scoring Leaders' : 'Golden Boot Race'}
+                                </h3>
                                 <button onClick={() => setActiveTab('STATS')} className="text-xs font-bold text-indigo-500 uppercase">View All</button>
                             </div>
                             {loadingScorers ? (
@@ -319,8 +374,8 @@ export const LeaguePage: React.FC = () => {
                                         <PlayerStatCard key={idx} rank={idx+1} player={{
                                             name: player.name || player.playerName,
                                             team: player.team || player.teamName,
-                                            value: player.goals?.toString() || '0',
-                                            label: 'Goals',
+                                            value: (player.goals || player.ppg)?.toString() || '0',
+                                            label: sport === 'basketball' ? 'PPG' : 'Goals',
                                             avatar: player.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name || 'P')}&background=random`
                                         }} />
                                     ))}
@@ -339,7 +394,7 @@ export const LeaguePage: React.FC = () => {
                             {loadingStandings ? (
                                 <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
                             ) : standings.length > 0 ? (
-                                <StandingsTable data={standings.slice(0, 5)} compact />
+                                <StandingsTable data={standings.slice(0, 5)} compact sport={sport} />
                             ) : (
                                 <div className="p-6 text-center text-gray-500 bg-[#1E1E1E] rounded-xl">No standings data available</div>
                             )}
@@ -353,17 +408,26 @@ export const LeaguePage: React.FC = () => {
                     <div>
                          <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden shadow-2xl">
                              <div className="p-4 bg-[#121212] border-b border-[#2C2C2C] flex justify-between items-center">
-                                 <h3 className="font-condensed font-bold uppercase text-white">Live Table</h3>
+                                 <h3 className="font-condensed font-bold uppercase text-white">{sport === 'basketball' ? 'Conference Standings' : 'Live Table'}</h3>
                                  <div className="flex gap-2">
-                                     <span className="flex items-center gap-1 text-[10px] font-bold text-green-500"><div className="w-2 h-2 rounded-full bg-green-500"></div> UCL</span>
-                                     <span className="flex items-center gap-1 text-[10px] font-bold text-blue-500"><div className="w-2 h-2 rounded-full bg-blue-500"></div> UEL</span>
-                                     <span className="flex items-center gap-1 text-[10px] font-bold text-red-500"><div className="w-2 h-2 rounded-full bg-red-500"></div> Rel</span>
+                                     {sport === 'basketball' ? (
+                                         <>
+                                             <span className="flex items-center gap-1 text-[10px] font-bold text-green-500"><div className="w-2 h-2 rounded-full bg-green-500"></div> Playoffs</span>
+                                             <span className="flex items-center gap-1 text-[10px] font-bold text-yellow-500"><div className="w-2 h-2 rounded-full bg-yellow-500"></div> Play-In</span>
+                                         </>
+                                     ) : (
+                                         <>
+                                             <span className="flex items-center gap-1 text-[10px] font-bold text-green-500"><div className="w-2 h-2 rounded-full bg-green-500"></div> UCL</span>
+                                             <span className="flex items-center gap-1 text-[10px] font-bold text-blue-500"><div className="w-2 h-2 rounded-full bg-blue-500"></div> UEL</span>
+                                             <span className="flex items-center gap-1 text-[10px] font-bold text-red-500"><div className="w-2 h-2 rounded-full bg-red-500"></div> Rel</span>
+                                         </>
+                                     )}
                                  </div>
                              </div>
                              {loadingStandings ? (
                                  <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
                              ) : standings.length > 0 ? (
-                                 <StandingsTable data={standings} />
+                                 <StandingsTable data={standings} sport={sport} />
                              ) : (
                                  <div className="p-8 text-center text-gray-500">No standings data available</div>
                              )}
@@ -431,7 +495,10 @@ export const LeaguePage: React.FC = () => {
                 {activeTab === 'STATS' && (
                     <div className="space-y-8">
                         <section>
-                             <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2"><Target size={20} className="text-blue-500" /> Top Scorers</h3>
+                             <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2">
+                                 <Target size={20} className="text-blue-500" /> 
+                                 {sport === 'basketball' ? 'Points Per Game Leaders' : 'Top Scorers'}
+                             </h3>
                              <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
                                  {loadingScorers ? (
                                      <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
@@ -444,22 +511,28 @@ export const LeaguePage: React.FC = () => {
                                                  <span className="block font-bold text-white text-sm">{p.name || p.playerName}</span>
                                                  <span className="text-xs text-gray-500 uppercase">{p.team || p.teamName}</span>
                                              </div>
-                                             <span className="font-mono font-black text-xl text-white">{p.goals || 0}</span>
+                                             <div className="text-right">
+                                                 <span className="font-mono font-black text-xl text-white">{p.goals || p.ppg || 0}</span>
+                                                 <span className="block text-[10px] text-gray-500 uppercase">{sport === 'basketball' ? 'PPG' : 'Goals'}</span>
+                                             </div>
                                          </div>
                                      ))
                                  ) : (
-                                     <div className="p-8 text-center text-gray-500">No scorer data available</div>
+                                     <div className="p-8 text-center text-gray-500">No {sport === 'basketball' ? 'scoring' : 'scorer'} data available</div>
                                  )}
                              </div>
                         </section>
 
                         <section>
-                             <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2"><Users size={20} className="text-green-500" /> Top Assists</h3>
+                             <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2">
+                                 <Users size={20} className="text-green-500" /> 
+                                 {sport === 'basketball' ? 'Assists Per Game Leaders' : 'Top Assists'}
+                             </h3>
                              <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
                                  {loadingScorers ? (
                                      <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-500" /></div>
                                  ) : topScorers.length > 0 ? (
-                                     topScorers.filter(p => (p.assists || 0) > 0).slice(0, 10).map((p, i) => (
+                                     topScorers.filter(p => (p.assists || p.apg || 0) > 0).slice(0, 10).map((p, i) => (
                                          <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
                                              <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
                                              <img src={p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name || 'P')}&background=random`} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
@@ -467,7 +540,10 @@ export const LeaguePage: React.FC = () => {
                                                  <span className="block font-bold text-white text-sm">{p.name || p.playerName}</span>
                                                  <span className="text-xs text-gray-500 uppercase">{p.team || p.teamName}</span>
                                              </div>
-                                             <span className="font-mono font-black text-xl text-white">{p.assists || 0}</span>
+                                             <div className="text-right">
+                                                 <span className="font-mono font-black text-xl text-white">{p.assists || p.apg || 0}</span>
+                                                 <span className="block text-[10px] text-gray-500 uppercase">{sport === 'basketball' ? 'APG' : 'Assists'}</span>
+                                             </div>
                                          </div>
                                      ))
                                  ) : (
@@ -556,63 +632,86 @@ const PlayerStatCard: React.FC<{ rank: number, player: any }> = ({ rank, player 
     </div>
 );
 
-const StandingsTable: React.FC<{ data: any[], compact?: boolean }> = ({ data, compact }) => (
-    <table className="w-full text-left text-xs">
-        <thead className={`text-gray-500 uppercase font-bold border-b border-[#2C2C2C] ${compact ? 'bg-transparent' : 'bg-black'}`}>
-            <tr>
-                <th className="p-3 text-center">Pos</th>
-                <th className="p-3">Team</th>
-                <th className="p-3 text-center">P</th>
-                {!compact && <th className="p-3 text-center">W</th>}
-                {!compact && <th className="p-3 text-center">D</th>}
-                {!compact && <th className="p-3 text-center">L</th>}
-                <th className="p-3 text-center">GD</th>
-                <th className="p-3 text-center text-white">Pts</th>
-                {!compact && <th className="p-3 text-center">Form</th>}
-            </tr>
-        </thead>
-        <tbody className="divide-y divide-[#2C2C2C]">
-            {data.map((row, idx) => {
-                const rank = row.rank || idx + 1;
-                const teamName = row.teamName || row.team;
-                const played = row.played ?? row.p;
-                const won = row.won ?? row.w;
-                const drawn = row.drawn ?? row.d;
-                const lost = row.lost ?? row.l;
-                const gd = row.goalDifference ?? row.gd;
-                const pts = row.points ?? row.pts;
-                const form = row.form || [];
-                const logo = row.logo || '';
-                
-                return (
-                    <tr key={rank} className="hover:bg-white/5 transition-colors">
-                        <td className={`p-3 text-center font-mono font-bold ${rank <= 4 ? 'text-green-500 border-l-2 border-green-500' : rank >= 18 ? 'text-red-500 border-l-2 border-red-500' : 'text-gray-500'}`}>
-                            {rank}
-                        </td>
-                        <td className="p-3 font-bold text-white flex items-center gap-2">
-                            {logo ? (
-                                <img src={logo} className="w-4 h-4 object-contain" alt={teamName} />
-                            ) : (
-                                <div className="w-4 h-4 rounded-full bg-gray-700"></div>
-                            )}
-                            {teamName}
-                        </td>
-                        <td className="p-3 text-center text-gray-400">{played}</td>
-                        {!compact && <td className="p-3 text-center text-gray-400">{won}</td>}
-                        {!compact && <td className="p-3 text-center text-gray-400">{drawn}</td>}
-                        {!compact && <td className="p-3 text-center text-gray-400">{lost}</td>}
-                        <td className="p-3 text-center text-gray-400">{gd > 0 ? `+${gd}` : gd}</td>
-                        <td className="p-3 text-center font-black text-white">{pts}</td>
-                        {!compact && (
-                            <td className="p-3 flex justify-center gap-1">
-                                {form.map((res: string, i: number) => (
-                                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${res === 'W' ? 'bg-green-500' : res === 'D' ? 'bg-gray-500' : 'bg-red-500'}`} />
-                                ))}
+const StandingsTable: React.FC<{ data: any[], compact?: boolean, sport?: 'football' | 'basketball' }> = ({ data, compact, sport = 'football' }) => {
+    const isBasketball = sport === 'basketball';
+    
+    return (
+        <table className="w-full text-left text-xs">
+            <thead className={`text-gray-500 uppercase font-bold border-b border-[#2C2C2C] ${compact ? 'bg-transparent' : 'bg-black'}`}>
+                <tr>
+                    <th className="p-3 text-center">Pos</th>
+                    <th className="p-3">Team</th>
+                    <th className="p-3 text-center">{isBasketball ? 'GP' : 'P'}</th>
+                    {!compact && <th className="p-3 text-center">W</th>}
+                    {!compact && !isBasketball && <th className="p-3 text-center">D</th>}
+                    {!compact && <th className="p-3 text-center">L</th>}
+                    {!isBasketball && <th className="p-3 text-center">GD</th>}
+                    <th className="p-3 text-center text-white">{isBasketball ? 'PCT' : 'Pts'}</th>
+                    {!compact && !isBasketball && <th className="p-3 text-center">Form</th>}
+                    {!compact && isBasketball && <th className="p-3 text-center">Streak</th>}
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-[#2C2C2C]">
+                {data.map((row, idx) => {
+                    const rank = row.rank || idx + 1;
+                    const teamName = row.teamName || row.team;
+                    const played = row.played ?? row.p ?? row.gamesPlayed;
+                    const won = row.won ?? row.w ?? row.wins;
+                    const drawn = row.drawn ?? row.d ?? 0;
+                    const lost = row.lost ?? row.l ?? row.losses;
+                    const gd = row.goalDifference ?? row.gd ?? 0;
+                    const pts = row.points ?? row.pts;
+                    const winPct = row.winPct ?? (played > 0 ? ((won / played) * 100).toFixed(1) : '0.0');
+                    const form = row.form || [];
+                    const streak = row.streak || '';
+                    const logo = row.logo || '';
+                    
+                    // For basketball, playoff positions (top 6 per conference)
+                    const isPlayoffSpot = isBasketball ? rank <= 6 : rank <= 4;
+                    const isPlayIn = isBasketball && rank > 6 && rank <= 10;
+                    
+                    return (
+                        <tr key={rank} className="hover:bg-white/5 transition-colors">
+                            <td className={`p-3 text-center font-mono font-bold ${
+                                isPlayoffSpot ? 'text-green-500 border-l-2 border-green-500' : 
+                                isPlayIn ? 'text-yellow-500 border-l-2 border-yellow-500' :
+                                (!isBasketball && rank >= 18) ? 'text-red-500 border-l-2 border-red-500' : 
+                                'text-gray-500'
+                            }`}>
+                                {rank}
                             </td>
-                        )}
-                    </tr>
-                );
-            })}
-        </tbody>
-    </table>
-);
+                            <td className="p-3 font-bold text-white flex items-center gap-2">
+                                {logo ? (
+                                    <img src={logo} className="w-4 h-4 object-contain" alt={teamName} />
+                                ) : (
+                                    <div className="w-4 h-4 rounded-full bg-gray-700"></div>
+                                )}
+                                {teamName}
+                            </td>
+                            <td className="p-3 text-center text-gray-400">{played}</td>
+                            {!compact && <td className="p-3 text-center text-gray-400">{won}</td>}
+                            {!compact && !isBasketball && <td className="p-3 text-center text-gray-400">{drawn}</td>}
+                            {!compact && <td className="p-3 text-center text-gray-400">{lost}</td>}
+                            {!isBasketball && <td className="p-3 text-center text-gray-400">{gd > 0 ? `+${gd}` : gd}</td>}
+                            <td className="p-3 text-center font-black text-white">{isBasketball ? `${winPct}%` : pts}</td>
+                            {!compact && !isBasketball && (
+                                <td className="p-3 flex justify-center gap-1">
+                                    {form.map((res: string, i: number) => (
+                                        <div key={i} className={`w-1.5 h-1.5 rounded-full ${res === 'W' ? 'bg-green-500' : res === 'D' ? 'bg-gray-500' : 'bg-red-500'}`} />
+                                    ))}
+                                </td>
+                            )}
+                            {!compact && isBasketball && (
+                                <td className="p-3 text-center">
+                                    <span className={`text-xs font-bold ${streak.startsWith('W') ? 'text-green-500' : streak.startsWith('L') ? 'text-red-500' : 'text-gray-500'}`}>
+                                        {streak || '-'}
+                                    </span>
+                                </td>
+                            )}
+                        </tr>
+                    );
+                })}
+            </tbody>
+        </table>
+    );
+};
