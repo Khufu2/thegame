@@ -1,386 +1,354 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-    SportsContextType, 
-    UserProfile, 
-    AuthState, 
-    Match, 
-    NewsStory, 
-    FeedItem, 
-    BetSlipItem,
-    MatchStatus,
-    SystemAlert,
-    MkekaType,
-    FlashAlert,
-    Comment,
-    LeaderboardEntry,
-    UserPreferences
-} from '../types';
-import supabase from '../services/supabaseClient';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/services/supabaseClient';
 
-// Hardcoded Supabase credentials (not using VITE env vars which don't work at runtime)
-const SUPABASE_URL = "https://ebfhyyznuzxwhirwlcds.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA";
+export interface Team {
+  id: string;
+  name: string;
+  shortName?: string;
+  crest?: string;
+  logo: string;
+}
 
-// Helper Arrays for Procedural Generation
-// ...existing code...
+export interface Match {
+  id: string;
+  homeTeam: Team;
+  awayTeam: Team;
+  score?: {
+    fullTime?: { home: number | null; away: number | null };
+    halfTime?: { home: number | null; away: number | null };
+  };
+  status: string;
+  utcDate: string;
+  kickoff_time?: string;
+  league?: string;
+  venue?: string;
+  prediction?: {
+    winner: string;
+    confidence: number;
+    predictedScore?: { home: number; away: number };
+    reasoning?: string;
+    insights?: string[];
+    bettingAngles?: string[];
+    odds?: { home: number; draw: number; away: number };
+  };
+  home_team_score?: number | null;
+  away_team_score?: number | null;
+  timeline?: unknown[];
+  lineups?: unknown;
+  stats?: unknown;
+}
 
-const USER_STORAGE_KEY = 'sheena_user_profile';
-const TOKEN_STORAGE_KEY = 'sheena_access_token';
+export interface FeedItem {
+  id: string;
+  type: 'match' | 'prediction' | 'news' | 'alert' | 'value_bet' | 'featured' | 'result';
+  title: string;
+  subtitle?: string;
+  content?: string;
+  image?: string;
+  timestamp: string;
+  match?: Match;
+  data?: unknown;
+  priority?: number;
+}
+
+export interface League {
+  id: string;
+  name: string;
+  code: string;
+  logo?: string;
+  country?: string;
+}
+
+export interface User {
+  id: string;
+  preferences: {
+    favoriteLeagues: string[];
+    favoriteTeams: string[];
+    followedSources?: string[];
+    dataSaver?: boolean;
+  };
+}
+
+interface SportsContextType {
+  matches: Match[];
+  feed: FeedItem[];
+  leagues: League[];
+  loading: boolean;
+  error: string | null;
+  user: User | null;
+  refreshMatches: () => Promise<void>;
+  refreshFeed: () => Promise<void>;
+  getMatchById: (id: string) => Match | undefined;
+}
 
 const SportsContext = createContext<SportsContextType | undefined>(undefined);
 
-export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<UserProfile | null>(null);
-    const [authState, setAuthState] = useState<AuthState>('GUEST');
-    const [authToken, setAuthToken] = useState<string | null>(null);
-    const [matches, setMatches] = useState<Match[]>([]);
-    const [news, setNews] = useState<NewsStory[]>([]);
-    const [alerts, setAlerts] = useState<SystemAlert[]>([]);
-    const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
-    const [betSlip, setBetSlip] = useState<BetSlipItem[]>([]);
-    const [isPwezaOpen, setIsPwezaOpen] = useState(false);
-    const [pwezaPrompt, setPwezaPrompt] = useState<string | null>(null);
-    const [flashAlert, setFlashAlert] = useState<FlashAlert | null>(null);
-    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+const DEFAULT_LEAGUES: League[] = [
+  { id: 'PL', name: 'Premier League', code: 'PL', country: 'England', logo: 'https://crests.football-data.org/PL.png' },
+  { id: 'PD', name: 'La Liga', code: 'PD', country: 'Spain', logo: 'https://crests.football-data.org/PD.png' },
+  { id: 'SA', name: 'Serie A', code: 'SA', country: 'Italy', logo: 'https://crests.football-data.org/SA.png' },
+  { id: 'BL1', name: 'Bundesliga', code: 'BL1', country: 'Germany', logo: 'https://crests.football-data.org/BL1.png' },
+  { id: 'FL1', name: 'Ligue 1', code: 'FL1', country: 'France', logo: 'https://crests.football-data.org/FL1.png' },
+  { id: 'CL', name: 'Champions League', code: 'CL', country: 'Europe', logo: 'https://crests.football-data.org/CL.png' },
+];
 
-    const rebuildFeed = (currentMatches: Match[], currentNews: NewsStory[], currentAlerts: SystemAlert[]) => {
-        const mixedFeed: FeedItem[] = [];
-        
-        // Add hero news first
-        const hero = currentNews.find(n => n.isHero);
-        if (hero) mixedFeed.push(hero);
-
-        const remainingNews = currentNews.filter(n => !n.isHero);
-        
-        // Get all predictions sorted by confidence
-        const predictions = currentMatches
-            .filter(m => m.prediction)
-            .sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0));
-
-        // Interleave content for the stream (after the first 12 which go to Daily Locks rail)
-        let mIdx = 12; // Start after the Daily Locks  
-        let nIdx = 0;
-        let aIdx = 0;
-
-        // Build a rich mixed stream
-        while (mIdx < predictions.length || nIdx < remainingNews.length || aIdx < currentAlerts.length) {
-            // Add alerts first (they're important)
-            if (aIdx < currentAlerts.length) mixedFeed.push(currentAlerts[aIdx++]);
-            // Add news articles
-            if (nIdx < remainingNews.length) mixedFeed.push(remainingNews[nIdx++]);
-            // Add match predictions
-            if (mIdx < predictions.length) mixedFeed.push(predictions[mIdx++]);
-        }
-        setFeedItems(mixedFeed);
-    };
-
-    useEffect(() => {
-        // Fetch matches via edge function
-        const fetchMatches = async () => {
-            try {
-                const response = await fetch(
-                    `${SUPABASE_URL}/functions/v1/get-matches?limit=100`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Fetched matches:', data.length);
-                    setMatches(data);
-                } else {
-                    console.error('Failed to fetch matches:', response.status);
-                }
-            } catch (error) {
-                console.error('Error fetching matches:', error);
-            }
-        };
-
-        // Fetch news via edge function
-        const fetchNews = async () => {
-            try {
-                const response = await fetch(
-                    `${SUPABASE_URL}/functions/v1/get-news`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    setNews(data);
-                }
-            } catch (error) {
-                console.error('Error fetching news:', error);
-            }
-        };
-
-        // Fetch alerts via edge function
-        const fetchAlerts = async () => {
-            try {
-                const response = await fetch(
-                    `${SUPABASE_URL}/functions/v1/get-alerts`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    setAlerts(data);
-                }
-            } catch (error) {
-                console.error('Error fetching alerts:', error);
-            }
-        };
-
-        // Fetch leaderboard via edge function
-        const fetchLeaderboard = async () => {
-            try {
-                const response = await fetch(
-                    `${SUPABASE_URL}/functions/v1/get-leaderboard`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    setLeaderboard(data);
-                }
-            } catch (error) {
-                console.error('Error fetching leaderboard:', error);
-            }
-        };
-
-        fetchMatches();
-        fetchNews();
-        fetchAlerts();
-        fetchLeaderboard();
-    }, []);
-
-    useEffect(() => {
-        const theme = user?.preferences.theme || 'DARK';
-        if (theme === 'LIGHT') {
-            document.documentElement.classList.remove('dark');
-            document.body.style.backgroundColor = '#ffffff';
-            document.body.style.color = '#000000';
-        } else {
-            document.documentElement.classList.add('dark');
-            document.body.style.backgroundColor = '#000000';
-            document.body.style.color = '#ffffff';
-        }
-    }, [user?.preferences.theme]);
-
-    useEffect(() => {
-        if (matches.length > 0) {
-            rebuildFeed(matches, news, alerts);
-        }
-    }, [matches, news, alerts]);
-
-    useEffect(() => {
-        const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-        const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-
-        if (storedUser) {
-            try {
-                const parsed: UserProfile = JSON.parse(storedUser);
-                setUser(parsed);
-                setAuthState('AUTHENTICATED');
-            } catch (err) {
-                console.warn('Failed to parse stored user profile', err);
-                localStorage.removeItem(USER_STORAGE_KEY);
-            }
-        }
-
-        if (storedToken) {
-            setAuthToken(storedToken);
-        }
-    }, []);
-
-    const login = (profile: UserProfile, token?: string) => {
-        setUser(profile);
-        setAuthState('AUTHENTICATED');
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(profile));
-        if (token) {
-            setAuthToken(token);
-            localStorage.setItem(TOKEN_STORAGE_KEY, token);
-        }
-    };
-
-    const loginAsGuest = () => {
-        // Guest user also defaults to High Quality mode
-        setAuthState('GUEST');
-    };
-
-    const logout = () => {
-        setUser(null);
-        setAuthToken(null);
-        setAuthState('UNAUTHENTICATED');
-        localStorage.removeItem(USER_STORAGE_KEY);
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-    };
-
-    const completeOnboarding = async (prefs: { leagues: string[], teams: string[] }) => {
-        if (user) {
-            const updatedPrefs = { ...user.preferences, favoriteLeagues: prefs.leagues, favoriteTeams: prefs.teams, hasCompletedOnboarding: true };
-            const { data, error } = await supabase.from('users').update({ preferences: updatedPrefs }).eq('id', user.id).select();
-            if (!error && data) {
-                setUser({ ...user, preferences: updatedPrefs });
-                setAuthState('AUTHENTICATED');
-            }
-        }
-    };
-
-    const updatePreferences = async (newPrefs: Partial<UserPreferences>) => {
-        if (user) {
-            const updatedPrefs = { ...user.preferences, ...newPrefs };
-            const { data, error } = await supabase.from('users').update({ preferences: updatedPrefs }).eq('id', user.id).select();
-            if (!error && data) {
-                setUser({ ...user, preferences: updatedPrefs });
-            }
-        }
-    };
-
-    const addToSlip = (match: Match) => {
-        if (betSlip.find(b => b.matchId === match.id)) return;
-        
-        let selection = 'Draw';
-        let odds = match.prediction?.odds?.draw || 3.0;
-        let outcome: 'HOME'|'DRAW'|'AWAY' = 'DRAW';
-
-        if (match.prediction?.outcome === 'HOME') {
-            selection = match.homeTeam.name;
-            odds = match.prediction.odds?.home || 2.0;
-            outcome = 'HOME';
-        } else if (match.prediction?.outcome === 'AWAY') {
-            selection = match.awayTeam.name;
-            odds = match.prediction.odds?.away || 2.0;
-            outcome = 'AWAY';
-        }
-
-        const newItem: BetSlipItem = {
-            id: `bet_${Date.now()}`,
-            matchId: match.id,
-            matchUp: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
-            selection: selection,
-            odds: odds,
-            outcome: outcome,
-            timestamp: Date.now(),
-            confidence: match.prediction?.confidence
-        };
-        
-        setBetSlip(prev => [...prev, newItem]);
-    };
-
-    const removeFromSlip = (id: string) => {
-        setBetSlip(prev => prev.filter(item => item.id !== id));
-    };
-
-    const clearSlip = () => {
-        setBetSlip([]);
-    };
-
-    const addRandomPick = () => {
-        const availableMatches = matches.filter(m => !betSlip.find(b => b.matchId === m.id) && m.prediction);
-        if (availableMatches.length > 0) {
-            const randomMatch = availableMatches[Math.floor(Math.random() * availableMatches.length)];
-            addToSlip(randomMatch);
-        }
-    };
-
-    const generateMkeka = (type: MkekaType) => {
-        let filtered = matches.filter(m => m.prediction && m.status === MatchStatus.SCHEDULED);
-        
-        if (type === 'SAFE') {
-            filtered = filtered
-                .filter(m => (m.prediction?.confidence || 0) > 75)
-                .sort((a,b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0))
-                .slice(0, 5);
-        } else if (type === 'LONGSHOT') {
-            filtered = filtered.sort(() => 0.5 - Math.random()).slice(0, 8);
-        } else if (type === 'GOALS') {
-            filtered = filtered.slice(0, 4); 
-        }
-
-        setBetSlip([]);
-        filtered.forEach(m => addToSlip(m));
-    };
-
-    const addComment = (matchId: string, text: string, teamSupport?: 'HOME' | 'AWAY') => {
-        if (!user) return;
-        const newComment: Comment = {
-            id: `c_${Date.now()}`,
-            userId: user.id,
-            userName: user.name,
-            userAvatar: user.avatar,
-            text: text,
-            timestamp: Date.now(),
-            isPro: user.isPro,
-            likes: 0,
-            teamSupport: teamSupport
-        };
-
-        setMatches(prev => prev.map(m => {
-            if (m.id === matchId) {
-                return { ...m, comments: [newComment, ...(m.comments || [])], context: { ...m.context, commentCount: (m.context?.commentCount || 0) + 1 } };
-            }
-            return m;
-        }));
-    };
-
-    const triggerFlashAlert = (alert: FlashAlert) => {
-        setFlashAlert(alert);
-        setTimeout(() => setFlashAlert(null), 5000);
-    };
-
-    const addNewsStory = (story: NewsStory) => {
-        setNews(prev => [story, ...prev]);
-    };
-
-    const addSystemAlert = (alert: SystemAlert) => {
-        setAlerts(prev => [alert, ...prev]);
-    };
-
-    const deleteNewsStory = (id: string) => {
-        setNews(prev => prev.filter(n => n.id !== id));
-    };
-
-    const deleteSystemAlert = (id: string) => {
-        setAlerts(prev => prev.filter(a => a.id !== id));
-    };
-
-    return (
-        <SportsContext.Provider value={{
-            user, authState, authToken, matches, news, feedItems, betSlip, isPwezaOpen, pwezaPrompt, flashAlert, alerts, leaderboard,
-            login, loginAsGuest, logout, completeOnboarding, updatePreferences,
-            addToSlip, removeFromSlip, clearSlip, addRandomPick, generateMkeka,
-            setIsPwezaOpen: (open, prompt) => { setIsPwezaOpen(open); if(prompt) setPwezaPrompt(prompt); else setPwezaPrompt(null); },
-            addComment, triggerFlashAlert,
-            addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert
-        }}>
-            {children}
-        </SportsContext.Provider>
-    );
-};
-
-export const useSports = () => {
-    const context = useContext(SportsContext);
-    if (context === undefined) {
-        throw new Error('useSports must be used within a SportsProvider');
+export function SportsProvider({ children }: { children: ReactNode }) {
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [leagues] = useState<League[]>(DEFAULT_LEAGUES);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [user] = useState<User | null>({
+    id: 'guest',
+    preferences: {
+      favoriteLeagues: ['PL', 'LaLiga', 'SA', 'BL1'],
+      favoriteTeams: [],
+      followedSources: [],
+      dataSaver: false
     }
-    return context;
-};
+  });
+
+  const fetchMatches = useCallback(async () => {
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('get-matches', {
+        body: {}
+      });
+
+      if (fnError) {
+        console.error('Error fetching matches:', fnError);
+        throw fnError;
+      }
+
+      const fetchedMatches = data?.matches || [];
+      console.log('Fetched matches:', fetchedMatches.length);
+      setMatches(fetchedMatches);
+      return fetchedMatches;
+    } catch (err) {
+      console.error('Failed to fetch matches:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch matches');
+      return [];
+    }
+  }, []);
+
+  const buildFeed = useCallback((matchesList: Match[]) => {
+    const feedItems: FeedItem[] = [];
+    const now = new Date();
+    
+    const sortedMatches = [...matchesList].sort((a, b) => {
+      const dateA = new Date(a.utcDate || a.kickoff_time || '');
+      const dateB = new Date(b.utcDate || b.kickoff_time || '');
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    const upcomingMatches = sortedMatches.filter(m => {
+      const matchDate = new Date(m.utcDate || m.kickoff_time || '');
+      return m.status === 'SCHEDULED' && matchDate > now;
+    });
+
+    const liveMatches = sortedMatches.filter(m => m.status === 'LIVE' || m.status === 'IN_PLAY');
+    const finishedMatches = sortedMatches.filter(m => m.status === 'FINISHED').slice(-10);
+
+    // 1. LIVE matches - highest priority
+    liveMatches.forEach((match, idx) => {
+      feedItems.push({
+        id: `live-${match.id}`,
+        type: 'match',
+        title: `🔴 LIVE: ${match.homeTeam?.name || 'Home'} vs ${match.awayTeam?.name || 'Away'}`,
+        subtitle: `${match.score?.fullTime?.home ?? 0} - ${match.score?.fullTime?.away ?? 0}`,
+        timestamp: match.utcDate || match.kickoff_time || now.toISOString(),
+        match,
+        priority: 100 + idx
+      });
+    });
+
+    // 2. FEATURED matches - top games with high confidence predictions
+    const featuredMatches = upcomingMatches
+      .filter(m => m.prediction && m.prediction.confidence >= 55)
+      .slice(0, 6);
+
+    featuredMatches.forEach((match, idx) => {
+      feedItems.push({
+        id: `featured-${match.id}`,
+        type: 'featured',
+        title: `⭐ ${match.homeTeam?.name || 'Home'} vs ${match.awayTeam?.name || 'Away'}`,
+        subtitle: match.prediction ? `${match.prediction.winner} (${match.prediction.confidence}% confidence)` : 'Top match',
+        content: match.prediction?.reasoning,
+        timestamp: match.utcDate || match.kickoff_time || now.toISOString(),
+        match,
+        priority: 95 - idx
+      });
+    });
+
+    // 3. VALUE RADAR - betting angles
+    const valueBets = upcomingMatches
+      .filter(m => m.prediction?.bettingAngles && m.prediction.bettingAngles.length > 0)
+      .slice(0, 5);
+
+    valueBets.forEach((match, idx) => {
+      if (!featuredMatches.find(fm => fm.id === match.id)) {
+        feedItems.push({
+          id: `value-${match.id}`,
+          type: 'value_bet',
+          title: `💰 Value: ${match.homeTeam?.name || 'Home'} vs ${match.awayTeam?.name || 'Away'}`,
+          subtitle: match.prediction?.bettingAngles?.[0] || 'Good value found',
+          content: match.prediction?.insights?.join('. '),
+          timestamp: match.utcDate || match.kickoff_time || now.toISOString(),
+          match,
+          data: match.prediction?.odds,
+          priority: 85 - idx
+        });
+      }
+    });
+
+    // 4. AI PREDICTIONS - other matches with predictions
+    const predictionMatches = upcomingMatches
+      .filter(m => m.prediction && !featuredMatches.find(fm => fm.id === m.id))
+      .slice(0, 10);
+
+    predictionMatches.forEach((match, idx) => {
+      if (!featuredMatches.find(fm => fm.id === match.id) && !valueBets.find(vb => vb.id === match.id)) {
+        feedItems.push({
+          id: `prediction-${match.id}`,
+          type: 'prediction',
+          title: `🎯 ${match.homeTeam?.name || 'Home'} vs ${match.awayTeam?.name || 'Away'}`,
+          subtitle: `Prediction: ${match.prediction?.winner || 'TBD'} • ${match.prediction?.confidence || 50}%`,
+          content: match.prediction?.reasoning,
+          timestamp: match.utcDate || match.kickoff_time || now.toISOString(),
+          match,
+          priority: 75 - idx
+        });
+      }
+    });
+
+    // 5. UPCOMING MATCHES
+    const remainingUpcoming = upcomingMatches.slice(0, 8);
+    remainingUpcoming.forEach((match, idx) => {
+      const alreadyAdded = feedItems.some(item => item.match?.id === match.id);
+      if (!alreadyAdded) {
+        feedItems.push({
+          id: `upcoming-${match.id}`,
+          type: 'match',
+          title: `📅 ${match.homeTeam?.name || 'Home'} vs ${match.awayTeam?.name || 'Away'}`,
+          subtitle: new Date(match.utcDate || match.kickoff_time || '').toLocaleString(),
+          timestamp: match.utcDate || match.kickoff_time || now.toISOString(),
+          match,
+          priority: 65 - idx
+        });
+      }
+    });
+
+    // 6. RECENT RESULTS
+    finishedMatches.slice(-6).forEach((match, idx) => {
+      feedItems.push({
+        id: `result-${match.id}`,
+        type: 'result',
+        title: `✅ ${match.homeTeam?.name || 'Home'} ${match.score?.fullTime?.home ?? match.home_team_score ?? 0} - ${match.score?.fullTime?.away ?? match.away_team_score ?? 0} ${match.awayTeam?.name || 'Away'}`,
+        subtitle: 'Full Time',
+        timestamp: match.utcDate || match.kickoff_time || now.toISOString(),
+        match,
+        priority: 55 - idx
+      });
+    });
+
+    // 7. Always show some static cards if feed is short
+    if (feedItems.length < 8) {
+      feedItems.push({
+        id: 'welcome-card',
+        type: 'news',
+        title: '⚽ Welcome to ScoreShot',
+        subtitle: 'AI-powered sports predictions',
+        content: 'Get real-time scores, AI predictions, and betting insights for top football leagues.',
+        timestamp: now.toISOString(),
+        priority: 45
+      });
+
+      feedItems.push({
+        id: 'leagues-info',
+        type: 'news',
+        title: '🏆 Leagues We Cover',
+        subtitle: 'Premier League • La Liga • Serie A • Bundesliga • Ligue 1 • UCL',
+        content: 'Follow the best football leagues in the world with AI-powered analysis.',
+        timestamp: now.toISOString(),
+        priority: 44
+      });
+
+      feedItems.push({
+        id: 'predictions-info',
+        type: 'news',
+        title: '🎯 How Our Predictions Work',
+        subtitle: 'Team ratings • Form analysis • Home advantage',
+        content: 'Our AI uses team strength ratings, historical performance, and statistical models.',
+        timestamp: now.toISOString(),
+        priority: 43
+      });
+
+      feedItems.push({
+        id: 'value-info',
+        type: 'news',
+        title: '💰 Value Radar',
+        subtitle: 'Find the best betting opportunities',
+        content: 'Our algorithm identifies matches where the odds offer exceptional value.',
+        timestamp: now.toISOString(),
+        priority: 42
+      });
+    }
+
+    feedItems.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+    console.log('Built feed with', feedItems.length, 'items');
+    setFeed(feedItems);
+  }, []);
+
+  const refreshMatches = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const fetchedMatches = await fetchMatches();
+      buildFeed(fetchedMatches);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchMatches, buildFeed]);
+
+  const refreshFeed = useCallback(async () => {
+    buildFeed(matches);
+  }, [matches, buildFeed]);
+
+  const getMatchById = useCallback((id: string) => {
+    return matches.find(m => m.id === id);
+  }, [matches]);
+
+  useEffect(() => {
+    refreshMatches();
+    const interval = setInterval(() => {
+      refreshMatches();
+    }, 120000);
+    return () => clearInterval(interval);
+  }, [refreshMatches]);
+
+  return (
+    <SportsContext.Provider value={{
+      matches,
+      feed,
+      leagues,
+      loading,
+      error,
+      user,
+      refreshMatches,
+      refreshFeed,
+      getMatchById
+    }}>
+      {children}
+    </SportsContext.Provider>
+  );
+}
+
+export function useSports() {
+  const context = useContext(SportsContext);
+  if (!context) {
+    throw new Error('useSports must be used within a SportsProvider');
+  }
+  return context;
+}
+
+export default SportsContext;

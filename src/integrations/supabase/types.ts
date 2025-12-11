@@ -111,43 +111,58 @@ export type Database = {
           author: string | null
           content: string | null
           created_at: string | null
+          excerpt: string | null
+          featured_image_url: string | null
           id: string
           image_url: string | null
+          language: string | null
           metadata: Json | null
           published_at: string | null
+          reading_time_minutes: number | null
           related_match_id: string | null
           source: string | null
           tags: string[] | null
           title: string | null
           type: string
+          word_count: number | null
         }
         Insert: {
           author?: string | null
           content?: string | null
           created_at?: string | null
+          excerpt?: string | null
+          featured_image_url?: string | null
           id?: string
           image_url?: string | null
+          language?: string | null
           metadata?: Json | null
           published_at?: string | null
+          reading_time_minutes?: number | null
           related_match_id?: string | null
           source?: string | null
           tags?: string[] | null
           title?: string | null
           type: string
+          word_count?: number | null
         }
         Update: {
           author?: string | null
           content?: string | null
           created_at?: string | null
+          excerpt?: string | null
+          featured_image_url?: string | null
           id?: string
           image_url?: string | null
+          language?: string | null
           metadata?: Json | null
           published_at?: string | null
+          reading_time_minutes?: number | null
           related_match_id?: string | null
           source?: string | null
           tags?: string[] | null
           title?: string | null
           type?: string
+          word_count?: number | null
         }
         Relationships: [
           {
@@ -343,6 +358,118 @@ export type Database = {
           },
           {
             foreignKeyName: "messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_content_tags: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          feed_id: string
+          id: string
+          tag_type: string
+          tag_value: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          feed_id: string
+          id?: string
+          tag_type: string
+          tag_value: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          feed_id?: string
+          id?: string
+          tag_type?: string
+          tag_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_content_tags_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "feeds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_entities: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          feed_id: string
+          id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          feed_id: string
+          id?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          entity_id?: string
+          entity_name?: string
+          entity_type?: string
+          feed_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_entities_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "feeds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_shares: {
+        Row: {
+          feed_id: string
+          id: string
+          share_method: string | null
+          shared_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          feed_id: string
+          id?: string
+          share_method?: string | null
+          shared_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          feed_id?: string
+          id?: string
+          share_method?: string | null
+          shared_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_shares_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "feeds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "news_shares_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
