@@ -1,80 +1,165 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
-import { ArrowLeft, Trophy, Calendar, Users, ChevronRight, TrendingUp, Shield, Target, Award, PlayCircle, Star, Filter, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { ArrowLeft, Trophy, Calendar, Users, ChevronRight, TrendingUp, Shield, Target, Award, PlayCircle, Star, Filter, ArrowRightLeft, DollarSign, Loader2 } from 'lucide-react';
 import { Match, MatchStatus } from '../types';
 import { HeroNewsCard, StandardNewsCard } from './Feed';
+import { supabase } from '../src/integrations/supabase/client';
 
-// --- MOCK DATA GENERATORS ---
+// --- STYLE CONFIG ---
 const getLeagueColors = (id: string) => {
     switch (id) {
-        case 'EPL': return { bg: 'from-[#38003C] to-[#19001F]', accent: 'text-[#00FF85]', border: 'border-[#00FF85]' };
-        case 'LaLiga': return { bg: 'from-[#FF0000] to-[#4a0000]', accent: 'text-[#FFCC00]', border: 'border-[#FF0000]' };
+        case 'EPL': case 'PL': return { bg: 'from-[#38003C] to-[#19001F]', accent: 'text-[#00FF85]', border: 'border-[#00FF85]' };
+        case 'LaLiga': case 'PD': return { bg: 'from-[#FF0000] to-[#4a0000]', accent: 'text-[#FFCC00]', border: 'border-[#FF0000]' };
         case 'NBA': return { bg: 'from-[#1D428A] to-[#000000]', accent: 'text-[#C8102E]', border: 'border-[#1D428A]' };
         case 'NFL': return { bg: 'from-[#013369] to-[#000000]', accent: 'text-[#D50A0A]', border: 'border-[#D50A0A]' };
+        case 'BL1': return { bg: 'from-[#D20515] to-[#000000]', accent: 'text-white', border: 'border-[#D20515]' };
+        case 'SA': return { bg: 'from-[#024494] to-[#000000]', accent: 'text-[#009651]', border: 'border-[#024494]' };
+        case 'FL1': return { bg: 'from-[#1A3E7D] to-[#000000]', accent: 'text-[#DA291C]', border: 'border-[#1A3E7D]' };
+        case 'CL': return { bg: 'from-[#1A237E] to-[#000000]', accent: 'text-[#FFD700]', border: 'border-[#1A237E]' };
         default: return { bg: 'from-gray-900 to-black', accent: 'text-white', border: 'border-gray-500' };
     }
 };
 
-const MOCK_PLAYERS = [
-    { name: 'Erling Haaland', team: 'Man City', value: '14', label: 'Goals', avatar: 'https://ui-avatars.com/api/?name=EH&background=00B5E2&color=fff' },
-    { name: 'Mohamed Salah', team: 'Liverpool', value: '10', label: 'Goals', avatar: 'https://ui-avatars.com/api/?name=MS&background=C8102E&color=fff' },
-    { name: 'Cole Palmer', team: 'Chelsea', value: '8', label: 'Goals', avatar: 'https://ui-avatars.com/api/?name=CP&background=034694&color=fff' },
-];
-
-const MOCK_ASSISTS = [
-    { name: 'Bukayo Saka', team: 'Arsenal', value: '9', label: 'Assists', avatar: 'https://ui-avatars.com/api/?name=BS&background=EF0107&color=fff' },
-    { name: 'Cole Palmer', team: 'Chelsea', value: '7', label: 'Assists', avatar: 'https://ui-avatars.com/api/?name=CP&background=034694&color=fff' },
-];
-
-const MOCK_STANDINGS = [
-    { rank: 1, team: 'Liverpool', p: 11, w: 9, d: 1, l: 1, gd: 15, pts: 28, form: ['W','W','D','W','W'] },
-    { rank: 2, team: 'Man City', p: 11, w: 7, d: 2, l: 2, gd: 9, pts: 23, form: ['L','L','W','W','W'] },
-    { rank: 3, team: 'Chelsea', p: 11, w: 5, d: 4, l: 2, gd: 8, pts: 19, form: ['D','W','D','L','W'] },
-    { rank: 4, team: 'Arsenal', p: 11, w: 5, d: 4, l: 2, gd: 6, pts: 19, form: ['D','L','D','L','W'] },
-    { rank: 5, team: 'Nottm Forest', p: 11, w: 5, d: 4, l: 2, gd: 5, pts: 19, form: ['L','W','W','W','D'] },
-    { rank: 6, team: 'Aston Villa', p: 11, w: 5, d: 3, l: 3, gd: 0, pts: 18, form: ['L','L','D','W','D'] },
-];
-
-const MOCK_TRANSFERS = [
-    { id: 1, player: 'Victor Osimhen', from: 'Napoli', to: 'Chelsea', fee: '€120M', type: 'RUMOR' },
-    { id: 2, player: 'Ivan Toney', from: 'Brentford', to: 'Al-Ahli', fee: '€40M', type: 'CONFIRMED' },
-    { id: 3, player: 'Pedro Neto', from: 'Wolves', to: 'Chelsea', fee: '€60M', type: 'CONFIRMED' },
-];
-
-// League code to name mapping
-const LEAGUE_CODE_MAP: Record<string, string[]> = {
-    'PL': ['Premier League'],
-    'EPL': ['Premier League'],
-    'BL1': ['Bundesliga'],
-    'SA': ['Serie A'],
-    'PD': ['La Liga'],
-    'FL1': ['Ligue 1'],
-    'CL': ['Champions League'],
-    'EL': ['Europa League'],
-    'NBA': ['NBA'],
-    'F1': ['Formula 1'],
+// League code to DB league_code mapping
+const LEAGUE_CODE_MAP: Record<string, { names: string[], dbCode: string }> = {
+    'PL': { names: ['Premier League'], dbCode: 'PL' },
+    'EPL': { names: ['Premier League'], dbCode: 'PL' },
+    'BL1': { names: ['Bundesliga'], dbCode: 'BL1' },
+    'SA': { names: ['Serie A'], dbCode: 'SA' },
+    'PD': { names: ['La Liga'], dbCode: 'PD' },
+    'FL1': { names: ['Ligue 1'], dbCode: 'FL1' },
+    'CL': { names: ['Champions League'], dbCode: 'CL' },
+    'EL': { names: ['Europa League'], dbCode: 'EL' },
+    'NBA': { names: ['NBA'], dbCode: 'NBA' },
+    'F1': { names: ['Formula 1'], dbCode: 'F1' },
 };
+
+interface StandingRow {
+    rank: number;
+    team: string;
+    logo?: string;
+    p: number;
+    w: number;
+    d: number;
+    l: number;
+    gd: number;
+    pts: number;
+    form?: string[];
+}
+
+interface TopScorer {
+    name: string;
+    team: string;
+    value: string;
+    label: string;
+    avatar: string;
+}
 
 export const LeaguePage: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { matches, news } = useSports();
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'MATCHES' | 'STANDINGS' | 'STATS' | 'TRANSFERS' | 'NEWS'>('OVERVIEW');
+    const [standings, setStandings] = useState<StandingRow[]>([]);
+    const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
+    const [topAssists, setTopAssists] = useState<TopScorer[]>([]);
+    const [loadingStandings, setLoadingStandings] = useState(true);
+    const [loadingScorers, setLoadingScorers] = useState(true);
 
-    const leagueId = id || 'EPL';
+    const leagueId = id || 'PL';
     const theme = getLeagueColors(leagueId);
+    const leagueConfig = LEAGUE_CODE_MAP[leagueId] || { names: [leagueId], dbCode: leagueId };
     
-    // Get league names that match this code
-    const leagueNames = LEAGUE_CODE_MAP[leagueId] || [leagueId];
-
-    // Filter content - match by league name or code
+    // Filter matches for this league
     const leagueMatches = (matches || []).filter(m => 
-        leagueNames.some(name => m.league?.toLowerCase().includes(name.toLowerCase())) ||
+        leagueConfig.names.some(name => m.league?.toLowerCase().includes(name.toLowerCase())) ||
         m.league === leagueId
     );
     const leagueNews = (news || []).filter(n => n.tags?.includes(leagueId));
+
+    // Fetch standings from database
+    useEffect(() => {
+        const fetchStandings = async () => {
+            setLoadingStandings(true);
+            try {
+                const { data, error } = await supabase
+                    .from('standings')
+                    .select('standings_data')
+                    .eq('league_code', leagueConfig.dbCode)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (!error && data?.standings_data) {
+                    const rawStandings = data.standings_data as any[];
+                    const mapped: StandingRow[] = rawStandings.map(s => ({
+                        rank: s.rank || s.position || 0,
+                        team: s.teamName || s.team?.name || s.team || 'Unknown',
+                        logo: s.logo || s.team?.logo || s.team?.crest,
+                        p: s.played || s.playedGames || 0,
+                        w: s.won || 0,
+                        d: s.drawn || s.draw || 0,
+                        l: s.lost || 0,
+                        gd: s.goalDifference || 0,
+                        pts: s.points || 0,
+                        form: s.form || []
+                    }));
+                    setStandings(mapped);
+                }
+            } catch (err) {
+                console.error('Error fetching standings:', err);
+            } finally {
+                setLoadingStandings(false);
+            }
+        };
+        fetchStandings();
+    }, [leagueConfig.dbCode]);
+
+    // Fetch top scorers from edge function
+    useEffect(() => {
+        const fetchScorers = async () => {
+            setLoadingScorers(true);
+            try {
+                const response = await fetch(
+                    `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/fetch-scorers?league=${leagueConfig.dbCode}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.scorers && Array.isArray(data.scorers)) {
+                        setTopScorers(data.scorers.slice(0, 10).map((s: any) => ({
+                            name: s.player?.name || s.name || 'Unknown',
+                            team: s.team?.name || s.team || 'Unknown',
+                            value: String(s.goals || s.numberOfGoals || 0),
+                            label: 'Goals',
+                            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.player?.name || s.name || 'P')}&background=6366F1&color=fff`
+                        })));
+                    }
+                    if (data.assists && Array.isArray(data.assists)) {
+                        setTopAssists(data.assists.slice(0, 10).map((s: any) => ({
+                            name: s.player?.name || s.name || 'Unknown',
+                            team: s.team?.name || s.team || 'Unknown',
+                            value: String(s.assists || s.numberOfAssists || 0),
+                            label: 'Assists',
+                            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.player?.name || s.name || 'P')}&background=10B981&color=fff`
+                        })));
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching scorers:', err);
+            } finally {
+                setLoadingScorers(false);
+            }
+        };
+        fetchScorers();
+    }, [leagueConfig.dbCode]);
 
     return (
         <div className="min-h-screen bg-black text-white pb-24 font-sans">
@@ -212,11 +297,17 @@ export const LeaguePage: React.FC = () => {
                                 <h3 className="font-condensed font-black text-xl uppercase italic text-gray-400">Golden Boot Race</h3>
                                 <button onClick={() => setActiveTab('STATS')} className="text-xs font-bold text-indigo-500 uppercase">View All</button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {MOCK_PLAYERS.map((player, idx) => (
-                                    <PlayerStatCard key={idx} rank={idx+1} player={player} />
-                                ))}
-                            </div>
+                            {loadingScorers ? (
+                                <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={24} /></div>
+                            ) : topScorers.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {topScorers.slice(0, 3).map((player, idx) => (
+                                        <PlayerStatCard key={idx} rank={idx+1} player={player} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-6 text-center text-gray-500 bg-[#1E1E1E] rounded-xl">No scorer data available</div>
+                            )}
                         </section>
 
                         {/* Mini Standings */}
@@ -225,7 +316,13 @@ export const LeaguePage: React.FC = () => {
                                 <h3 className="font-condensed font-black text-xl uppercase italic text-gray-400">Table</h3>
                                 <button onClick={() => setActiveTab('STANDINGS')} className="text-xs font-bold text-indigo-500 uppercase">Full Table</button>
                             </div>
-                            <StandingsTable data={MOCK_STANDINGS.slice(0, 5)} compact />
+                            {loadingStandings ? (
+                                <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={24} /></div>
+                            ) : standings.length > 0 ? (
+                                <StandingsTable data={standings.slice(0, 5)} compact />
+                            ) : (
+                                <div className="p-6 text-center text-gray-500 bg-[#1E1E1E] rounded-xl">No standings data available</div>
+                            )}
                         </section>
 
                     </div>
@@ -243,17 +340,13 @@ export const LeaguePage: React.FC = () => {
                                      <span className="flex items-center gap-1 text-[10px] font-bold text-red-500"><div className="w-2 h-2 rounded-full bg-red-500"></div> Rel</span>
                                  </div>
                              </div>
-                             <StandingsTable data={MOCK_STANDINGS} />
-                         </div>
-                         <div className="mt-4 p-4 bg-indigo-900/10 border border-indigo-500/20 rounded-lg flex items-start gap-3">
-                             <TrendingUp className="text-indigo-400 shrink-0 mt-0.5" size={18} />
-                             <div>
-                                 <h4 className="font-bold text-indigo-400 text-sm uppercase mb-1">Sheena Insight</h4>
-                                 <p className="text-xs text-gray-300">
-                                     Liverpool have a 85% probability of winning the title based on current form and remaining fixtures.
-                                     Arsenal needs to win their next 3 to stay in contention.
-                                 </p>
-                             </div>
+                             {loadingStandings ? (
+                                <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={24} /></div>
+                             ) : standings.length > 0 ? (
+                                <StandingsTable data={standings} />
+                             ) : (
+                                <div className="p-10 text-center text-gray-500">No standings data available</div>
+                             )}
                          </div>
                     </div>
                 )}
@@ -307,36 +400,48 @@ export const LeaguePage: React.FC = () => {
                     <div className="space-y-8">
                         <section>
                              <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2"><Target size={20} className="text-blue-500" /> Top Scorers</h3>
-                             <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
-                                 {MOCK_PLAYERS.map((p, i) => (
-                                     <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
-                                         <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
-                                         <img src={p.avatar} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
-                                         <div className="flex-1">
-                                             <span className="block font-bold text-white text-sm">{p.name}</span>
-                                             <span className="text-xs text-gray-500 uppercase">{p.team}</span>
+                             {loadingScorers ? (
+                                <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={24} /></div>
+                             ) : topScorers.length > 0 ? (
+                                 <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
+                                     {topScorers.map((p, i) => (
+                                         <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
+                                             <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
+                                             <img src={p.avatar} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
+                                             <div className="flex-1">
+                                                 <span className="block font-bold text-white text-sm">{p.name}</span>
+                                                 <span className="text-xs text-gray-500 uppercase">{p.team}</span>
+                                             </div>
+                                             <span className="font-mono font-black text-xl text-white">{p.value}</span>
                                          </div>
-                                         <span className="font-mono font-black text-xl text-white">{p.value}</span>
-                                     </div>
-                                 ))}
-                             </div>
+                                     ))}
+                                 </div>
+                             ) : (
+                                <div className="p-10 text-center text-gray-500 bg-[#1E1E1E] rounded-xl">No scorer data available</div>
+                             )}
                         </section>
 
                         <section>
                              <h3 className="font-condensed font-black text-xl uppercase italic text-white mb-4 flex items-center gap-2"><Users size={20} className="text-green-500" /> Assists</h3>
-                             <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
-                                 {MOCK_ASSISTS.map((p, i) => (
-                                     <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
-                                         <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
-                                         <img src={p.avatar} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
-                                         <div className="flex-1">
-                                             <span className="block font-bold text-white text-sm">{p.name}</span>
-                                             <span className="text-xs text-gray-500 uppercase">{p.team}</span>
+                             {loadingScorers ? (
+                                <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={24} /></div>
+                             ) : topAssists.length > 0 ? (
+                                 <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden">
+                                     {topAssists.map((p, i) => (
+                                         <div key={i} className="flex items-center p-4 border-b border-[#333] last:border-0 hover:bg-[#252525]">
+                                             <span className="w-8 font-mono font-bold text-gray-500 text-lg">{i+1}</span>
+                                             <img src={p.avatar} className="w-10 h-10 rounded-full bg-gray-700 mr-4" />
+                                             <div className="flex-1">
+                                                 <span className="block font-bold text-white text-sm">{p.name}</span>
+                                                 <span className="text-xs text-gray-500 uppercase">{p.team}</span>
+                                             </div>
+                                             <span className="font-mono font-black text-xl text-white">{p.value}</span>
                                          </div>
-                                         <span className="font-mono font-black text-xl text-white">{p.value}</span>
-                                     </div>
-                                 ))}
-                             </div>
+                                     ))}
+                                 </div>
+                             ) : (
+                                <div className="p-10 text-center text-gray-500 bg-[#1E1E1E] rounded-xl">No assist data available</div>
+                             )}
                         </section>
                     </div>
                 )}
@@ -346,33 +451,14 @@ export const LeaguePage: React.FC = () => {
                      <div className="space-y-4">
                          <div className="flex items-center gap-2 mb-4 bg-yellow-900/10 border border-yellow-600/30 p-3 rounded-lg">
                              <ArrowRightLeft className="text-yellow-500" size={18} />
-                             <span className="text-sm text-yellow-500 font-bold uppercase">Transfer Window Open</span>
+                             <span className="text-sm text-yellow-500 font-bold uppercase">Transfer Window</span>
                          </div>
                          
-                         {MOCK_TRANSFERS.map(t => (
-                             <div key={t.id} className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 flex items-center justify-between relative overflow-hidden">
-                                 {t.type === 'CONFIRMED' && <div className="absolute top-0 right-0 bg-green-500 text-black text-[9px] font-black uppercase px-2 py-0.5">Confirmed</div>}
-                                 {t.type === 'RUMOR' && <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[9px] font-black uppercase px-2 py-0.5">Rumor</div>}
-                                 
-                                 <div className="flex items-center gap-4">
-                                     <div className="w-12 h-12 rounded-full bg-[#121212] border border-[#333] flex items-center justify-center font-bold text-xs text-gray-500">
-                                         {t.player[0]}
-                                     </div>
-                                     <div>
-                                         <h4 className="font-bold text-white text-sm">{t.player}</h4>
-                                         <div className="flex items-center gap-2 mt-1">
-                                             <span className="text-xs text-gray-400 font-bold uppercase">{t.from}</span>
-                                             <ArrowRightLeft size={10} className="text-gray-600" />
-                                             <span className="text-xs text-white font-bold uppercase">{t.to}</span>
-                                         </div>
-                                     </div>
-                                 </div>
-                                 <div className="text-right">
-                                     <span className="block text-[10px] font-bold text-gray-500 uppercase">Fee</span>
-                                     <span className="font-mono font-bold text-[#00FFB2]">{t.fee}</span>
-                                 </div>
-                             </div>
-                         ))}
+                         <div className="p-10 text-center text-gray-500 bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl">
+                             <DollarSign className="mx-auto mb-3 text-gray-600" size={40} />
+                             <p className="font-bold">Transfer news coming soon</p>
+                             <p className="text-sm text-gray-600 mt-1">We're working on bringing you the latest transfer updates</p>
+                         </div>
                      </div>
                 )}
 

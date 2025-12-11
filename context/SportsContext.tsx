@@ -111,7 +111,7 @@ export function SportsProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>({
     id: 'guest',
     preferences: {
-      favoriteLeagues: ['PL', 'LaLiga', 'SA', 'BL1'],
+      favoriteLeagues: ['PL', 'Premier League', 'La Liga', 'LaLiga', 'SA', 'Serie A', 'BL1', 'Bundesliga', 'FL1', 'Ligue 1', 'CL', 'Champions League'],
       favoriteTeams: [],
       followedSources: [],
       dataSaver: false

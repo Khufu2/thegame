@@ -21,7 +21,7 @@ const SUGGESTED_TEAMS = [
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) => {
   const navigate = useNavigate();
-  const { updatePreferences } = useSports(); // Use this to upgrade user locally after success
+  const { updatePreferences, logout } = useSports();
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SQUAD' | 'HISTORY'>('OVERVIEW');
   const [favorites, setFavorites] = useState<string[]>(user.preferences.favoriteLeagues);
   const [followedTeams, setFollowedTeams] = useState<string[]>(user.preferences.favoriteTeams);
@@ -177,7 +177,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
                         <MenuItem onClick={() => navigate('/settings')} icon={<Bell size={18} />} label="Notifications" value="On" />
                         <MenuItem onClick={() => navigate('/settings')} icon={<CreditCard size={18} />} label="Manage Subscription" />
                         <MenuItem onClick={() => navigate('/settings')} icon={<Shield size={18} />} label="Privacy & Security" />
-                        <MenuItem onClick={() => navigate('/')} icon={<LogOut size={18} />} label="Sign Out" danger />
+                        <MenuItem onClick={logout} icon={<LogOut size={18} />} label="Sign Out" danger />
                     </div>
                 </div>
             )}
