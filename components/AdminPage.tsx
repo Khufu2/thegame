@@ -54,6 +54,13 @@ export const AdminPage: React.FC = () => {
     const [selectedSource, setSelectedSource] = useState('');
     const [isSharing, setIsSharing] = useState(false);
 
+    // --- SHARE LINK STATE ---
+    const [linkTitle, setLinkTitle] = useState('');
+    const [linkUrl, setLinkUrl] = useState('');
+    const [linkDescription, setLinkDescription] = useState('');
+    const [linkTag, setLinkTag] = useState('News');
+    const [linkImage, setLinkImage] = useState('https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop');
+
     // --- TEAM MANAGEMENT STATE ---
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('JOURNALIST');
@@ -176,7 +183,7 @@ export const AdminPage: React.FC = () => {
         setIsSharing(true);
         const result = await shareExternalNews(shareUrl, selectedSource || 'External');
         setIsSharing(false);
-        
+
         if (result) {
             setNewsTitle(result.title);
             setNewsSummary(result.summary);
@@ -188,6 +195,43 @@ export const AdminPage: React.FC = () => {
         } else {
             alert("Failed to fetch and process the article. Try again.");
         }
+    };
+
+    const handleShareLink = () => {
+        if (!linkTitle || !linkUrl) {
+            alert("Please enter both title and URL");
+            return;
+        }
+
+        const linkBlock = {
+            type: 'LINK' as const,
+            title: linkTitle,
+            url: linkUrl,
+            description: linkDescription
+        };
+
+        const story: NewsStory = {
+            id: `news_${Date.now()}`,
+            type: 'NEWS',
+            title: linkTitle,
+            summary: linkDescription || 'Click to read the full article',
+            imageUrl: linkImage,
+            source: 'Sheena Desk',
+            timestamp: 'Just Now',
+            likes: 0,
+            comments: 0,
+            tags: [linkTag],
+            contentBlocks: [linkBlock]
+        };
+
+        addNewsStory(story);
+        alert('Link shared successfully!');
+
+        // Reset form
+        setLinkTitle('');
+        setLinkUrl('');
+        setLinkDescription('');
+        setLinkTag('News');
     };
 
     return (
@@ -213,7 +257,89 @@ export const AdminPage: React.FC = () => {
 
                 {/* --- SHARE NEWS TAB --- */}
                 {activeTab === 'SHARE_NEWS' && (
-                    <div className="col-span-2 max-w-[600px] mx-auto w-full">
+                    <div className="col-span-2 max-w-[600px] mx-auto w-full space-y-6">
+
+                        {/* SHARE LINK SECTION */}
+                        <div className="bg-[#121212] border border-blue-500/50 rounded-xl p-6 shadow-2xl">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                                    <LinkIcon size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">Share Link</h3>
+                                    <p className="text-xs text-blue-400">Share articles directly without AI processing</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Title</label>
+                                    <input
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-blue-500"
+                                        placeholder="Article title..."
+                                        value={linkTitle}
+                                        onChange={(e) => setLinkTitle(e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL</label>
+                                    <input
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-blue-500"
+                                        placeholder="https://example.com/article"
+                                        value={linkUrl}
+                                        onChange={(e) => setLinkUrl(e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Description (Optional)</label>
+                                    <textarea
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-blue-500 h-20 resize-none"
+                                        placeholder="Brief description..."
+                                        value={linkDescription}
+                                        onChange={(e) => setLinkDescription(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tag</label>
+                                        <select
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-blue-500"
+                                            value={linkTag}
+                                            onChange={(e) => setLinkTag(e.target.value)}
+                                        >
+                                            <option value="News">News</option>
+                                            <option value="NBA">NBA</option>
+                                            <option value="NFL">NFL</option>
+                                            <option value="Soccer">Soccer</option>
+                                            <option value="UFC">UFC</option>
+                                            <option value="F1">F1</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Image URL (Optional)</label>
+                                        <input
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-blue-500"
+                                            placeholder="https://..."
+                                            value={linkImage}
+                                            onChange={(e) => setLinkImage(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleShareLink}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                >
+                                    <LinkIcon size={16} /> Share Link
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* SHARE EXTERNAL NEWS SECTION */}
                         <div className="bg-[#121212] border border-green-500/50 rounded-xl p-6 shadow-2xl">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">

@@ -13,6 +13,7 @@
     "worker:ingest": "node worker_ingest.js",
     "ingest:now": "node worker_ingest.js",
     "seed": "node quick-seed.js",
+    "seed:leagues": "node seed-leagues.js",
     "verify": "node verify_db.js"
   },
   "dependencies": {

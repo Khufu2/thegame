@@ -1,6 +1,6 @@
 
-import React, { useEffect } from 'react';
-import { ArrowLeft, Share2, MessageSquare, Bookmark, Flame, Twitter, ThumbsUp, Quote, Play, ImageOff, WifiOff, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Share2, MessageSquare, Bookmark, Flame, Twitter, ThumbsUp, Quote, Play, ImageOff, WifiOff, Loader2, ExternalLink, X, Copy, Send } from 'lucide-react';
 import { NewsStory, ArticleBlock } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
@@ -11,9 +11,10 @@ interface ArticlePageProps {
 }
 
 export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories }) => {
-  const navigate = useNavigate();
-  const { user } = useSports();
-  const dataSaver = user?.preferences.dataSaver || false;
+   const navigate = useNavigate();
+   const { user, authToken } = useSports();
+   const dataSaver = user?.preferences.dataSaver || false;
+   const [showShareModal, setShowShareModal] = useState(false);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -23,6 +24,68 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
   const goToSource = () => {
       // Navigate to the source/author profile
       navigate(`/source/${encodeURIComponent(story.source)}`);
+  };
+
+  const handleShareClick = () => {
+    console.log('Share button clicked');
+    setShowShareModal(true);
+  };
+
+  const performShare = async (method: 'native' | 'copy') => {
+    const shareData = {
+      title: story.title,
+      text: story.summary || story.title,
+      url: window.location.href,
+    };
+
+    try {
+      if (method === 'native' && navigator.share) {
+        await navigator.share(shareData);
+        showSuccessMessage('Shared successfully!');
+      } else {
+        // Copy to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        showSuccessMessage('Link copied to clipboard!');
+      }
+
+      // Track the share in database
+      try {
+        const response = await fetch('https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/track-news-share', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA'}`,
+          },
+          body: JSON.stringify({
+            feedId: story.id,
+            shareMethod: method,
+          }),
+        });
+
+        if (!response.ok) {
+          console.warn('Failed to track share, but sharing succeeded');
+        }
+      } catch (trackError) {
+        console.warn('Error tracking share:', trackError);
+      }
+
+      setShowShareModal(false);
+    } catch (error) {
+      console.error('Error sharing:', error);
+      showSuccessMessage('Link copied to clipboard as fallback!');
+      setShowShareModal(false);
+    }
+  };
+
+  const showSuccessMessage = (message: string) => {
+    // Simple toast-like notification
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 font-bold';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      document.body.removeChild(toast);
+    }, 3000);
   };
 
   return (
@@ -41,8 +104,12 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
           <button className="p-2 hover:bg-gray-100 dark:hover:bg-[#1E1E1E] rounded-full transition-colors">
             <Bookmark size={24} className="text-gray-500 dark:text-[#A1A1A1]" />
           </button>
-          <button className="p-2 -mr-2 hover:bg-gray-100 dark:hover:bg-[#1E1E1E] rounded-full transition-colors">
-            <Share2 size={24} className="text-gray-500 dark:text-[#A1A1A1]" />
+          <button
+            onClick={handleShareClick}
+            className="p-2 -mr-2 hover:bg-blue-500 hover:bg-opacity-20 rounded-full transition-colors border-2 border-transparent hover:border-blue-500"
+            title="Share this article"
+          >
+            <Share2 size={24} className="text-gray-500 dark:text-[#A1A1A1] hover:text-blue-500" />
           </button>
         </div>
       </div>
@@ -124,14 +191,46 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
             )}
         </article>
 
-        {/* TAGS */}
-        <div className="flex flex-wrap gap-2 mt-8 mb-12">
-            {story.tags?.map(tag => (
-                <span key={tag} className="px-3 py-1.5 bg-gray-100 dark:bg-[#1E1E1E] text-gray-600 dark:text-[#A1A1A1] text-xs font-bold uppercase tracking-wide rounded border border-gray-200 dark:border-[#2C2C2C]">
-                    {tag}
-                </span>
-            ))}
-        </div>
+        {/* ENTITIES */}
+        {story.entities && story.entities.length > 0 && (
+            <div className="mt-8 mb-6">
+                <h3 className="text-sm font-bold text-gray-500 dark:text-[#A1A1A1] uppercase tracking-wide mb-3">Related</h3>
+                <div className="flex flex-wrap gap-2">
+                    {story.entities.map(entity => (
+                        <button
+                            key={entity.id}
+                            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wide rounded border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                        >
+                            {entity.name}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* CONTENT TAGS */}
+        {(story.contentTags && story.contentTags.length > 0) || (story.tags && story.tags.length > 0) ? (
+            <div className="flex flex-wrap gap-2 mt-8 mb-12">
+                {/* Content tags */}
+                {story.contentTags?.map(tag => (
+                    <span key={tag.id} className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded border ${
+                        tag.type === 'category'
+                            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
+                            : tag.type === 'topic'
+                            ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                            : 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800'
+                    }`}>
+                        {tag.value}
+                    </span>
+                ))}
+                {/* Legacy tags */}
+                {story.tags?.map(tag => (
+                    <span key={tag} className="px-3 py-1.5 bg-gray-100 dark:bg-[#1E1E1E] text-gray-600 dark:text-[#A1A1A1] text-xs font-bold uppercase tracking-wide rounded border border-gray-200 dark:border-[#2C2C2C]">
+                        {tag}
+                    </span>
+                ))}
+            </div>
+        ) : null}
 
         {/* RELATED STORIES */}
         <div className="border-t-4 border-black dark:border-white pt-6 mt-8">
@@ -186,6 +285,64 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
           </div>
 
       </div>
+
+      {/* SHARE MODAL */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 dark:border-[#2C2C2C]">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-condensed font-black text-xl uppercase tracking-tighter">Share Article</h3>
+                <button onClick={() => setShowShareModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-[#2C2C2C] rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 dark:text-[#A1A1A1] uppercase tracking-wide mb-2">Title</label>
+                  <div className="p-3 bg-gray-50 dark:bg-[#121212] rounded-lg border border-gray-200 dark:border-[#2C2C2C]">
+                    <p className="text-sm font-medium">{story.title}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 dark:text-[#A1A1A1] uppercase tracking-wide mb-2">Message</label>
+                  <div className="p-3 bg-gray-50 dark:bg-[#121212] rounded-lg border border-gray-200 dark:border-[#2C2C2C]">
+                    <p className="text-sm">{story.summary || story.title}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 dark:text-[#A1A1A1] uppercase tracking-wide mb-2">Link</label>
+                  <div className="p-3 bg-gray-50 dark:bg-[#121212] rounded-lg border border-gray-200 dark:border-[#2C2C2C]">
+                    <p className="text-sm text-blue-600 dark:text-blue-400 break-all">{window.location.href}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => performShare('copy')}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gray-100 dark:bg-[#2C2C2C] hover:bg-gray-200 dark:hover:bg-[#333] text-gray-900 dark:text-white py-3 px-4 rounded-xl font-bold uppercase text-sm tracking-wide transition-colors"
+                >
+                  <Copy size={18} />
+                  Copy Link
+                </button>
+                {navigator.share && (
+                  <button
+                    onClick={() => performShare('native')}
+                    className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-bold uppercase text-sm tracking-wide transition-colors"
+                  >
+                    <Send size={18} />
+                    Share
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -286,6 +443,31 @@ const ContentBlockRenderer: React.FC<{ block: ArticleBlock, dataSaver: boolean }
                             <span className="text-white font-bold text-sm">{block.title}</span>
                         </div>
                     )}
+                </div>
+            );
+
+        case 'LINK':
+            return (
+                <div className="my-8 p-6 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors group cursor-pointer" onClick={() => window.open(block.url, '_blank')}>
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                            <ExternalLink size={20} className="text-white" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-condensed font-bold text-lg text-blue-900 dark:text-blue-100 mb-2 group-hover:underline">
+                                {block.title}
+                            </h4>
+                            {block.description && (
+                                <p className="text-sm text-blue-700 dark:text-blue-300 mb-3 leading-relaxed">
+                                    {block.description}
+                                </p>
+                            )}
+                            <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                                <span>Read Full Article</span>
+                                <ExternalLink size={12} />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             );
 

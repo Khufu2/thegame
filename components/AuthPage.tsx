@@ -80,7 +80,7 @@ export const AuthPage: React.FC = () => {
         hasCompletedOnboarding: false
     });
 
-    const mapProfileToUser = (profile: any, fallbackEmail: string, fallbackName?: string): UserProfile => {
+    const mapProfileToUser = (profile: any, fallbackEmail: string, fallbackName?: string, isAdminOverride?: boolean): UserProfile => {
         const preferences = buildDefaultPreferences(profile?.preferences);
         const nameFromEmail = fallbackEmail ? fallbackEmail.split('@')[0] : 'Sheena User';
 
@@ -90,7 +90,7 @@ export const AuthPage: React.FC = () => {
             email: profile?.email || fallbackEmail,
             avatar: profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameFromEmail)}`,
             isPro: Boolean(profile?.is_pro),
-            isAdmin: profile?.email === 'admin@sheena.sports' || profile?.is_admin,
+            isAdmin: isAdminOverride ?? (profile?.email === 'admin@sheena.sports' || profile?.is_admin),
             stats: {
                 betsPlaced: profile?.stats?.betsPlaced ?? 0,
                 wins: profile?.stats?.wins ?? 0,
@@ -129,8 +129,15 @@ export const AuthPage: React.FC = () => {
                     .select('*')
                     .eq('id', data.user.id)
                     .single();
-                
-                const userProfile = mapProfileToUser(profile, email, displayName);
+
+                // Fetch user role
+                const { data: roleData } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', data.user.id)
+                    .single();
+
+                const userProfile = mapProfileToUser(profile, email, displayName, roleData?.role === 'admin');
                 login(userProfile, data.session?.access_token);
                 
                 if (!profile?.preferences?.hasCompletedOnboarding) {
@@ -169,8 +176,15 @@ export const AuthPage: React.FC = () => {
                             .select('*')
                             .eq('id', signInData.user.id)
                             .single();
-                        
-                        const userProfile = mapProfileToUser(profile, email, displayName);
+
+                        // Fetch user role
+                        const { data: roleData } = await supabase
+                            .from('user_roles')
+                            .select('role')
+                            .eq('user_id', signInData.user.id)
+                            .single();
+
+                        const userProfile = mapProfileToUser(profile, email, displayName, roleData?.role === 'admin');
                         login(userProfile, signInData.session?.access_token);
                         setStep('ONBOARDING_LEAGUES');
                     }

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, TrendingUp, Hash, Users, ArrowRight, Shield, CheckCircle2, Plus, X, Newspaper, Trophy, Calculator, DollarSign, Trash2, Calendar, LayoutGrid, Sparkles, UserPlus, MessageCircle, Flame, Check } from 'lucide-react';
 import { useSports } from '../context/SportsContext';
 import { useNavigate } from 'react-router-dom';
-import { Match, NewsStory, MatchStatus } from '../types';
+import { Match, NewsStory } from '../types';
 import supabase from '../services/supabaseClient';
 
 interface League {
@@ -13,72 +13,34 @@ interface League {
   country: string | null;
 }
 
-// Generate trending topics from actual matches
-const generateTrendingTopics = (matches: Match[]) => {
-  const liveMatches = matches.filter(m => m.status === MatchStatus.LIVE);
-  const recentFinished = matches.filter(m => m.status === MatchStatus.FINISHED).slice(0, 3);
-  
-  const topics: { id: string; name: string; category: string; posts: string; isLive: boolean }[] = [];
-  
-  // Add live matches as trending
-  liveMatches.slice(0, 2).forEach((m, i) => {
-    topics.push({
-      id: `live-${i}`,
-      name: `${m.homeTeam.name} vs ${m.awayTeam.name}`,
-      category: m.league || 'Football',
-      posts: `${Math.floor(Math.random() * 50 + 10)}K`,
-      isLive: true,
-    });
-  });
-  
-  // Add high-scoring finished matches
-  recentFinished.forEach((m, i) => {
-    const totalGoals = (m.score?.home || 0) + (m.score?.away || 0);
-    if (totalGoals >= 3) {
-      topics.push({
-        id: `result-${i}`,
-        name: `${m.homeTeam.name} ${m.score?.home}-${m.score?.away} ${m.awayTeam.name}`,
-        category: m.league || 'Football',
-        posts: `${Math.floor(Math.random() * 30 + 5)}K`,
-        isLive: false,
-      });
-    }
-  });
-  
-  // Fallback topics if no matches
-  if (topics.length < 2) {
-    topics.push(
-      { id: 'default-1', name: 'Champions League Action', category: 'UCL', posts: '45K', isLive: false },
-      { id: 'default-2', name: 'Premier League Updates', category: 'Football', posts: '32K', isLive: false }
-    );
-  }
-  
-  return topics.slice(0, 4);
-};
+const TRENDING_TOPICS = [
+    { id: '1', name: 'LeBron Trade Rumors', category: 'NBA', posts: '12K' },
+    { id: '2', name: 'UFC 300 Fight Card', category: 'MMA', posts: '8.5K' },
+    { id: '3', name: 'Mbappe Real Madrid', category: 'Soccer', posts: '45K' },
+    { id: '4', name: 'NFL Draft 2024', category: 'NFL', posts: '32K' },
+];
 
-const SUGGESTED_SOURCES = [
+const SUGGESTED_ACCOUNTS = [
     { id: 'a1', name: 'Fabrizio Romano', handle: '@FabrizioRomano', avatar: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/Fabrizio_Romano_2021.jpg', type: 'Journalist' },
-    { id: 'a2', name: 'The Athletic', handle: '@TheAthletic', avatar: 'https://upload.wikimedia.org/wikipedia/commons/1/1a/The_Athletic_Logo.png', type: 'Media' },
-    { id: 'a3', name: 'ESPN FC', handle: '@ESPNFC', avatar: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/ESPN_wordmark.svg', type: 'Media' },
-    { id: 'a4', name: 'Sky Sports', handle: '@SkySports', avatar: 'https://upload.wikimedia.org/wikipedia/en/a/a6/Sky_Sports_logo_2020.svg', type: 'Media' },
+    { id: 'a2', name: 'Wojnarowski', handle: '@wojespn', avatar: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Adrian_Wojnarowski_%2851419747713%29_%28cropped%29.jpg/800px-Adrian_Wojnarowski_%2851419747713%29_%28cropped%29.jpg', type: 'Insider' },
+    { id: 'a3', name: 'Sheena AI', handle: '@sheena_sports', avatar: 'https://ui-avatars.com/api/?name=AI&background=6366F1&color=fff', type: 'Official Bot' },
+    { id: 'a4', name: 'Bleacher Report', handle: '@BleacherReport', avatar: 'https://upload.wikimedia.org/wikipedia/commons/c/c9/Bleacher_Report_logo.png', type: 'Media' },
 ];
 
 const COMMUNITIES = [
-    { id: 'c1', name: 'Football Fanatics', members: '145K', icon: '⚽' },
-    { id: 'c2', name: 'Basketball Talk', members: '82K', icon: '🏀' },
-    { id: 'c3', name: 'Betting Tips', members: '210K', icon: '📊' },
+    { id: 'c1', name: 'Gunners Talk', members: '145K', icon: '🔴' },
+    { id: 'c2', name: 'NBA Top Shot', members: '82K', icon: '🏀' },
+    { id: 'c3', name: 'FPL Grinders', members: '210K', icon: '📊' },
 ];
 
-// Default leagues (fallback) - expanded with multi-sport
+// Default leagues (fallback)
 const DEFAULT_LEAGUES = [
     { code: 'PL', name: 'Premier League', logo_url: 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg', color: 'bg-purple-900', accent: 'border-purple-500' },
-    { code: 'CL', name: 'Champions League', logo_url: 'https://upload.wikimedia.org/wikipedia/en/b/bf/UEFA_Champions_League_logo_2.svg', color: 'bg-slate-900', accent: 'border-slate-400' },
-    { code: 'NBA', name: 'NBA', logo_url: 'https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg', color: 'bg-orange-900', accent: 'border-orange-500' },
     { code: 'BL1', name: 'Bundesliga', logo_url: 'https://upload.wikimedia.org/wikipedia/en/d/df/Bundesliga_logo_%282017%29.svg', color: 'bg-red-900', accent: 'border-red-500' },
-    { code: 'PD', name: 'La Liga', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg', color: 'bg-orange-800', accent: 'border-orange-400' },
     { code: 'SA', name: 'Serie A', logo_url: 'https://upload.wikimedia.org/wikipedia/en/e/e1/Serie_A_logo_%282019%29.svg', color: 'bg-blue-900', accent: 'border-blue-500' },
+    { code: 'PD', name: 'La Liga', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/LaLiga_logo_2023.svg', color: 'bg-orange-900', accent: 'border-orange-500' },
     { code: 'FL1', name: 'Ligue 1', logo_url: 'https://upload.wikimedia.org/wikipedia/en/b/ba/Ligue_1_Uber_Eats.svg', color: 'bg-blue-800', accent: 'border-blue-400' },
-    { code: 'F1', name: 'Formula 1', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg', color: 'bg-red-800', accent: 'border-red-500' },
+    { code: 'CL', name: 'Champions League', logo_url: 'https://upload.wikimedia.org/wikipedia/en/b/bf/UEFA_Champions_League_logo_2.svg', color: 'bg-slate-900', accent: 'border-slate-400' },
 ];
 
 const getLeagueStyle = (code: string) => {
@@ -90,10 +52,6 @@ const getLeagueStyle = (code: string) => {
         'FL1': { color: 'bg-blue-800', accent: 'border-blue-400' },
         'CL': { color: 'bg-slate-900', accent: 'border-slate-400' },
         'EL': { color: 'bg-orange-800', accent: 'border-orange-400' },
-        'NBA': { color: 'bg-orange-900', accent: 'border-orange-500' },
-        'F1': { color: 'bg-red-800', accent: 'border-red-500' },
-        'UFC': { color: 'bg-red-900', accent: 'border-red-600' },
-        'NHL': { color: 'bg-blue-900', accent: 'border-blue-400' },
     };
     return styles[code] || { color: 'bg-gray-900', accent: 'border-gray-500' };
 };
@@ -106,29 +64,17 @@ export const ExplorePage: React.FC = () => {
   const [wager, setWager] = useState<number>(10);
   const [leagues, setLeagues] = useState(DEFAULT_LEAGUES);
 
-  // Fetch leagues from database with priority ordering
+  // Fetch leagues from database
   useEffect(() => {
     const fetchLeagues = async () => {
       try {
         const { data, error } = await supabase
           .from('leagues')
-          .select('id, name, code, logo_url, country, sport')
-          .order('name', { ascending: true })
-          .limit(20);
+          .select('id, name, code, logo_url, country')
+          .limit(6);
         
         if (!error && data && data.length > 0) {
-          // Prioritize popular leagues
-          const priorityOrder = ['PL', 'CL', 'NBA', 'BL1', 'PD', 'SA', 'FL1', 'EL', 'F1'];
-          const sorted = [...data].sort((a, b) => {
-            const aIdx = priorityOrder.indexOf(a.code || '');
-            const bIdx = priorityOrder.indexOf(b.code || '');
-            if (aIdx === -1 && bIdx === -1) return 0;
-            if (aIdx === -1) return 1;
-            if (bIdx === -1) return -1;
-            return aIdx - bIdx;
-          });
-          
-          const mappedLeagues = sorted.slice(0, 8).map(l => ({
+          const mappedLeagues = data.map(l => ({
             code: l.code || l.id,
             name: l.name,
             logo_url: l.logo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=6366F1&color=fff`,
@@ -148,14 +94,15 @@ export const ExplorePage: React.FC = () => {
       if (!searchTerm) return null;
       const term = searchTerm.toLowerCase();
 
-      const matchedMatches = (matches || []).filter(m => 
-        m.homeTeam?.name?.toLowerCase().includes(term) || 
-        m.awayTeam?.name?.toLowerCase().includes(term) ||
-        m.league?.toLowerCase().includes(term)
+      const safeMatchesForSearch = Array.isArray(matches) ? matches : [];
+      const matchedMatches = safeMatchesForSearch.filter(m =>
+        m.homeTeam.name.toLowerCase().includes(term) ||
+        m.awayTeam.name.toLowerCase().includes(term) ||
+        m.league.toLowerCase().includes(term)
       ).slice(0, 5);
 
-      const matchedNews = (news || []).filter(n => 
-        n.title?.toLowerCase().includes(term) ||
+      const matchedNews = news.filter(n => 
+        n.title.toLowerCase().includes(term) ||
         n.tags?.some(t => t.toLowerCase().includes(term))
       ).slice(0, 5);
 
@@ -163,10 +110,11 @@ export const ExplorePage: React.FC = () => {
   }, [searchTerm, matches, news]);
 
   // --- ACCUMULATOR LOGIC ---
-  const sureBets = matches.filter(m => {
+  const safeMatchesForAcca = Array.isArray(matches) ? matches : [];
+  const sureBets = safeMatchesForAcca.filter(m => {
       if (!m.prediction) return false;
       const confidence = m.prediction.confidence || 0;
-      return confidence > 65; 
+      return confidence > 65;
   });
 
   const accaStats = useMemo(() => {
@@ -444,7 +392,7 @@ export const ExplorePage: React.FC = () => {
                             <h2 className="font-condensed font-black text-xl uppercase italic tracking-wide">Trending Now</h2>
                         </div>
                         <div className="grid gap-2">
-                            {generateTrendingTopics(matches).map((topic, idx) => (
+                            {TRENDING_TOPICS.map((topic, idx) => (
                                 <div key={topic.id} onClick={() => setSearchTerm(topic.name)} className="flex items-center justify-between p-4 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] cursor-pointer hover:bg-[#252525] group transition-colors">
                                     <div className="flex items-center gap-4">
                                         <span className="font-mono font-bold text-gray-600 text-lg group-hover:text-white transition-colors">0{idx + 1}</span>
@@ -469,7 +417,7 @@ export const ExplorePage: React.FC = () => {
                         </div>
                         
                         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory">
-                            {SUGGESTED_SOURCES.map(account => {
+                            {SUGGESTED_ACCOUNTS.map(account => {
                                 const followed = isFollowing(account.name);
                                 return (
                                     <div onClick={() => navigate(`/source/${account.name}`)} key={account.id} className="min-w-[160px] bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 flex flex-col items-center text-center snap-center hover:border-gray-500 transition-colors cursor-pointer group">

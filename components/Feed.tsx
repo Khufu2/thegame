@@ -58,7 +58,7 @@ const WeatherIcon = ({ condition, size = 14 }: { condition?: string, size?: numb
 
 export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOpenPweza, onTailBet }) => {
   const { user } = useSports(); 
-  const [activeLeague, setActiveLeague] = useState("All"); // Default to All to show all matches
+  const [activeLeague, setActiveLeague] = useState("For You"); // Default to For You
   const navigate = useNavigate();
   const dataSaver = user?.preferences.dataSaver || false;
 
@@ -66,10 +66,11 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   const { filteredStreamItems, topPicks, valuePicks, featuredMatch } = useMemo(() => {
     const isAll = activeLeague === "All";
     const isForYou = activeLeague === "For You";
-    
-    // Get Matches for this view (safeguard against undefined)
-    const safeMatches = matches || [];
-    const safeItems = items || [];
+
+    // Safety check: ensure matches is an array
+    const safeMatches = Array.isArray(matches) ? matches : [];
+
+    // Get Matches for this view
     const allMatches = safeMatches.filter(m => {
         if (isAll) return true;
         if (isForYou) {
@@ -100,7 +101,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
     // 4. Filter the main mixed stream
     const shownMatchIds = new Set([featured?.id, ...top.map(m => m.id), ...value.map(m => m.id)]);
     
-    const fItems = safeItems.filter(item => {
+    const fItems = items.filter(item => {
         if (!item) return false;
         
         // League Filter
@@ -154,8 +155,9 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   }, [activeLeague, items, matches, user]);
 
   // LIVE TICKER MATCHES
-  const liveTickerMatches = (matches || []).filter(m => m.status === MatchStatus.LIVE);
-  const demoTickerMatches = liveTickerMatches.length > 0 ? liveTickerMatches : (matches || []).slice(0, 3);
+  const safeMatchesForTicker = Array.isArray(matches) ? matches : [];
+  const liveTickerMatches = safeMatchesForTicker.filter(m => m.status === MatchStatus.LIVE);
+  const demoTickerMatches = liveTickerMatches.length > 0 ? liveTickerMatches : safeMatchesForTicker.slice(0, 3);
   
   const handleMatchClick = (id: string) => {
       navigate(`/match/${id}`);

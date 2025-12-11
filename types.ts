@@ -235,12 +235,28 @@ export interface Match {
 }
 
 // --- RICH CONTENT BLOCKS ---
-export type ArticleBlock = 
+export type ArticleBlock =
   | { type: 'TEXT'; content: string }
   | { type: 'IMAGE'; url: string; caption?: string }
   | { type: 'TWEET'; id: string; url?: string; author: string; handle: string; text: string; avatar?: string }
   | { type: 'QUOTE'; text: string; author: string; role?: string }
-  | { type: 'VIDEO'; url: string; thumbnail: string; title?: string };
+  | { type: 'VIDEO'; url: string; thumbnail: string; title?: string }
+  | { type: 'LINK'; title: string; url: string; description?: string };
+
+export interface NewsEntity {
+  id: string;
+  type: 'team' | 'league' | 'player';
+  entityId: string;
+  name: string;
+  confidence?: number;
+}
+
+export interface NewsContentTag {
+  id: string;
+  type: 'category' | 'sentiment' | 'topic';
+  value: string;
+  confidence?: number;
+}
 
 export interface NewsStory {
   id: string;
@@ -256,13 +272,21 @@ export interface NewsStory {
   comments: number;
   isHero?: boolean;
   tags?: string[];
-  
+
   // UPDATED: Rich Content
-  contentBlocks?: ArticleBlock[]; 
+  contentBlocks?: ArticleBlock[];
   relatedIds?: string[]; // IDs of related stories
-  
+
+  // NEW: Entity relationships and content tagging
+  entities?: NewsEntity[];
+  contentTags?: NewsContentTag[];
+  language?: string;
+  wordCount?: number;
+  readingTimeMinutes?: number;
+  excerpt?: string;
+
   // Legacy support (optional)
-  body?: string[]; 
+  body?: string[];
 }
 
 // NEW: System Intelligence Alerts for the Feed

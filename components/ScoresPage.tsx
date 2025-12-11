@@ -79,7 +79,8 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
 
     // Filter by Status
     if (filter === 'LIVE') {
-        filtered = matches.filter(m => m.status === MatchStatus.LIVE);
+        const safeMatches = Array.isArray(matches) ? matches : [];
+        filtered = safeMatches.filter(m => m.status === MatchStatus.LIVE);
     }
 
     // Filter by Date - always apply date filter
@@ -166,7 +167,7 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
           {/* Filter Tabs (All / Live) */}
           <div className="flex items-center gap-1 p-2 bg-[#000000]">
               <FilterTab label="All Games" active={filter === 'ALL'} onClick={() => setFilter('ALL')} />
-              <FilterTab label="Live" active={filter === 'LIVE'} count={matches.filter(m => m.status === 'LIVE').length} onClick={() => setFilter('LIVE')} isLive />
+              <FilterTab label="Live" active={filter === 'LIVE'} count={Array.isArray(matches) ? matches.filter(m => m.status === 'LIVE').length : 0} onClick={() => setFilter('LIVE')} isLive />
               <FilterTab label="Favorites" active={filter === 'FAVORITES'} icon={<Star size={10} />} onClick={() => setFilter('FAVORITES')} />
           </div>
       </div>

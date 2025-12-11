@@ -162,7 +162,18 @@ OUTPUT JSON FORMAT:
     { "type": "TEXT", "content": "..." },
     { "type": "QUOTE", "text": "...", "author": "..." }
   ],
-  "socialCaption": "Short, viral tweet with hashtags"
+  "socialCaption": "Short, viral tweet with hashtags",
+  "entities": [
+    { "type": "team", "entityId": "team-id", "name": "Team Name", "confidence": 0.95 }
+  ],
+  "contentTags": [
+    { "type": "category", "value": "transfer", "confidence": 0.88 },
+    { "type": "topic", "value": "breaking", "confidence": 0.92 }
+  ],
+  "language": "${language.toLowerCase()}",
+  "wordCount": 450,
+  "readingTimeMinutes": 2,
+  "excerpt": "Short excerpt for previews..."
 }`;
 
     // Generate with Gemini
@@ -180,12 +191,55 @@ OUTPUT JSON FORMAT:
         source: "AI News Agent",
         type: "news",
         sentiment: tone === "HYPE" ? "positive" : tone === "RUMOR" ? "neutral" : "neutral",
+        language: generated.language || language.toLowerCase(),
+        word_count: generated.wordCount,
+        reading_time_minutes: generated.readingTimeMinutes,
+        excerpt: generated.excerpt,
       })
       .select()
       .single();
 
     if (feedError) {
       console.error("Error saving to feeds:", feedError);
+    } else if (feed && generated.entities) {
+      // Save entities
+      const entitiesToInsert = generated.entities.map(entity => ({
+        feed_id: feed.id,
+        entity_type: entity.type,
+        entity_id: entity.entityId,
+        entity_name: entity.name,
+        confidence: entity.confidence || 1.0,
+      }));
+
+      if (entitiesToInsert.length > 0) {
+        const { error: entitiesError } = await supabase
+          .from("news_entities")
+          .insert(entitiesToInsert);
+
+        if (entitiesError) {
+          console.error("Error saving entities:", entitiesError);
+        }
+      }
+
+      // Save content tags
+      if (generated.contentTags) {
+        const tagsToInsert = generated.contentTags.map(tag => ({
+          feed_id: feed.id,
+          tag_type: tag.type,
+          tag_value: tag.value,
+          confidence: tag.confidence || 1.0,
+        }));
+
+        if (tagsToInsert.length > 0) {
+          const { error: tagsError } = await supabase
+            .from("news_content_tags")
+            .insert(tagsToInsert);
+
+          if (tagsError) {
+            console.error("Error saving content tags:", tagsError);
+          }
+        }
+      }
     }
 
     return new Response(
