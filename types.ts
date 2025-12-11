@@ -416,10 +416,10 @@ export interface SportsContextType {
     triggerFlashAlert: (alert: FlashAlert) => void;
 
     // Admin / CMS Actions
-    addNewsStory: (story: NewsStory) => void;
-    addSystemAlert: (alert: SystemAlert) => void;
-    deleteNewsStory: (id: string) => void; // NEW
-    deleteSystemAlert: (id: string) => void; // NEW
+    addNewsStory: (story: NewsStory) => Promise<void>;
+    addSystemAlert: (alert: SystemAlert) => Promise<void>;
+    deleteNewsStory: (id: string) => void;
+    deleteSystemAlert: (id: string) => void;
     
     isPwezaOpen: boolean;
     pwezaPrompt: string | null;

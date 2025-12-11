@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSports } from '../context/SportsContext';
 import { NewsStory, SystemAlert, ArticleBlock, MatchStatus } from '../types';
 import { generateMatchNews, shareExternalNews } from '../services/newsAgentService';
-import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin, ExternalLink, Newspaper } from 'lucide-react';
+import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin, ExternalLink, Newspaper, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import supabase from '../services/supabaseClient';
 
 // Popular sports news sources
 const NEWS_SOURCES = [
@@ -18,6 +19,45 @@ export const AdminPage: React.FC = () => {
     const { addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert, user, matches, news, alerts } = useSports();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'SHARE_NEWS' | 'MANAGE'>('NEWS');
+    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+    const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+
+    // Check admin status from database
+    useEffect(() => {
+        const checkAdminStatus = async () => {
+            setIsCheckingAdmin(true);
+            try {
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                
+                if (!authUser) {
+                    setIsAdmin(false);
+                    setIsCheckingAdmin(false);
+                    return;
+                }
+
+                // Check if user has admin role in user_roles table
+                const { data, error } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', authUser.id)
+                    .eq('role', 'admin')
+                    .single();
+
+                if (error || !data) {
+                    // Also check legacy isAdmin property as fallback
+                    setIsAdmin(user?.isAdmin || false);
+                } else {
+                    setIsAdmin(true);
+                }
+            } catch (err) {
+                console.error('Error checking admin status:', err);
+                setIsAdmin(user?.isAdmin || false);
+            }
+            setIsCheckingAdmin(false);
+        };
+
+        checkAdminStatus();
+    }, [user]);
 
     // --- NEWS STATE ---
     const [newsTitle, setNewsTitle] = useState('');
@@ -65,7 +105,18 @@ export const AdminPage: React.FC = () => {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('JOURNALIST');
 
-    if (!user?.isAdmin) {
+    if (isCheckingAdmin) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <div className="text-center">
+                    <Loader2 size={48} className="text-white mx-auto mb-4 animate-spin" />
+                    <p className="text-gray-500">Verifying access...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isAdmin) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center">
                 <div className="text-center">
@@ -77,6 +128,7 @@ export const AdminPage: React.FC = () => {
             </div>
         );
     }
+
 
     const handleAddBlock = (type: ArticleBlock['type']) => {
         let newBlock: ArticleBlock;
@@ -99,7 +151,7 @@ export const AdminPage: React.FC = () => {
         setBlocks(blocks.filter((_, i) => i !== index));
     };
 
-    const publishNews = () => {
+    const publishNews = async () => {
         const story: NewsStory = {
             id: `news_${Date.now()}`,
             type: 'NEWS',
@@ -113,12 +165,12 @@ export const AdminPage: React.FC = () => {
             tags: [newsTag],
             contentBlocks: blocks
         };
-        addNewsStory(story);
+        await addNewsStory(story);
         window.alert('Story Published to Feed');
         navigate('/');
     };
 
-    const publishAlert = () => {
+    const publishAlert = async () => {
         const newAlert: SystemAlert = {
             id: `alert_${Date.now()}`,
             type: 'SYSTEM_ALERT',
@@ -130,7 +182,7 @@ export const AdminPage: React.FC = () => {
             timestamp: 'Just Now',
             signalStrength: 'HIGH'
         };
-        addSystemAlert(newAlert); 
+        await addSystemAlert(newAlert); 
         let msg = 'Alert Broadcasted to War Room';
         if (broadcastToBots) msg += ' & Pushed to Telegram/WhatsApp';
         window.alert(msg);
@@ -197,7 +249,7 @@ export const AdminPage: React.FC = () => {
         }
     };
 
-    const handleShareLink = () => {
+    const handleShareLink = async () => {
         if (!linkTitle || !linkUrl) {
             alert("Please enter both title and URL");
             return;
@@ -224,7 +276,7 @@ export const AdminPage: React.FC = () => {
             contentBlocks: [linkBlock]
         };
 
-        addNewsStory(story);
+        await addNewsStory(story);
         alert('Link shared successfully!');
 
         // Reset form
