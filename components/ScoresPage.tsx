@@ -75,12 +75,13 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
 
   // 1. Filter & Group Matches
   const groupedMatches = useMemo(() => {
-    let filtered = matches;
+    // Ensure matches is always an array
+    const safeMatches = Array.isArray(matches) ? matches : [];
+    let filtered = safeMatches;
 
     // Filter by Status
     if (filter === 'LIVE') {
-        const safeMatches = Array.isArray(matches) ? matches : [];
-        filtered = safeMatches.filter(m => m.status === MatchStatus.LIVE);
+        filtered = filtered.filter(m => m.status === MatchStatus.LIVE);
     }
 
     // Filter by Date - always apply date filter
