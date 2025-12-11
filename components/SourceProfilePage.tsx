@@ -17,7 +17,7 @@ export const SourceProfilePage: React.FC = () => {
     
     // Filter news for this source
     const sourceNews = useMemo(() => {
-        return news.filter(n => n.source === sourceName || n.author === sourceName);
+        return (news || []).filter(n => n.source === sourceName || n.author === sourceName);
     }, [news, sourceName]);
 
     const isFollowing = user?.preferences.followedSources?.includes(sourceName) || false;
