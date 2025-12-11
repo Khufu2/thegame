@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { supabase } from '@/services/supabaseClient';
+import { supabase } from '../src/integrations/supabase/client';
 
 export interface Team {
   id: string;
