@@ -67,8 +67,10 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
     const isAll = activeLeague === "All";
     const isForYou = activeLeague === "For You";
     
-    // Get Matches for this view
-    const allMatches = matches.filter(m => {
+    // Get Matches for this view (safeguard against undefined)
+    const safeMatches = matches || [];
+    const safeItems = items || [];
+    const allMatches = safeMatches.filter(m => {
         if (isAll) return true;
         if (isForYou) {
              // CRITICAL: Strictly obey user preferences
@@ -98,7 +100,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
     // 4. Filter the main mixed stream
     const shownMatchIds = new Set([featured?.id, ...top.map(m => m.id), ...value.map(m => m.id)]);
     
-    const fItems = items.filter(item => {
+    const fItems = safeItems.filter(item => {
         if (!item) return false;
         
         // League Filter
@@ -152,8 +154,8 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   }, [activeLeague, items, matches, user]);
 
   // LIVE TICKER MATCHES
-  const liveTickerMatches = matches.filter(m => m.status === MatchStatus.LIVE);
-  const demoTickerMatches = liveTickerMatches.length > 0 ? liveTickerMatches : matches.slice(0, 3);
+  const liveTickerMatches = (matches || []).filter(m => m.status === MatchStatus.LIVE);
+  const demoTickerMatches = liveTickerMatches.length > 0 ? liveTickerMatches : (matches || []).slice(0, 3);
   
   const handleMatchClick = (id: string) => {
       navigate(`/match/${id}`);
