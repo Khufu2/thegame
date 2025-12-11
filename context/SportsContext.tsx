@@ -69,6 +69,12 @@ export interface User {
   };
 }
 
+interface BetSlipItem {
+  matchId: string;
+  selection: string;
+  odds: number;
+}
+
 interface SportsContextType {
   matches: Match[];
   feed: FeedItem[];
@@ -76,9 +82,12 @@ interface SportsContextType {
   loading: boolean;
   error: string | null;
   user: User | null;
+  betSlip: BetSlipItem[];
   refreshMatches: () => Promise<void>;
   refreshFeed: () => Promise<void>;
   getMatchById: (id: string) => Match | undefined;
+  addComment: (matchId: string, comment: string) => void;
+  logout: () => void;
 }
 
 const SportsContext = createContext<SportsContextType | undefined>(undefined);
@@ -98,7 +107,8 @@ export function SportsProvider({ children }: { children: ReactNode }) {
   const [leagues] = useState<League[]>(DEFAULT_LEAGUES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [user] = useState<User | null>({
+  const [betSlip, setBetSlip] = useState<BetSlipItem[]>([]);
+  const [user, setUser] = useState<User | null>({
     id: 'guest',
     preferences: {
       favoriteLeagues: ['PL', 'LaLiga', 'SA', 'BL1'],
@@ -107,6 +117,14 @@ export function SportsProvider({ children }: { children: ReactNode }) {
       dataSaver: false
     }
   });
+
+  const addComment = useCallback((matchId: string, comment: string) => {
+    console.log('Adding comment to match:', matchId, comment);
+  }, []);
+
+  const logout = useCallback(() => {
+    setUser(null);
+  }, []);
 
   const fetchMatches = useCallback(async () => {
     try {
@@ -334,9 +352,12 @@ export function SportsProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       user,
+      betSlip,
       refreshMatches,
       refreshFeed,
-      getMatchById
+      getMatchById,
+      addComment,
+      logout
     }}>
       {children}
     </SportsContext.Provider>
