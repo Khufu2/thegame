@@ -18,6 +18,9 @@ verify_jwt = false
 [functions.fetch-odds-sportsdata]
 verify_jwt = false
 
+[functions.fetch-odds-theodds]
+verify_jwt = false
+
 [functions.fetch-nba-games]
 verify_jwt = false
 
@@ -40,6 +43,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.fetch-matches]
+verify_jwt = false
+
+[functions.fetch-matches-apifootball]
+verify_jwt = false
+
+[functions.populate-leagues]
 verify_jwt = false
 
 [functions.search-news]
@@ -82,4 +91,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-standings]
+verify_jwt = false
+
+[functions.enrich-match-details]
 verify_jwt = false
