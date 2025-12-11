@@ -2,18 +2,21 @@ name: Sync Odds
 
 on:
   schedule:
-    - cron: "0 */2 * * *"
+    # Every 3 hours
+    - cron: "0 */3 * * *"
   workflow_dispatch:
 
 jobs:
-  trigger:
+  fetch-odds:
     runs-on: ubuntu-latest
     steps:
-      - name: Refresh odds via SportsData.io
+      - name: Fetch odds from The Odds API
         run: |
           set -e
-          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-odds-sportsdata" \
+          echo "Fetching odds from The Odds API..."
+          curl --fail -sS -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-odds-theodds" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json"
-
+            -H "Content-Type: application/json" \
+            -d '{"sports": ["soccer_epl", "soccer_uefa_champs_league", "basketball_nba"]}'
+          echo "✅ Odds synced successfully"

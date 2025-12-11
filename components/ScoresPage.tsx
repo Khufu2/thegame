@@ -20,42 +20,58 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
    const [filter, setFilter] = useState<'ALL' | 'LIVE' | 'FAVORITES'>('ALL');
    const [activeDate, setActiveDate] = useState('Today');
 
-   // Generate dynamic dates based on actual matches with timezone support
-   const generateDynamicDates = () => {
+   // Generate date range like Bleacher Report / 365Scores
+   const generateDateRange = () => {
        const now = new Date();
-       const userTimezoneOffset = now.getTimezoneOffset() * 60000; // in milliseconds
-       const today = new Date(now.getTime() - userTimezoneOffset); // Adjust to user's timezone
-       today.setHours(0, 0, 0, 0); // Start of day in user's timezone
-
-       const dates = [
-           { label: 'YEST', date: 'Yesterday', dateObj: new Date(today.getTime() - 24 * 60 * 60 * 1000) },
-           { label: 'TODAY', date: 'Today', dateObj: today, active: true },
-           { label: 'TOM', date: 'Tomorrow', dateObj: new Date(today.getTime() + 24 * 60 * 60 * 1000) },
-       ];
-
-       // Add upcoming dates if there are matches
-       const matchDates = matches
-           .map(m => m.time ? new Date(m.time + 'Z') : null) // Assume UTC from backend
-           .filter(d => d && d > now)
-           .sort((a, b) => a!.getTime() - b!.getTime());
-
-       if (matchDates.length > 0) {
-           const uniqueDates = [...new Set(matchDates.map(d => {
-               const userDate = new Date(d!.getTime() - userTimezoneOffset);
-               return userDate.toDateString();
-           }))];
-           uniqueDates.slice(0, 3).forEach(dateStr => {
-               const dateObj = new Date(dateStr as string);
-               const label = dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-               const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-               dates.push({ label, date: dateLabel, dateObj });
-           });
+       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+       
+       const dates: { label: string; date: string; dateObj: Date; isToday?: boolean }[] = [];
+       
+       // Past 3 days + Today + Next 4 days = 8 days total
+       for (let i = -3; i <= 4; i++) {
+           const dateObj = new Date(today.getTime() + i * 24 * 60 * 60 * 1000);
+           let label: string;
+           let dateLabel: string;
+           
+           if (i === -1) {
+               label = 'YEST';
+               dateLabel = 'Yesterday';
+           } else if (i === 0) {
+               label = 'TODAY';
+               dateLabel = 'Today';
+           } else if (i === 1) {
+               label = 'TOM';
+               dateLabel = 'Tomorrow';
+           } else {
+               label = dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3);
+               dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+           }
+           
+           dates.push({ label, date: dateLabel, dateObj, isToday: i === 0 });
        }
-
+       
        return dates;
    };
 
-   const dynamicDates = generateDynamicDates();
+   const dynamicDates = generateDateRange();
+
+  // Helper to parse match time safely
+  const parseMatchDate = (timeStr: string | undefined | null): Date | null => {
+    if (!timeStr) return null;
+    try {
+      let date: Date;
+      if (timeStr.includes('T')) {
+        date = new Date(timeStr.endsWith('Z') ? timeStr : timeStr + 'Z');
+      } else if (timeStr.includes('-') && timeStr.length === 10) {
+        date = new Date(timeStr + 'T12:00:00Z');
+      } else {
+        date = new Date(timeStr);
+      }
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  };
 
   // 1. Filter & Group Matches
   const groupedMatches = useMemo(() => {
@@ -66,18 +82,18 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
         filtered = matches.filter(m => m.status === MatchStatus.LIVE);
     }
 
-    // Filter by Date
-    if (activeDate !== 'Today') {
-        const targetDate = dynamicDates.find(d => d.date === activeDate)?.dateObj;
-        if (targetDate) {
-            filtered = filtered.filter(match => {
-                if (!match.time) return false;
-                const matchDate = new Date(match.time + 'Z'); // UTC from backend
-                const userTimezoneOffset = new Date().getTimezoneOffset() * 60000;
-                const userMatchDate = new Date(matchDate.getTime() - userTimezoneOffset);
-                return userMatchDate.toDateString() === targetDate.toDateString();
-            });
-        }
+    // Filter by Date - always apply date filter
+    const targetDateEntry = dynamicDates.find(d => d.date === activeDate);
+    if (targetDateEntry) {
+        const targetDate = targetDateEntry.dateObj;
+        filtered = filtered.filter(match => {
+            const matchDate = parseMatchDate(match.time);
+            if (!matchDate) return activeDate === 'Today'; // Show timeless matches on Today
+            
+            const matchLocal = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
+            const targetLocal = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+            return matchLocal.getTime() === targetLocal.getTime();
+        });
     }
 
     // Group by League and sort within each league
@@ -89,12 +105,12 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
         groups[match.league].push(match);
     });
 
-    // Sort matches within each league by kickoff time (timezone adjusted)
+    // Sort matches within each league by kickoff time
     Object.keys(groups).forEach(league => {
         groups[league].sort((a, b) => {
-            const timeA = a.time ? new Date(a.time + 'Z').getTime() : 0; // UTC from backend
-            const timeB = b.time ? new Date(b.time + 'Z').getTime() : 0;
-            return timeA - timeB;
+            const dateA = parseMatchDate(a.time);
+            const dateB = parseMatchDate(b.time);
+            return (dateA?.getTime() ?? 0) - (dateB?.getTime() ?? 0);
         });
     });
 
@@ -268,19 +284,35 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
     const isWinnerAway = homeScore != null && awayScore != null && awayScore > homeScore;
 
     // Convert UTC time to user's local timezone
-    const formatLocalTime = (utcTimeStr: string) => {
-        if (!utcTimeStr) return '';
+    const formatLocalTime = (utcTimeStr: string | undefined | null): string => {
+        if (!utcTimeStr) return '--:--';
         try {
-            // Handle different time formats from backend
             let utcDate: Date;
+            
+            // Handle ISO format like "2024-12-05T19:30:00" or "2024-12-05T19:30:00Z"
             if (utcTimeStr.includes('T')) {
-                // ISO format like "2024-12-05T19:30:00"
-                utcDate = new Date(utcTimeStr + (utcTimeStr.includes('Z') ? '' : 'Z'));
-            } else {
-                // Simple time format like "19:30"
+                utcDate = new Date(utcTimeStr.endsWith('Z') ? utcTimeStr : utcTimeStr + 'Z');
+            } 
+            // Handle simple time format like "19:30"
+            else if (utcTimeStr.includes(':') && utcTimeStr.length <= 5) {
                 const today = new Date();
                 const [hours, minutes] = utcTimeStr.split(':').map(Number);
+                if (isNaN(hours) || isNaN(minutes)) return utcTimeStr;
                 utcDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, 0));
+            }
+            // Handle date string like "2024-12-05"
+            else if (utcTimeStr.includes('-') && utcTimeStr.length === 10) {
+                return '--:--';
+            }
+            else {
+                // Try parsing as-is
+                utcDate = new Date(utcTimeStr);
+            }
+
+            // Validate the date
+            if (isNaN(utcDate.getTime())) {
+                console.warn('Invalid date:', utcTimeStr);
+                return '--:--';
             }
 
             return utcDate.toLocaleTimeString('en-GB', {
@@ -290,7 +322,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
             });
         } catch (error) {
             console.warn('Time format error:', utcTimeStr, error);
-            return utcTimeStr;
+            return '--:--';
         }
     };
 
