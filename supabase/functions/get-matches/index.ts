@@ -205,9 +205,16 @@ serve(async (req) => {
 
     console.log('Fetching matches with params:', { league, status, date });
 
+    // By default, fetch matches from 3 days ago to 7 days in future
+    const now = new Date();
+    const defaultStartDate = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const defaultEndDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
     let query = supabase
       .from('matches')
       .select('*')
+      .gte('kickoff_time', `${defaultStartDate}T00:00:00Z`)
+      .lte('kickoff_time', `${defaultEndDate}T23:59:59Z`)
       .order('kickoff_time', { ascending: true });
 
     if (league) {
@@ -227,9 +234,13 @@ serve(async (req) => {
     }
 
     if (date) {
-      const startOfDay = `${date}T00:00:00Z`;
-      const endOfDay = `${date}T23:59:59Z`;
-      query = query.gte('kickoff_time', startOfDay).lte('kickoff_time', endOfDay);
+      // Override default date range if specific date provided
+      query = supabase
+        .from('matches')
+        .select('*')
+        .gte('kickoff_time', `${date}T00:00:00Z`)
+        .lte('kickoff_time', `${date}T23:59:59Z`)
+        .order('kickoff_time', { ascending: true });
     }
 
     const { data: matches, error } = await query.limit(100);
@@ -255,18 +266,25 @@ serve(async (req) => {
         normalizedStatus = 'CANCELLED';
       }
       
+      const homeLogo = match.home_team_json?.crest || match.home_team_json?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.home_team)}&background=1E1E1E&color=fff&bold=true`;
+      const awayLogo = match.away_team_json?.crest || match.away_team_json?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.away_team)}&background=1E1E1E&color=fff&bold=true`;
+      
       const transformed: Record<string, unknown> = {
         ...match,
         status: normalizedStatus,
         homeTeam: {
+          id: match.home_team_id || match.home_team,
           name: match.home_team,
           shortName: match.home_team?.split(' ').slice(0, 2).join(' '),
-          crest: match.home_team_json?.crest || match.home_team_json?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.home_team)}&background=random`
+          crest: homeLogo,
+          logo: homeLogo
         },
         awayTeam: {
+          id: match.away_team_id || match.away_team,
           name: match.away_team,
           shortName: match.away_team?.split(' ').slice(0, 2).join(' '),
-          crest: match.away_team_json?.crest || match.away_team_json?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.away_team)}&background=random`
+          crest: awayLogo,
+          logo: awayLogo
         },
         score: {
           home: match.home_team_score,
@@ -279,6 +297,7 @@ serve(async (req) => {
         utcDate: match.kickoff_time,
         time: match.kickoff_time,
         kickoff_time: match.kickoff_time,
+        league: match.league || 'Football',
         metadata: match.metadata || {}
       };
 

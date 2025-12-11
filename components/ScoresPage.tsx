@@ -289,9 +289,13 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
         try {
             let utcDate: Date;
             
-            // Handle ISO format like "2024-12-05T19:30:00" or "2024-12-05T19:30:00Z"
-            if (utcTimeStr.includes('T')) {
-                utcDate = new Date(utcTimeStr.endsWith('Z') ? utcTimeStr : utcTimeStr + 'Z');
+            // Handle ISO format with timezone offset like "2024-12-05T19:30:00+00:00"
+            if (utcTimeStr.includes('T') && (utcTimeStr.includes('+') || utcTimeStr.endsWith('Z'))) {
+                utcDate = new Date(utcTimeStr);
+            }
+            // Handle ISO format without timezone like "2024-12-05T19:30:00"
+            else if (utcTimeStr.includes('T')) {
+                utcDate = new Date(utcTimeStr + 'Z');
             } 
             // Handle simple time format like "19:30"
             else if (utcTimeStr.includes(':') && utcTimeStr.length <= 5) {
@@ -302,7 +306,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
             }
             // Handle date string like "2024-12-05"
             else if (utcTimeStr.includes('-') && utcTimeStr.length === 10) {
-                return '--:--';
+                return 'TBD';
             }
             else {
                 // Try parsing as-is
@@ -311,7 +315,6 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
 
             // Validate the date
             if (isNaN(utcDate.getTime())) {
-                console.warn('Invalid date:', utcTimeStr);
                 return '--:--';
             }
 
@@ -320,8 +323,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick, onPwezaClic
                 minute: '2-digit',
                 hour12: false,
             });
-        } catch (error) {
-            console.warn('Time format error:', utcTimeStr, error);
+        } catch {
             return '--:--';
         }
     };

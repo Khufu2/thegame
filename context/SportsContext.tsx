@@ -122,8 +122,14 @@ export function SportsProvider({ children }: { children: ReactNode }) {
     console.log('Adding comment to match:', matchId, comment);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
     setUser(null);
+    window.location.href = '/auth';
   }, []);
 
   const fetchMatches = useCallback(async () => {
