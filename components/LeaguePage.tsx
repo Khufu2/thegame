@@ -52,9 +52,9 @@ export const LeaguePage: React.FC = () => {
     const leagueId = id || 'EPL';
     const theme = getLeagueColors(leagueId);
 
-    // Filter content
-    const leagueMatches = matches.filter(m => m.league === leagueId);
-    const leagueNews = news.filter(n => n.tags?.includes(leagueId));
+    // Filter content - safeguard against undefined
+    const leagueMatches = (matches || []).filter(m => m.league === leagueId);
+    const leagueNews = (news || []).filter(n => n.tags?.includes(leagueId));
 
     return (
         <div className="min-h-screen bg-black text-white pb-24 font-sans">
