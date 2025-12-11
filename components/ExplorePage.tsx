@@ -148,14 +148,14 @@ export const ExplorePage: React.FC = () => {
       if (!searchTerm) return null;
       const term = searchTerm.toLowerCase();
 
-      const matchedMatches = matches.filter(m => 
-        m.homeTeam.name.toLowerCase().includes(term) || 
-        m.awayTeam.name.toLowerCase().includes(term) ||
-        m.league.toLowerCase().includes(term)
+      const matchedMatches = (matches || []).filter(m => 
+        m.homeTeam?.name?.toLowerCase().includes(term) || 
+        m.awayTeam?.name?.toLowerCase().includes(term) ||
+        m.league?.toLowerCase().includes(term)
       ).slice(0, 5);
 
-      const matchedNews = news.filter(n => 
-        n.title.toLowerCase().includes(term) ||
+      const matchedNews = (news || []).filter(n => 
+        n.title?.toLowerCase().includes(term) ||
         n.tags?.some(t => t.toLowerCase().includes(term))
       ).slice(0, 5);
 
