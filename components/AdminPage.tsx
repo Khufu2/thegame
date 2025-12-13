@@ -104,10 +104,12 @@ export const AdminPage: React.FC = () => {
     // --- NEWS STATE ---
     const [newsTitle, setNewsTitle] = useState('');
     const [newsSummary, setNewsSummary] = useState('');
+    const [newsBody, setNewsBody] = useState(''); // Simple body text area
     const [newsImage, setNewsImage] = useState('https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=1000&auto=format&fit=crop');
     const [newsTag, setNewsTag] = useState('NBA');
     const [blocks, setBlocks] = useState<ArticleBlock[]>([]);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [useSimpleMode, setUseSimpleMode] = useState(true); // Default to simple mode
     
     // --- ALERT STATE ---
     const [alertTitle, setAlertTitle] = useState('');
@@ -127,7 +129,8 @@ export const AdminPage: React.FC = () => {
     
     const [aiTone, setAiTone] = useState<'HYPE' | 'RECAP' | 'ANALYTICAL' | 'RUMOR'>('RECAP');
     const [aiLanguage, setAiLanguage] = useState<'ENGLISH' | 'SWAHILI'>('ENGLISH');
-    const [aiPersona, setAiPersona] = useState<'SHEENA' | 'ORACLE' | 'STREET' | 'JOURNALIST'>('SHEENA'); 
+    const [aiPersona, setAiPersona] = useState<'SHEENA' | 'ORACLE' | 'STREET' | 'JOURNALIST'>('SHEENA');
+    const [aiProvider, setAiProvider] = useState<'GEMINI' | 'GROK' | 'OLLAMA'>('GEMINI');
     const [useGrounding, setUseGrounding] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedSocial, setGeneratedSocial] = useState('');
@@ -212,7 +215,15 @@ export const AdminPage: React.FC = () => {
             return;
         }
 
-        if (blocks.length === 0) {
+        let finalBlocks = blocks;
+
+        // If using simple mode, create a TEXT block from the body
+        if (useSimpleMode && newsBody.trim()) {
+            finalBlocks = [{ type: 'TEXT', content: newsBody }];
+        } else if (useSimpleMode && !newsBody.trim()) {
+            alert('Please enter article content in the body field');
+            return;
+        } else if (!useSimpleMode && blocks.length === 0) {
             alert('Please add at least one content block');
             return;
         }
@@ -228,7 +239,7 @@ export const AdminPage: React.FC = () => {
             likes: 0,
             comments: 0,
             tags: [newsTag],
-            contentBlocks: blocks
+            contentBlocks: finalBlocks
         };
         await addNewsStory(story);
         window.alert('Story Published to Feed');
@@ -264,24 +275,34 @@ export const AdminPage: React.FC = () => {
         setIsGenerating(true);
         // Call Service
         const result = await generateMatchNews(
-            match, 
-            generationMode === 'LOCAL' ? `${localLeagueName} (${localCountry})` : customTopic, 
-            aiTone, 
-            aiLanguage, 
-            aiPersona, 
+            match,
+            generationMode === 'LOCAL' ? `${localLeagueName} (${localCountry})` : customTopic,
+            aiTone,
+            aiLanguage,
+            aiPersona,
             useGrounding,
             generationMode === 'LINK' ? externalLink : undefined,
-            generationMode === 'LOCAL' // Is Local Mode?
+            generationMode === 'LOCAL', // Is Local Mode?
+            aiProvider // AI Provider
         );
         setIsGenerating(false);
 
         if (result) {
             setNewsTitle(result.title);
             setNewsSummary(result.summary);
-            setBlocks(result.blocks);
+
+            // If using simple mode, extract text from blocks and put in body
+            if (useSimpleMode && result.blocks && result.blocks.length > 0) {
+                const textBlocks = result.blocks.filter(block => block.type === 'TEXT');
+                const combinedText = textBlocks.map(block => block.content).join('\n\n');
+                setNewsBody(combinedText);
+            } else {
+                setBlocks(result.blocks);
+            }
+
             setNewsTag(generationMode === 'LOCAL' ? localLeagueName : (match ? match.league : 'General'));
             if (result.socialCaption) setGeneratedSocial(result.socialCaption);
-            setActiveTab('NEWS'); 
+            setActiveTab('NEWS');
         } else {
             window.alert("Failed to generate. Ensure API Key is active.");
         }
@@ -446,10 +467,26 @@ export const AdminPage: React.FC = () => {
             } else {
                 contentBlocks = [];
             }
-            setBlocks(contentBlocks);
+
+            // If editing and content blocks exist, switch to advanced mode
+            if (contentBlocks.length > 0) {
+                setUseSimpleMode(false);
+                setBlocks(contentBlocks);
+
+                // If there's only one TEXT block, also populate the simple body for convenience
+                if (contentBlocks.length === 1 && contentBlocks[0].type === 'TEXT') {
+                    setNewsBody(contentBlocks[0].content || '');
+                }
+            } else {
+                setUseSimpleMode(true);
+                setBlocks([]);
+                setNewsBody('');
+            }
         } catch (error) {
             console.warn('Failed to parse content blocks:', error);
             setBlocks([]);
+            setUseSimpleMode(true);
+            setNewsBody('');
         }
 
         setActiveTab('NEWS');
@@ -821,10 +858,22 @@ export const AdminPage: React.FC = () => {
                                      </div>
                                  )}
 
-                                 <div className="grid grid-cols-2 gap-4">
+                                 <div className="grid grid-cols-3 gap-4">
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">AI Provider</label>
+                                         <select
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
+                                            value={aiProvider}
+                                            onChange={(e) => setAiProvider(e.target.value as any)}
+                                         >
+                                             <option value="GEMINI">Gemini (Paid)</option>
+                                             <option value="GROK">Grok (Free)</option>
+                                             <option value="OLLAMA">Ollama (Local)</option>
+                                         </select>
+                                     </div>
                                      <div>
                                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tone</label>
-                                         <select 
+                                         <select
                                             className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
                                             value={aiTone}
                                             onChange={(e) => setAiTone(e.target.value as any)}
@@ -836,7 +885,7 @@ export const AdminPage: React.FC = () => {
                                      </div>
                                      <div>
                                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Persona</label>
-                                         <select 
+                                         <select
                                             className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-indigo-500"
                                             value={aiPersona}
                                             onChange={(e) => setAiPersona(e.target.value as any)}
@@ -867,24 +916,55 @@ export const AdminPage: React.FC = () => {
                     <>
                         {/* EDITOR */}
                         <div className="space-y-6">
-                            {/* ... (Previous Editor Fields) ... */}
-                             <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-5">
-                                <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 mb-4 flex items-center gap-2">
-                                    <PenTool size={16} /> Story Details
-                                </h3>
+                            {/* STORY DETAILS */}
+                            <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 flex items-center gap-2">
+                                        <PenTool size={16} /> Story Details
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 uppercase">Mode:</span>
+                                        <button
+                                            onClick={() => setUseSimpleMode(true)}
+                                            className={`px-3 py-1 text-xs font-bold uppercase rounded ${useSimpleMode ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}
+                                        >
+                                            Simple
+                                        </button>
+                                        <button
+                                            onClick={() => setUseSimpleMode(false)}
+                                            className={`px-3 py-1 text-xs font-bold uppercase rounded ${!useSimpleMode ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}
+                                        >
+                                            Advanced
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="space-y-4">
-                                    <input 
-                                        className="w-full bg-black border border-[#333] p-3 rounded text-lg font-bold placeholder-gray-600 focus:border-indigo-500 outline-none" 
+                                    <input
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-lg font-bold placeholder-gray-600 focus:border-indigo-500 outline-none"
                                         placeholder="Headline"
                                         value={newsTitle}
                                         onChange={e => setNewsTitle(e.target.value)}
                                     />
-                                    <textarea 
-                                        className="w-full bg-black border border-[#333] p-3 rounded text-sm placeholder-gray-600 focus:border-indigo-500 outline-none h-24 resize-none" 
+                                    <textarea
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-sm placeholder-gray-600 focus:border-indigo-500 outline-none h-24 resize-none"
                                         placeholder="Summary"
                                         value={newsSummary}
                                         onChange={e => setNewsSummary(e.target.value)}
                                     />
+
+                                    {/* SIMPLE MODE: Body Text Area */}
+                                    {useSimpleMode && (
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Article Body</label>
+                                            <textarea
+                                                className="w-full bg-black border border-[#333] p-3 rounded text-sm placeholder-gray-600 focus:border-indigo-500 outline-none h-48 resize-none"
+                                                placeholder="Write your article content here..."
+                                                value={newsBody}
+                                                onChange={e => setNewsBody(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+
                                     <div className="space-y-3">
                                         <input
                                             className="w-full bg-black border border-[#333] p-3 rounded text-sm placeholder-gray-600"
@@ -909,27 +989,67 @@ export const AdminPage: React.FC = () => {
                                 </div>
                             </div>
                             
-                            {/* Blocks Editor (Simplified for brevity, keep existing implementation) */}
-                            <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-5">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 flex items-center gap-2">
-                                        <Layout size={16} /> Content Blocks
-                                    </h3>
-                                    <div className="flex gap-1">
-                                        <button onClick={() => handleAddBlock('TEXT')} className="p-2 bg-[#1E1E1E] hover:bg-[#333] rounded"><MessageSquare size={14} /></button>
-                                        <button onClick={() => handleAddBlock('TWEET')} className="p-2 bg-[#1E1E1E] hover:bg-[#333] rounded"><Twitter size={14} /></button>
+                            {/* ADVANCED MODE: Content Blocks Editor */}
+                            {!useSimpleMode && (
+                                <div className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-5">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 flex items-center gap-2">
+                                            <Layout size={16} /> Content Blocks
+                                        </h3>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => handleAddBlock('TEXT')} className="p-2 bg-[#1E1E1E] hover:bg-[#333] rounded" title="Add Text Block"><MessageSquare size={14} /></button>
+                                            <button onClick={() => handleAddBlock('TWEET')} className="p-2 bg-[#1E1E1E] hover:bg-[#333] rounded" title="Add Tweet"><Twitter size={14} /></button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {blocks.length === 0 ? (
+                                            <div className="text-center py-8 text-gray-500">
+                                                <Layout size={48} className="mx-auto mb-4 opacity-50" />
+                                                <p className="text-sm">No content blocks added yet.</p>
+                                                <p className="text-xs text-gray-600 mt-1">Click the buttons above to add text, tweets, or other content.</p>
+                                            </div>
+                                        ) : (
+                                            blocks.map((block, idx) => (
+                                                <div key={idx} className="bg-black border border-[#333] p-3 rounded relative">
+                                                    <button onClick={() => removeBlock(idx)} className="absolute top-2 right-2 text-red-500 hover:text-red-400" title="Remove Block"><Trash2 size={14}/></button>
+                                                    {block.type === 'TEXT' && (
+                                                        <div>
+                                                            <div className="text-xs text-gray-500 uppercase mb-2 flex items-center gap-2">
+                                                                <MessageSquare size={12} /> Text Block
+                                                            </div>
+                                                            <textarea
+                                                                className="w-full bg-transparent text-sm text-gray-300 outline-none h-20 resize-none"
+                                                                placeholder="Enter your text content here..."
+                                                                value={block.content}
+                                                                onChange={e => updateBlock(idx, 'content', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {block.type === 'TWEET' && (
+                                                        <div>
+                                                            <div className="text-xs text-blue-400 uppercase mb-2 flex items-center gap-2">
+                                                                <Twitter size={12} /> Tweet Embed
+                                                            </div>
+                                                            <input
+                                                                className="w-full bg-transparent text-sm text-gray-300 outline-none border-b border-gray-700 pb-1"
+                                                                placeholder="Tweet text..."
+                                                                value={block.text || ''}
+                                                                onChange={e => updateBlock(idx, 'text', e.target.value)}
+                                                            />
+                                                            <input
+                                                                className="w-full bg-transparent text-sm text-gray-500 outline-none mt-2"
+                                                                placeholder="@username"
+                                                                value={block.author || ''}
+                                                                onChange={e => updateBlock(idx, 'author', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    {blocks.map((block, idx) => (
-                                        <div key={idx} className="bg-black border border-[#333] p-3 rounded relative">
-                                            <button onClick={() => removeBlock(idx)} className="absolute top-2 right-2 text-red-500"><Trash2 size={14}/></button>
-                                            {block.type === 'TEXT' && <textarea className="w-full bg-transparent text-sm text-gray-300 outline-none h-16" value={block.content} onChange={e => updateBlock(idx, 'content', e.target.value)} />}
-                                            {block.type === 'TWEET' && <p className="text-xs text-blue-400">Tweet Embed: {block.text?.substring(0,30)}...</p>}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            )}
                         </div>
 
                         {/* PREVIEW & SOCIAL MANAGER */}
@@ -976,8 +1096,10 @@ export const AdminPage: React.FC = () => {
                                         setEditingNews(null);
                                         setNewsTitle('');
                                         setNewsSummary('');
+                                        setNewsBody('');
                                         setNewsImage('https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=1000&auto=format&fit=crop');
                                         setBlocks([]);
+                                        setUseSimpleMode(true);
                                     }} className="px-6 py-4 bg-gray-600 hover:bg-gray-500 text-white font-condensed font-black text-xl uppercase rounded">
                                         Cancel
                                     </button>

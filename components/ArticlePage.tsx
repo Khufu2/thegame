@@ -120,7 +120,7 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
                <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/10 to-black/80"></div>
                {/* Pattern */}
                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
-               
+
                <div className="relative z-10 flex flex-col items-center gap-2 text-gray-500 group-hover:text-indigo-400 transition-colors">
                    <div className="w-12 h-12 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-[#333] group-hover:border-indigo-500/50">
                         <ImageOff size={24} />
@@ -133,7 +133,28 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
           </div>
       ) : (
           <div className="w-full aspect-video relative bg-[#121212]">
-            <img src={story.imageUrl} className="w-full h-full object-cover" alt={story.title} />
+            {story.imageUrl ? (
+              <img
+                src={story.imageUrl}
+                className="w-full h-full object-cover"
+                alt={story.title}
+                onError={(e) => {
+                  // Fallback to a default image if the uploaded image fails to load
+                  const target = e.target as HTMLImageElement;
+                  if (!target.src.includes('unsplash')) {
+                    target.src = 'https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=1000&auto=format&fit=crop';
+                  }
+                }}
+                crossOrigin="anonymous"
+              />
+            ) : (
+              // Default fallback image when no imageUrl is provided
+              <img
+                src="https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=1000&auto=format&fit=crop"
+                className="w-full h-full object-cover"
+                alt={story.title}
+              />
+            )}
             <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/80 to-transparent pointer-events-none md:hidden"></div>
           </div>
       )}
@@ -253,7 +274,17 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
                              {dataSaver ? (
                                 <ImageOff size={16} className="text-gray-600" />
                              ) : (
-                                <img src={related.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img
+                                  src={related.imageUrl || 'https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=400&auto=format&fit=crop'}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    if (!target.src.includes('unsplash')) {
+                                      target.src = 'https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=400&auto=format&fit=crop';
+                                    }
+                                  }}
+                                  crossOrigin="anonymous"
+                                />
                              )}
                          </div>
                          <div>

@@ -18,7 +18,8 @@ export const generateMatchNews = async (
     persona: 'SHEENA' | 'ORACLE' | 'STREET' | 'JOURNALIST',
     useGrounding: boolean = true,
     externalLink?: string,
-    isLocalScout: boolean = false
+    isLocalScout: boolean = false,
+    aiProvider: 'GEMINI' | 'GROK' | 'OLLAMA' = 'GEMINI'
 ): Promise<GeneratedArticle | null> => {
     try {
         // Build the topic based on mode
@@ -49,6 +50,7 @@ export const generateMatchNews = async (
                     tone,
                     language,
                     useGrounding,
+                    aiProvider,
                 }),
             }
         );
