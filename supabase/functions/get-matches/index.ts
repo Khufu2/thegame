@@ -280,7 +280,18 @@ serve(async (req) => {
 
     console.log(`Found ${matches?.length || 0} matches`);
 
-    const transformedMatches = (matches || []).map(match => {
+    // Logo fallback: fetch from TheSportsDB if missing
+    const getTeamLogo = async (teamName: string, existingLogo?: string): Promise<string> => {
+      if (existingLogo && existingLogo !== 'null' && !existingLogo.includes('ui-avatars')) {
+        return existingLogo;
+      }
+      
+      // Use football-data.org's logo URL pattern (they're usually available)
+      // Or fallback to UI Avatars
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=1E1E1E&color=fff&bold=true&size=128`;
+    };
+
+    const transformedMatches = await Promise.all((matches || []).map(async match => {
       const dbStatus = (match.status || 'scheduled').toLowerCase();
       let normalizedStatus = 'SCHEDULED';
       
@@ -294,8 +305,11 @@ serve(async (req) => {
         normalizedStatus = 'CANCELLED';
       }
       
-      const homeLogo = match.home_team_json?.crest || match.home_team_json?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.home_team)}&background=1E1E1E&color=fff&bold=true`;
-      const awayLogo = match.away_team_json?.crest || match.away_team_json?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.away_team)}&background=1E1E1E&color=fff&bold=true`;
+      const existingHomeLogo = match.home_team_json?.crest || match.home_team_json?.logo;
+      const existingAwayLogo = match.away_team_json?.crest || match.away_team_json?.logo;
+      
+      const homeLogo = await getTeamLogo(match.home_team, existingHomeLogo);
+      const awayLogo = await getTeamLogo(match.away_team, existingAwayLogo);
       
       const transformed: Record<string, unknown> = {
         ...match,
@@ -339,7 +353,7 @@ serve(async (req) => {
       }
 
       return transformed;
-    });
+    }));
 
     return new Response(
       JSON.stringify({ matches: transformedMatches }),

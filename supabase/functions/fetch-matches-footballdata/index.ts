@@ -26,8 +26,8 @@ interface Match {
   status: string;
   matchday?: number;
   stage?: string;
-  homeTeam: { id: number; name: string; shortName?: string; tla?: string };
-  awayTeam: { id: number; name: string; shortName?: string; tla?: string };
+  homeTeam: { id: number; name: string; shortName?: string; tla?: string; crest?: string };
+  awayTeam: { id: number; name: string; shortName?: string; tla?: string; crest?: string };
   score: {
     home?: number | null;
     away?: number | null;
@@ -267,16 +267,18 @@ async function saveMatches(matches: Match[]) {
           fixture_id: match.id,
           home_team_id: match.homeTeam.id,
           away_team_id: match.awayTeam.id,
-          // New jsonb fields
+          // New jsonb fields - Football-Data.org provides crests on higher tiers
           home_team_json: {
             name: match.homeTeam.name,
             id: match.homeTeam.id,
-            logo: null // Football-Data.org doesn't provide logos in basic plan
+            crest: match.homeTeam.crest || null,
+            logo: match.homeTeam.crest || null // Both for compatibility
           },
           away_team_json: {
             name: match.awayTeam.name,
             id: match.awayTeam.id,
-            logo: null
+            crest: match.awayTeam.crest || null,
+            logo: match.awayTeam.crest || null
           },
           score: {
             home: homeScore,
