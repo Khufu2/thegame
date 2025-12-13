@@ -77,13 +77,23 @@ function getTeamRating(teamName: string): number {
 }
 
 interface PredictionResult {
+  outcome: 'HOME' | 'AWAY' | 'DRAW';
   winner: string;
   confidence: number;
   predictedScore: { home: number; away: number };
+  scorePrediction: string;
   reasoning: string;
+  aiReasoning: string;
+  keyInsight: string;
+  bettingAngle: string;
   insights: string[];
   bettingAngles: string[];
   odds: { home: number; draw: number; away: number };
+  probability: { home: number; draw: number; away: number };
+  isValuePick: boolean;
+  riskLevel: string;
+  modelEdge: number;
+  systemRecord: string;
 }
 
 function generateSmartPrediction(homeTeam: string, awayTeam: string, dbOdds?: { home?: number; draw?: number; away?: number }): PredictionResult {
@@ -107,16 +117,20 @@ function generateSmartPrediction(homeTeam: string, awayTeam: string, dbOdds?: { 
   homeWinProb /= total;
   awayWinProb /= total;
   
+  let outcome: 'HOME' | 'AWAY' | 'DRAW';
   let winner: string;
   let confidence: number;
   
   if (homeWinProb > awayWinProb && homeWinProb > drawProb) {
+    outcome = 'HOME';
     winner = homeTeam;
     confidence = Math.round(homeWinProb * 100);
   } else if (awayWinProb > homeWinProb && awayWinProb > drawProb) {
+    outcome = 'AWAY';
     winner = awayTeam;
     confidence = Math.round(awayWinProb * 100);
   } else {
+    outcome = 'DRAW';
     winner = 'Draw likely';
     confidence = Math.round(drawProb * 100);
   }
@@ -171,20 +185,34 @@ function generateSmartPrediction(homeTeam: string, awayTeam: string, dbOdds?: { 
     away: Math.max(1.15, 1 / awayWinProb)
   };
   
-  const reasoning = `Based on team ratings (${homeTeam}: ${homeRating - HOME_ADVANTAGE}, ${awayTeam}: ${awayRating}) with home advantage factored in. ${winner === 'Draw likely' ? 'Teams are closely matched, making a draw the most likely outcome.' : `${winner} are predicted to win.`} ${insights[0]}.`;
+  const reasoning = `Based on team ratings (${homeTeam}: ${homeRating - HOME_ADVANTAGE}, ${awayTeam}: ${awayRating}) with home advantage factored in. ${outcome === 'DRAW' ? 'Teams are closely matched, making a draw the most likely outcome.' : `${winner} are predicted to win.`} ${insights[0]}.`;
   
   return {
+    outcome,
     winner,
     confidence,
     predictedScore,
+    scorePrediction: `${predictedScore.home}-${predictedScore.away}`,
     reasoning,
+    aiReasoning: reasoning,
+    keyInsight: insights[0] || 'Analysis based on team ratings and form',
+    bettingAngle: bettingAngles[0] || 'Moneyline',
     insights,
     bettingAngles,
     odds: {
       home: Number(odds.home.toFixed(2)),
       draw: Number(odds.draw.toFixed(2)),
       away: Number(odds.away.toFixed(2))
-    }
+    },
+    probability: {
+      home: Math.round(homeWinProb * 100),
+      draw: Math.round(drawProb * 100),
+      away: Math.round(awayWinProb * 100)
+    },
+    isValuePick: confidence > 65,
+    riskLevel: confidence > 75 ? 'LOW' : confidence > 55 ? 'MEDIUM' : 'HIGH',
+    modelEdge: Math.abs(ratingDiff) / 10,
+    systemRecord: 'Elo-based'
   };
 }
 
