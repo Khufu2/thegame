@@ -97,15 +97,15 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
             return matchLocal.getTime() === targetLocal.getTime();
         });
         
-        // If no matches for selected date, show all upcoming matches instead
-        if (dateFiltered.length > 0) {
-            filtered = dateFiltered;
-        } else if (activeDate === 'Today') {
-            // Show upcoming scheduled matches when today has no games
-            filtered = safeMatches.filter(m => 
-                m.status === 'SCHEDULED' || m.status === 'TIMED' || m.status === 'FINISHED'
-            ).slice(0, 50);
-        }
+         // If no matches for selected date, show all upcoming matches instead
+         if (dateFiltered.length > 0) {
+             filtered = dateFiltered;
+         } else if (activeDate === 'Today') {
+             // Show upcoming scheduled matches when today has no games
+             filtered = safeMatches.filter(m => 
+                 m.status === MatchStatus.SCHEDULED || (m.status as string) === 'TIMED' || m.status === MatchStatus.FINISHED
+             ).slice(0, 50);
+         }
     }
 
     // Group by League and sort within each league

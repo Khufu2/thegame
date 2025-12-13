@@ -81,7 +81,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                    setMatchDetails(details);
                    
                    // If match has a fixture_id, enrich with API-Football data
-                   const fixtureId = details?.fixture_id || match.metadata?.fixture_id;
+                   const fixtureId = details?.fixture_id || (match as any).metadata?.fixture_id;
                    if (fixtureId) {
                      try {
                        const enrichResponse = await fetch(
@@ -111,7 +111,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
        };
 
        fetchMatchDetails();
-   }, [match.id, match.metadata?.fixture_id]);
+   }, [match.id, (match as any).metadata?.fixture_id]);
 
    // Fetch related news for team matches
    useEffect(() => {
