@@ -198,27 +198,44 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     const data = await response.json();
 
                     // Parse content JSON and transform to NewsStory format
-                    const parsedNews = data.map((item: any) => ({
-                        id: item.id,
-                        type: item.type || 'NEWS',
-                        title: item.title,
-                        summary: item.excerpt,
-                        imageUrl: item.image_url,
-                        source: item.source,
-                        timestamp: new Date(item.created_at).toLocaleDateString(),
-                        likes: 0, // Default values since not stored
-                        comments: 0,
-                        tags: item.tags || [],
-                        contentBlocks: item.content ? (() => {
+                    const parsedNews = data.map((item: any) => {
+                        // Try to parse content blocks
+                        let contentBlocks: any[] = [];
+                        if (item.content) {
                             try {
-                                return JSON.parse(item.content);
+                                const parsed = JSON.parse(item.content);
+                                if (Array.isArray(parsed) && parsed.length > 0) {
+                                    contentBlocks = parsed;
+                                }
                             } catch (e) {
-                                console.warn('Failed to parse content for news item:', item.id);
-                                return [];
+                                // If content is a plain string, use it as body
+                                if (typeof item.content === 'string' && item.content.length > 0) {
+                                    contentBlocks = [{ type: 'TEXT', content: item.content }];
+                                }
                             }
-                        })() : [],
-                        isHero: item.metadata?.isHero || false
-                    }));
+                        }
+                        
+                        // If still no content blocks but we have excerpt, use that
+                        if (contentBlocks.length === 0 && item.excerpt) {
+                            contentBlocks = [{ type: 'TEXT', content: item.excerpt }];
+                        }
+
+                        return {
+                            id: item.id,
+                            type: item.type || 'NEWS',
+                            title: item.title,
+                            summary: item.excerpt || '',
+                            imageUrl: item.image_url || item.featured_image_url,
+                            source: item.source || 'Sheena Sports',
+                            timestamp: new Date(item.created_at).toLocaleDateString(),
+                            likes: 0,
+                            comments: 0,
+                            tags: item.tags || [],
+                            contentBlocks: contentBlocks,
+                            body: contentBlocks.length > 0 ? undefined : [item.excerpt || ''],
+                            isHero: item.metadata?.isHero || false
+                        };
+                    });
 
                     setNews(parsedNews);
                 }
