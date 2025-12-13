@@ -63,7 +63,7 @@ export const generateMatchNews = async (
 
         const result = await response.json();
         
-        if (result.status !== 'success' || !result.article) {
+        if (!result.success || !result.article) {
             console.error('Invalid response from generate-news:', result);
             return null;
         }
@@ -126,7 +126,7 @@ export const shareExternalNews = async (
 
         const result = await response.json();
         
-        if (result.status === 'success' && result.article) {
+        if (result.success && result.article) {
             const article = result.article;
             let blocks: ArticleBlock[] = [];
             if (typeof article.blocks === 'string') {
