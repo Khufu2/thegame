@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      ab_test_experiments: {
+        Row: {
+          confidence_level: number | null
+          created_at: string | null
+          end_date: string | null
+          experiment_name: string
+          experiment_type: string
+          id: string
+          start_date: string | null
+          status: string | null
+          total_predictions: number | null
+          variant_a: string
+          variant_a_accuracy: number | null
+          variant_a_correct: number | null
+          variant_a_predictions: number | null
+          variant_b: string
+          variant_b_accuracy: number | null
+          variant_b_correct: number | null
+          variant_b_predictions: number | null
+          winner: string | null
+        }
+        Insert: {
+          confidence_level?: number | null
+          created_at?: string | null
+          end_date?: string | null
+          experiment_name: string
+          experiment_type: string
+          id?: string
+          start_date?: string | null
+          status?: string | null
+          total_predictions?: number | null
+          variant_a: string
+          variant_a_accuracy?: number | null
+          variant_a_correct?: number | null
+          variant_a_predictions?: number | null
+          variant_b: string
+          variant_b_accuracy?: number | null
+          variant_b_correct?: number | null
+          variant_b_predictions?: number | null
+          winner?: string | null
+        }
+        Update: {
+          confidence_level?: number | null
+          created_at?: string | null
+          end_date?: string | null
+          experiment_name?: string
+          experiment_type?: string
+          id?: string
+          start_date?: string | null
+          status?: string | null
+          total_predictions?: number | null
+          variant_a?: string
+          variant_a_accuracy?: number | null
+          variant_a_correct?: number | null
+          variant_a_predictions?: number | null
+          variant_b?: string
+          variant_b_accuracy?: number | null
+          variant_b_correct?: number | null
+          variant_b_predictions?: number | null
+          winner?: string | null
+        }
+        Relationships: []
+      }
       bets: {
         Row: {
           created_at: string | null
@@ -737,6 +800,51 @@ export type Database = {
           is_pro?: boolean | null
           preferences?: Json | null
           stats?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      prompt_performance: {
+        Row: {
+          accuracy: number | null
+          average_confidence: number | null
+          correct_predictions: number | null
+          created_at: string | null
+          id: string
+          last_used: string | null
+          prompt_hash: string
+          prompt_template: string
+          roi: number | null
+          total_points: number | null
+          total_predictions: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          accuracy?: number | null
+          average_confidence?: number | null
+          correct_predictions?: number | null
+          created_at?: string | null
+          id?: string
+          last_used?: string | null
+          prompt_hash: string
+          prompt_template: string
+          roi?: number | null
+          total_points?: number | null
+          total_predictions?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          accuracy?: number | null
+          average_confidence?: number | null
+          correct_predictions?: number | null
+          created_at?: string | null
+          id?: string
+          last_used?: string | null
+          prompt_hash?: string
+          prompt_template?: string
+          roi?: number | null
+          total_points?: number | null
+          total_predictions?: number | null
           updated_at?: string | null
         }
         Relationships: []
