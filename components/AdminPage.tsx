@@ -473,12 +473,12 @@ export const AdminPage: React.FC = () => {
         setUploadingImage(true);
         try {
             const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}.${fileExt}`;
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `news-images/${fileName}`;
 
             console.log('Attempting to upload to:', filePath);
 
-            const { error: uploadError } = await supabase.storage
+            const { error: uploadError, data: uploadData } = await supabase.storage
                 .from('images')
                 .upload(filePath, file, {
                     cacheControl: '3600',
@@ -487,21 +487,7 @@ export const AdminPage: React.FC = () => {
 
             if (uploadError) {
                 console.error('Upload error:', uploadError);
-
-                // Try alternative approach - convert to base64 for now
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const base64 = e.target?.result as string;
-                    setNewsImage(base64);
-                    alert('Image uploaded successfully (stored locally)!');
-                    setUploadingImage(false);
-                };
-                reader.onerror = () => {
-                    alert('Failed to process image. Please try again.');
-                    setUploadingImage(false);
-                };
-                reader.readAsDataURL(file);
-                return;
+                throw uploadError;
             }
 
             const { data } = supabase.storage
@@ -516,30 +502,9 @@ export const AdminPage: React.FC = () => {
             }
         } catch (error) {
             console.error('Error uploading image:', error);
-
-            // Fallback to base64
-            try {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const base64 = e.target?.result as string;
-                    setNewsImage(base64);
-                    alert('Image uploaded successfully (stored locally)!');
-                    setUploadingImage(false);
-                };
-                reader.onerror = () => {
-                    alert('Failed to upload image. Please try again.');
-                    setUploadingImage(false);
-                };
-                reader.readAsDataURL(file);
-            } catch (fallbackError) {
-                alert('Failed to upload image. Please try again.');
-                setUploadingImage(false);
-            }
+            alert('Failed to upload image to storage. Please check if the storage bucket is configured correctly.');
         } finally {
-            // Only set to false if not using base64 fallback
-            if (!uploadingImage) {
-                setUploadingImage(false);
-            }
+            setUploadingImage(false);
         }
     };
 
@@ -1002,9 +967,26 @@ export const AdminPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <button onClick={publishNews} className="w-full py-4 bg-[#00FFB2] hover:bg-[#00E09E] text-black font-condensed font-black text-xl uppercase rounded flex items-center justify-center gap-2">
-                                <Check size={20} /> Publish to App
-                            </button>
+                            {editingNews ? (
+                                <div className="flex gap-3">
+                                    <button onClick={updatePublishedNews} className="flex-1 py-4 bg-green-600 hover:bg-green-500 text-white font-condensed font-black text-xl uppercase rounded flex items-center justify-center gap-2">
+                                        <Check size={20} /> Save Changes
+                                    </button>
+                                    <button onClick={() => {
+                                        setEditingNews(null);
+                                        setNewsTitle('');
+                                        setNewsSummary('');
+                                        setNewsImage('https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=1000&auto=format&fit=crop');
+                                        setBlocks([]);
+                                    }} className="px-6 py-4 bg-gray-600 hover:bg-gray-500 text-white font-condensed font-black text-xl uppercase rounded">
+                                        Cancel
+                                    </button>
+                                </div>
+                            ) : (
+                                <button onClick={publishNews} className="w-full py-4 bg-[#00FFB2] hover:bg-[#00E09E] text-black font-condensed font-black text-xl uppercase rounded flex items-center justify-center gap-2">
+                                    <Check size={20} /> Publish to App
+                                </button>
+                            )}
                         </div>
                     </>
                 )}

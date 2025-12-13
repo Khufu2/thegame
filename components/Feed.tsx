@@ -5,6 +5,7 @@ import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
 import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
+import { formatMatchTime } from './utils/formatTime';
 
 interface FeedProps {
   items: FeedItem[];
@@ -243,7 +244,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                                 }
                             </span>
                             <span className="text-[11px] font-bold text-sheena-primary mt-2 bg-sheena-primary/10 px-2 py-0.5 rounded border border-sheena-primary/20">
-                                {featuredMatch.time}
+                                {formatMatchTime(featuredMatch.time)}
                             </span>
                         </div>
 
@@ -450,7 +451,7 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                     </span>
                     <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">
-                        LIVE • {match.time}
+                        LIVE • {formatMatchTime(match.time)}
                     </span>
                 </div>
                 {/* Optional: League Badge */}
@@ -531,7 +532,7 @@ const PremiumPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpe
                             {match.prediction.confidence}%
                         </span>
                     )}
-                    <span className="text-[10px] font-bold text-white/50 uppercase">{match.time}</span>
+                    <span className="text-[10px] font-bold text-white/50 uppercase">{formatMatchTime(match.time)}</span>
                 </div>
             </div>
 
@@ -680,7 +681,7 @@ const SmartPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpenP
                 <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-2">
                         <span className="font-condensed font-bold text-xs text-gray-400 uppercase tracking-wide">{match.league}</span>
-                        <span className="text-[10px] text-gray-600 font-bold uppercase">• {match.time}</span>
+                        <span className="text-[10px] text-gray-600 font-bold uppercase">• {formatMatchTime(match.time)}</span>
                     </div>
                      {/* WEATHER ICON */}
                      {match.prediction?.weather && (
