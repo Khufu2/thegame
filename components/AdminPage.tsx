@@ -282,8 +282,7 @@ export const AdminPage: React.FC = () => {
             aiPersona,
             useGrounding,
             generationMode === 'LINK' ? externalLink : undefined,
-            generationMode === 'LOCAL', // Is Local Mode?
-            aiProvider // AI Provider
+            generationMode === 'LOCAL' // Is Local Mode?
         );
         setIsGenerating(false);
 
