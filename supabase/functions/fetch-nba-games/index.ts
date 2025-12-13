@@ -46,7 +46,10 @@ async function saveNBAGames(games: NBAGame[]) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   for (const game of games) {
-    const kickoffTime = `${game.dateEvent}T${game.strTime || '00:00:00'}Z`;
+    // Fix timestamp format - remove double timezone suffix
+    const rawTime = game.strTime || '00:00:00';
+    const cleanTime = rawTime.replace(/\+\d{2}:\d{2}$/, ''); // Remove +XX:XX suffix
+    const kickoffTime = `${game.dateEvent}T${cleanTime}Z`;
 
     const status =
       game.strStatus === "Match Finished" ? "finished" :
@@ -61,8 +64,6 @@ async function saveNBAGames(games: NBAGame[]) {
       .upsert(
         {
           id: `nba-${game.idEvent}`,
-          sport: 'basketball',
-          event_type: 'match',
           home_team: game.strHomeTeam,
           away_team: game.strAwayTeam,
           kickoff_time: kickoffTime,
@@ -70,9 +71,8 @@ async function saveNBAGames(games: NBAGame[]) {
           home_team_score: homeScore,
           away_team_score: awayScore,
           league: 'NBA',
-          season: new Date().getFullYear().toString(),
-          fixture_id: game.idEvent,
-          // Initialize with null logos - will be updated by fetchAndUpdateLogos
+          season: new Date().getFullYear(),
+          fixture_id: parseInt(game.idEvent),
           home_team_json: {
             name: game.strHomeTeam,
             logo: null
@@ -80,6 +80,13 @@ async function saveNBAGames(games: NBAGame[]) {
           away_team_json: {
             name: game.strAwayTeam,
             logo: null
+          },
+          result: status === 'finished' && homeScore !== null && awayScore !== null
+            ? (homeScore > awayScore ? 'home_win' : awayScore > homeScore ? 'away_win' : 'draw')
+            : null,
+          metadata: {
+            sport: 'basketball',
+            provider: 'thesportsdb'
           }
         },
         { onConflict: "id" }
@@ -233,6 +240,13 @@ Deno.serve(async (req) => {
 
     console.log("🏀 Fetching NBA games from TheSportsDB...");
 
+    // Fetch yesterday's games (for results)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayGames = await fetchNBAGames(yesterdayStr);
+    console.log(`✅ Found ${yesterdayGames.length} NBA games yesterday`);
+
     // Fetch today's games
     const todayGames = await fetchNBAGames();
     console.log(`✅ Found ${todayGames.length} NBA games today`);
@@ -244,7 +258,14 @@ Deno.serve(async (req) => {
     const tomorrowGames = await fetchNBAGames(tomorrowStr);
     console.log(`✅ Found ${tomorrowGames.length} NBA games tomorrow`);
 
-    const allGames = [...todayGames, ...tomorrowGames];
+    // Fetch day after tomorrow
+    const dayAfter = new Date();
+    dayAfter.setDate(dayAfter.getDate() + 2);
+    const dayAfterStr = dayAfter.toISOString().split('T')[0];
+    const dayAfterGames = await fetchNBAGames(dayAfterStr);
+    console.log(`✅ Found ${dayAfterGames.length} NBA games day after tomorrow`);
+
+    const allGames = [...yesterdayGames, ...todayGames, ...tomorrowGames, ...dayAfterGames];
 
     if (allGames.length > 0) {
       console.log(`💾 Saving ${allGames.length} NBA games to database...`);
@@ -253,15 +274,17 @@ Deno.serve(async (req) => {
 
       // Fetch logos for the teams in these games
       console.log("🖼️  Fetching NBA team logos from TheSportsDB...");
-      await fetchAndUpdateLogos(allGames);
+      await fetchAndUpdateLogos(allGames.slice(0, 30)); // Limit to avoid slowness
       console.log("✅ NBA logos updated");
     }
 
     return new Response(
       JSON.stringify({
         status: "success",
+        yesterdayCount: yesterdayGames.length,
         todayCount: todayGames.length,
         tomorrowCount: tomorrowGames.length,
+        dayAfterCount: dayAfterGames.length,
         totalCount: allGames.length,
         timestamp: new Date().toISOString(),
         provider: "thesportsdb",

@@ -148,7 +148,6 @@ async function saveAfricanMatches(matches: any[]) {
       .upsert(
         {
           id: `african-${fixtureId}`,
-          sport: 'soccer',
           home_team: homeTeam,
           away_team: awayTeam,
           kickoff_time: kickoffTime,
@@ -156,8 +155,9 @@ async function saveAfricanMatches(matches: any[]) {
           home_team_score: homeScore,
           away_team_score: awayScore,
           league,
-          season: new Date().getFullYear().toString(),
-          fixture_id: fixtureId,
+          season: new Date().getFullYear(),
+          fixture_id: parseInt(fixtureId) || null,
+          metadata: { sport: 'soccer', region: 'africa' }
         },
         { onConflict: "id" }
       );

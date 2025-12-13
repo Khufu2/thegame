@@ -147,7 +147,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     useEffect(() => {
-        // Fetch matches via edge function and generate predictions
+        // Fetch matches via edge function - predictions are now generated server-side
         const fetchMatches = async () => {
             try {
                 const response = await fetch(
@@ -165,86 +165,9 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     // Handle both { matches: [...] } and direct array responses
                     const matchesArray = Array.isArray(data) ? data : (data.matches || []);
                     console.log('Fetched matches:', matchesArray.length);
-
-                    // Generate predictions using Elo + AI hybrid approach
-                    const matchesWithPredictions = await Promise.all(
-                        matchesArray.map(async (match: any) => {
-                            if (match.prediction) {
-                                return match; // Already has prediction
-                            }
-
-                            try {
-                                // First try Elo-based prediction for quick results
-                                let predictionData = null;
-                                try {
-                                    const eloResponse = await fetch(
-                                        `${SUPABASE_URL}/functions/v1/calculate-elo-ratings?homeTeam=${encodeURIComponent(match.home_team || match.homeTeam?.name)}&awayTeam=${encodeURIComponent(match.away_team || match.awayTeam?.name)}`,
-                                        {
-                                            method: 'GET',
-                                            headers: {
-                                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                                                'Content-Type': 'application/json',
-                                            },
-                                        }
-                                    );
-
-                                    if (eloResponse.ok) {
-                                        const eloData = await eloResponse.json();
-                                        if (eloData.prediction) {
-                                            predictionData = {
-                                                prediction: {
-                                                    ...eloData.prediction,
-                                                    model: 'Elo Rating System',
-                                                    systemRecord: 'Elo-based'
-                                                }
-                                            };
-                                        }
-                                    }
-                                } catch (eloError) {
-                                    console.warn(`Elo prediction failed for match ${match.id}, falling back to AI`);
-                                }
-
-                                // If Elo fails or gives low confidence, use full AI prediction
-                                if (!predictionData || (predictionData.prediction.confidence < 70)) {
-                                    const aiResponse = await fetch(
-                                        `${SUPABASE_URL}/functions/v1/generate-predictions`,
-                                        {
-                                            method: 'POST',
-                                            headers: {
-                                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                                                'Content-Type': 'application/json',
-                                            },
-                                            body: JSON.stringify({
-                                                matchId: match.id,
-                                                league: match.league || 'Premier League',
-                                                homeTeam: match.home_team || match.homeTeam?.name,
-                                                awayTeam: match.away_team || match.awayTeam?.name,
-                                            }),
-                                        }
-                                    );
-
-                                    if (aiResponse.ok) {
-                                        predictionData = await aiResponse.json();
-                                    }
-                                }
-
-                                if (predictionData) {
-                                    return {
-                                        ...match,
-                                        prediction: predictionData.prediction
-                                    };
-                                } else {
-                                    console.warn(`Failed to generate prediction for match ${match.id}`);
-                                    return match;
-                                }
-                            } catch (error) {
-                                console.warn(`Error generating prediction for match ${match.id}:`, error);
-                                return match;
-                            }
-                        })
-                    );
-
-                    setMatches(matchesWithPredictions);
+                    
+                    // Predictions are already included from the edge function
+                    setMatches(matchesArray);
                 } else {
                     console.error('Failed to fetch matches:', response.status);
                     console.log('Using mock data as fallback');

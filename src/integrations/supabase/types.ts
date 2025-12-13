@@ -477,6 +477,231 @@ export type Database = {
           },
         ]
       }
+      player_stats: {
+        Row: {
+          age: number | null
+          assists: number | null
+          assists_per_90: number | null
+          average_rating: number | null
+          clean_sheets: number | null
+          clearances: number | null
+          data_source: string | null
+          dribble_success_rate: number | null
+          dribbles_attempted: number | null
+          dribbles_completed: number | null
+          expected_return: string | null
+          form_rating: number | null
+          goals: number | null
+          goals_conceded: number | null
+          goals_per_90: number | null
+          id: string
+          injury_status: string | null
+          injury_type: string | null
+          interceptions: number | null
+          last_updated: string | null
+          league: string
+          matches_played: number | null
+          minutes_played: number | null
+          nationality: string | null
+          pass_accuracy: number | null
+          passes_attempted: number | null
+          passes_completed: number | null
+          player_id: string
+          player_name: string
+          position: string | null
+          recent_assists: number | null
+          recent_goals: number | null
+          recent_matches: number | null
+          recent_minutes: number | null
+          red_cards: number | null
+          saves: number | null
+          season: string
+          shots_on_target: number | null
+          shots_on_target_percentage: number | null
+          shots_total: number | null
+          suspension_matches_remaining: number | null
+          tackles_total: number | null
+          tackles_won: number | null
+          team_id: string
+          team_name: string
+          yellow_cards: number | null
+        }
+        Insert: {
+          age?: number | null
+          assists?: number | null
+          assists_per_90?: number | null
+          average_rating?: number | null
+          clean_sheets?: number | null
+          clearances?: number | null
+          data_source?: string | null
+          dribble_success_rate?: number | null
+          dribbles_attempted?: number | null
+          dribbles_completed?: number | null
+          expected_return?: string | null
+          form_rating?: number | null
+          goals?: number | null
+          goals_conceded?: number | null
+          goals_per_90?: number | null
+          id?: string
+          injury_status?: string | null
+          injury_type?: string | null
+          interceptions?: number | null
+          last_updated?: string | null
+          league: string
+          matches_played?: number | null
+          minutes_played?: number | null
+          nationality?: string | null
+          pass_accuracy?: number | null
+          passes_attempted?: number | null
+          passes_completed?: number | null
+          player_id: string
+          player_name: string
+          position?: string | null
+          recent_assists?: number | null
+          recent_goals?: number | null
+          recent_matches?: number | null
+          recent_minutes?: number | null
+          red_cards?: number | null
+          saves?: number | null
+          season?: string
+          shots_on_target?: number | null
+          shots_on_target_percentage?: number | null
+          shots_total?: number | null
+          suspension_matches_remaining?: number | null
+          tackles_total?: number | null
+          tackles_won?: number | null
+          team_id: string
+          team_name: string
+          yellow_cards?: number | null
+        }
+        Update: {
+          age?: number | null
+          assists?: number | null
+          assists_per_90?: number | null
+          average_rating?: number | null
+          clean_sheets?: number | null
+          clearances?: number | null
+          data_source?: string | null
+          dribble_success_rate?: number | null
+          dribbles_attempted?: number | null
+          dribbles_completed?: number | null
+          expected_return?: string | null
+          form_rating?: number | null
+          goals?: number | null
+          goals_conceded?: number | null
+          goals_per_90?: number | null
+          id?: string
+          injury_status?: string | null
+          injury_type?: string | null
+          interceptions?: number | null
+          last_updated?: string | null
+          league?: string
+          matches_played?: number | null
+          minutes_played?: number | null
+          nationality?: string | null
+          pass_accuracy?: number | null
+          passes_attempted?: number | null
+          passes_completed?: number | null
+          player_id?: string
+          player_name?: string
+          position?: string | null
+          recent_assists?: number | null
+          recent_goals?: number | null
+          recent_matches?: number | null
+          recent_minutes?: number | null
+          red_cards?: number | null
+          saves?: number | null
+          season?: string
+          shots_on_target?: number | null
+          shots_on_target_percentage?: number | null
+          shots_total?: number | null
+          suspension_matches_remaining?: number | null
+          tackles_total?: number | null
+          tackles_won?: number | null
+          team_id?: string
+          team_name?: string
+          yellow_cards?: number | null
+        }
+        Relationships: []
+      }
+      prediction_history: {
+        Row: {
+          actual_outcome: string | null
+          actual_score: string | null
+          ai_reasoning: string | null
+          away_team: string
+          betting_angle: string | null
+          confidence: number
+          created_at: string | null
+          home_team: string
+          id: string
+          is_value_pick: boolean | null
+          key_insight: string | null
+          league: string
+          match_date: string | null
+          match_id: string
+          model_edge: number | null
+          odds: Json | null
+          predicted_outcome: string
+          predicted_score: string | null
+          probability: Json | null
+          resolved_at: string | null
+          risk_level: string | null
+          status: string | null
+          system_record: string | null
+        }
+        Insert: {
+          actual_outcome?: string | null
+          actual_score?: string | null
+          ai_reasoning?: string | null
+          away_team: string
+          betting_angle?: string | null
+          confidence: number
+          created_at?: string | null
+          home_team: string
+          id?: string
+          is_value_pick?: boolean | null
+          key_insight?: string | null
+          league: string
+          match_date?: string | null
+          match_id: string
+          model_edge?: number | null
+          odds?: Json | null
+          predicted_outcome: string
+          predicted_score?: string | null
+          probability?: Json | null
+          resolved_at?: string | null
+          risk_level?: string | null
+          status?: string | null
+          system_record?: string | null
+        }
+        Update: {
+          actual_outcome?: string | null
+          actual_score?: string | null
+          ai_reasoning?: string | null
+          away_team?: string
+          betting_angle?: string | null
+          confidence?: number
+          created_at?: string | null
+          home_team?: string
+          id?: string
+          is_value_pick?: boolean | null
+          key_insight?: string | null
+          league?: string
+          match_date?: string | null
+          match_id?: string
+          model_edge?: number | null
+          odds?: Json | null
+          predicted_outcome?: string
+          predicted_score?: string | null
+          probability?: Json | null
+          resolved_at?: string | null
+          risk_level?: string | null
+          status?: string | null
+          system_record?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -540,6 +765,135 @@ export type Database = {
           league_id?: number | null
           season?: string | null
           standings_data?: Json
+        }
+        Relationships: []
+      }
+      team_stats: {
+        Row: {
+          average_goals_conceded: number | null
+          average_goals_scored: number | null
+          average_possession: number | null
+          away_draws: number | null
+          away_goals_against: number | null
+          away_goals_for: number | null
+          away_losses: number | null
+          away_wins: number | null
+          clean_sheets: number | null
+          data_source: string | null
+          draws: number | null
+          elo_rating: number | null
+          failed_to_score: number | null
+          goal_difference: number | null
+          goals_against: number | null
+          goals_for: number | null
+          home_draws: number | null
+          home_goals_against: number | null
+          home_goals_for: number | null
+          home_losses: number | null
+          home_wins: number | null
+          id: string
+          injuries_count: number | null
+          last_updated: string | null
+          league: string
+          losses: number | null
+          matches_played: number | null
+          points: number | null
+          recent_form: string | null
+          recent_goals_against: number | null
+          recent_goals_for: number | null
+          recent_points: number | null
+          season: string
+          shots_on_target_pg: number | null
+          shots_pg: number | null
+          suspensions_count: number | null
+          team_id: string
+          team_name: string
+          win_percentage: number | null
+          wins: number | null
+        }
+        Insert: {
+          average_goals_conceded?: number | null
+          average_goals_scored?: number | null
+          average_possession?: number | null
+          away_draws?: number | null
+          away_goals_against?: number | null
+          away_goals_for?: number | null
+          away_losses?: number | null
+          away_wins?: number | null
+          clean_sheets?: number | null
+          data_source?: string | null
+          draws?: number | null
+          elo_rating?: number | null
+          failed_to_score?: number | null
+          goal_difference?: number | null
+          goals_against?: number | null
+          goals_for?: number | null
+          home_draws?: number | null
+          home_goals_against?: number | null
+          home_goals_for?: number | null
+          home_losses?: number | null
+          home_wins?: number | null
+          id?: string
+          injuries_count?: number | null
+          last_updated?: string | null
+          league: string
+          losses?: number | null
+          matches_played?: number | null
+          points?: number | null
+          recent_form?: string | null
+          recent_goals_against?: number | null
+          recent_goals_for?: number | null
+          recent_points?: number | null
+          season?: string
+          shots_on_target_pg?: number | null
+          shots_pg?: number | null
+          suspensions_count?: number | null
+          team_id: string
+          team_name: string
+          win_percentage?: number | null
+          wins?: number | null
+        }
+        Update: {
+          average_goals_conceded?: number | null
+          average_goals_scored?: number | null
+          average_possession?: number | null
+          away_draws?: number | null
+          away_goals_against?: number | null
+          away_goals_for?: number | null
+          away_losses?: number | null
+          away_wins?: number | null
+          clean_sheets?: number | null
+          data_source?: string | null
+          draws?: number | null
+          elo_rating?: number | null
+          failed_to_score?: number | null
+          goal_difference?: number | null
+          goals_against?: number | null
+          goals_for?: number | null
+          home_draws?: number | null
+          home_goals_against?: number | null
+          home_goals_for?: number | null
+          home_losses?: number | null
+          home_wins?: number | null
+          id?: string
+          injuries_count?: number | null
+          last_updated?: string | null
+          league?: string
+          losses?: number | null
+          matches_played?: number | null
+          points?: number | null
+          recent_form?: string | null
+          recent_goals_against?: number | null
+          recent_goals_for?: number | null
+          recent_points?: number | null
+          season?: string
+          shots_on_target_pg?: number | null
+          shots_pg?: number | null
+          suspensions_count?: number | null
+          team_id?: string
+          team_name?: string
+          win_percentage?: number | null
+          wins?: number | null
         }
         Relationships: []
       }

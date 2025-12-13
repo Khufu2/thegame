@@ -133,6 +133,46 @@ async function fetchLiveMatches() {
   }
 }
 
+// Fetch recently finished matches (last 3 days)
+async function fetchFinishedMatches() {
+  try {
+    const leagues = LEAGUE_IDS
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (leagues.length === 0) return [];
+
+    const today = new Date();
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    
+    const dateFrom = threeDaysAgo.toISOString().split('T')[0];
+    const dateTo = today.toISOString().split('T')[0];
+
+    console.log(`[finished] Fetching finished matches from ${dateFrom} to ${dateTo}`);
+
+    let allMatches: any[] = [];
+    
+    for (const leagueCode of leagues) {
+      const url = `https://api.football-data.org/v4/competitions/${leagueCode}/matches?status=FINISHED&dateFrom=${dateFrom}&dateTo=${dateTo}`;
+      const res = await rateLimitedFetch(url, `finished-${leagueCode}`);
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const matches = data.matches || [];
+      console.log(`[finished ${leagueCode}] Found ${matches.length} finished matches`);
+      allMatches.push(...matches);
+    }
+
+    return allMatches;
+  } catch (error) {
+    console.error('Error fetching finished matches:', error);
+    return [];
+  }
+}
+
 async function fetchUpcomingMatches() {
   try {
     const leagues = LEAGUE_IDS
@@ -145,36 +185,30 @@ async function fetchUpcomingMatches() {
       return [];
     }
 
-    const datesToFetch = [];
     const today = new Date();
-    // Fetch today and next 6 days to find matches
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + i);
-      datesToFetch.push(date.toISOString().split('T')[0]);
-    }
+    const sevenDaysLater = new Date(today);
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+    
+    const dateFrom = today.toISOString().split('T')[0];
+    const dateTo = sevenDaysLater.toISOString().split('T')[0];
 
-    console.log(`[upcoming] Fetching for dates: ${datesToFetch.slice(0, 3).join(', ')}... (7 days total), leagues: ${leagues.join(', ')}`);
+    console.log(`[upcoming] Fetching from ${dateFrom} to ${dateTo}, leagues: ${leagues.join(', ')}`);
 
     let allMatches: any[] = [];
-    for (const date of datesToFetch) {
-      for (const leagueCode of leagues) {
-        const url = `https://api.football-data.org/v4/competitions/${leagueCode}/matches?status=SCHEDULED&dateFrom=${date}&dateTo=${date}`;
-        const res = await rateLimitedFetch(url, `matches-${leagueCode}-${date}`);
+    
+    for (const leagueCode of leagues) {
+      // Fetch SCHEDULED and TIMED matches
+      const url = `https://api.football-data.org/v4/competitions/${leagueCode}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
+      const res = await rateLimitedFetch(url, `upcoming-${leagueCode}`);
 
-        if (!res.ok) continue;
+      if (!res.ok) continue;
 
-        const data = await res.json();
-        const matches = data.matches || [];
-        console.log(`[league ${leagueCode}] date=${date} count=${matches.length}, api_result_count=${data.resultSet?.count || 'unknown'}`);
-
-        // Debug: log first match if any
-        if (matches.length > 0) {
-          console.log(`[debug] First match: ${matches[0].homeTeam.name} vs ${matches[0].awayTeam.name} at ${matches[0].utcDate}`);
-        }
-
-        allMatches.push(...matches);
-      }
+      const data = await res.json();
+      const matches = (data.matches || []).filter((m: any) => 
+        m.status === 'SCHEDULED' || m.status === 'TIMED'
+      );
+      console.log(`[upcoming ${leagueCode}] Found ${matches.length} scheduled matches`);
+      allMatches.push(...matches);
     }
 
     // De-duplicate by match id
@@ -422,21 +456,25 @@ Deno.serve(async (req) => {
     const liveMatches = await fetchLiveMatches();
     console.log(`✅ Found ${liveMatches.length} live matches`);
 
+    console.log("✅ Fetching FINISHED matches from Football-Data.org...");
+    const finishedMatches = await fetchFinishedMatches();
+    console.log(`✅ Found ${finishedMatches.length} finished matches`);
+
     console.log("📅 Fetching UPCOMING matches from Football-Data.org...");
     const upcomingMatches = await fetchUpcomingMatches();
     console.log(`✅ Found ${upcomingMatches.length} upcoming matches`);
 
-    const allMatches = [...liveMatches, ...upcomingMatches];
+    const allMatches = [...liveMatches, ...finishedMatches, ...upcomingMatches];
 
     if (allMatches.length > 0) {
       console.log(`💾 Saving ${allMatches.length} matches to database...`);
       await saveMatches(allMatches);
       console.log("✅ Matches saved successfully");
 
-      // Fetch logos for the teams in these matches
+      // Fetch logos for the teams in these matches (limit to avoid rate limits)
       console.log("🖼️  Fetching team logos from TheSportsDB...");
       try {
-        await fetchAndUpdateLogos(allMatches);
+        await fetchAndUpdateLogos(allMatches.slice(0, 20)); // Limit logo fetching
         console.log("✅ Logos updated successfully");
       } catch (logoError) {
         console.error("❌ Logo fetching failed:", logoError);
