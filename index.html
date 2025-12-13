@@ -22,10 +22,52 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
 
-    <title>Bet Buddies - AI Sports Intelligence</title>
+    <title>Sheena - AI Sports Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              condensed: ['"Barlow Condensed"', 'sans-serif'],
+            },
+            colors: {
+              br: {
+                bg: '#050505', // Deep Black
+                card: '#121212',
+                surface: '#1A1A1A',
+                border: '#2A2A2A',
+                text: '#FFFFFF',
+                muted: '#A1A1A1',
+                accent: '#00FFB2', // Electric Green
+              },
+              sheena: {
+                primary: '#6366F1', // Indigo
+                secondary: '#00FFB2', // Teal
+                text: '#E0E7FF'
+              }
+            },
+            spacing: {
+              'safe': 'env(safe-area-inset-bottom)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #000000;
+        color: #ffffff;
+        -webkit-font-smoothing: antialiased;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
   <script type="importmap">
 {
   "imports": {
