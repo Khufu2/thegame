@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GROK_API_KEY = Deno.env.get("GROK_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -20,57 +20,53 @@ interface GenerateNewsRequest {
    language?: "ENGLISH" | "SWAHILI";
 }
 
-async function generateWithLovableAI(prompt: string): Promise<any> {
+async function generateWithGrok(prompt: string): Promise<any> {
   try {
-    console.log("Calling Lovable AI for news generation...");
-    console.log("Lovable API Key available:", !!LOVABLE_API_KEY);
+    console.log("Calling Grok AI for news generation...");
+    console.log("Grok API Key available:", !!GROK_API_KEY);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    if (!GROK_API_KEY) {
+      throw new Error("GROK_API_KEY is not configured");
+    }
+
+    const response = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": `Bearer ${GROK_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "grok-4-latest",
         messages: [
           {
             role: "system",
-            content: "You are a sports news writer. You generate engaging sports articles in valid JSON format. Always respond with valid JSON only, no markdown formatting."
+            content:
+              "You are a sports news writer. You generate engaging sports articles in valid JSON format. Always respond with valid JSON only, no markdown formatting.",
           },
           {
             role: "user",
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Lovable AI error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again later.");
-      }
-      if (response.status === 402) {
-        throw new Error("Payment required. Please add credits to your Lovable workspace.");
-      }
-      
-      throw new Error(`Lovable AI error: ${response.status} - ${errorText}`);
+      console.error("Grok API error:", response.status, errorText);
+      throw new Error(`Grok API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content;
 
     if (!text) {
-      console.error("Lovable AI response:", JSON.stringify(data, null, 2));
-      throw new Error("No content generated from Lovable AI");
+      console.error("Grok response:", JSON.stringify(data, null, 2));
+      throw new Error("No content generated from Grok");
     }
 
-    console.log("Lovable AI response received, parsing JSON...");
+    console.log("Grok response received, parsing JSON...");
 
-    // Clean potential markdown formatting
     let cleanedText = text.trim();
     if (cleanedText.startsWith("```json")) {
       cleanedText = cleanedText.slice(7);
@@ -84,7 +80,7 @@ async function generateWithLovableAI(prompt: string): Promise<any> {
 
     return JSON.parse(cleanedText.trim());
   } catch (error) {
-    console.error("Lovable AI generation error:", error);
+    console.error("Grok generation error:", error);
     throw error;
   }
 }
@@ -100,8 +96,8 @@ serve(async (req) => {
     if (url.pathname.endsWith("/test")) {
       return new Response(
         JSON.stringify({
-          lovable_key_available: !!LOVABLE_API_KEY,
-          lovable_key_length: LOVABLE_API_KEY?.length || 0,
+          grok_key_available: !!GROK_API_KEY,
+          grok_key_length: GROK_API_KEY?.length || 0,
           timestamp: new Date().toISOString(),
         }),
         {
@@ -121,11 +117,10 @@ serve(async (req) => {
       language = "ENGLISH",
     } = body;
 
-    // Check API key
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+    if (!GROK_API_KEY) {
+      console.error("GROK_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "AI service not configured. Please enable Lovable AI in your project." }),
+        JSON.stringify({ error: "Grok AI service not configured. Please add GROK_API_KEY to your environment." }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -180,9 +175,9 @@ You MUST respond with ONLY valid JSON in this exact format (no other text before
   "excerpt": "Short excerpt for previews..."
 }`;
 
-    // Generate with Lovable AI
-    console.log("🤖 Generating news with Lovable AI...");
-    const generated = await generateWithLovableAI(prompt);
+    // Generate with Grok
+    console.log("🤖 Generating news with Grok AI...");
+    const generated = await generateWithGrok(prompt);
     console.log(`✅ Generated article: ${generated.title}`);
 
     // Save to feeds table
