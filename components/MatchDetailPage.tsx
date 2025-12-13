@@ -1,42 +1,12 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera, Send, Crown, ThumbsUp, Lock, WifiOff, ArrowRight, PlayCircle, RefreshCw } from 'lucide-react';
-import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore, Comment, MatchStats } from '../types';
+import { ArrowLeft, Share2, Check, PlusCircle, MapPin, Users, Calendar, Play, Heart, MessageCircle, Repeat, Trophy, Flame, BarChart2, ChevronRight, Shield, TrendingUp, Activity, Ticket, Table, AlertTriangle, Zap, Brain, Timer, History, Goal, User, Twitter, Monitor, Shirt, ArrowRightLeft, Camera, Send, Crown, ThumbsUp, Lock, WifiOff, ArrowRight, PlayCircle, RefreshCw, Newspaper } from 'lucide-react';
+import { Match, MatchStatus, Player, TimelineEvent, Standing, PredictionFactor, TeamLineup, LineupPlayer, BoxScore, Comment, MatchStats, NewsStory } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { ScoreShotModal } from './ScoreShotModal';
 import { useLivePolling } from './hooks/useLivePolling';
-
-// Helper function to format timestamps
-const formatMatchTime = (timeString: string) => {
-    try {
-        // Handle ISO timestamp format
-        if (timeString.includes('T')) {
-            const date = new Date(timeString);
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
-
-        // Handle simple time format like "15:00"
-        if (timeString.includes(':')) {
-            const [hours, minutes] = timeString.split(':');
-            const hour = parseInt(hours);
-            const ampm = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour % 12 || 12;
-            return `${displayHour}:${minutes} ${ampm}`;
-        }
-
-        // Return as-is for other formats
-        return timeString;
-    } catch (error) {
-        return timeString;
-    }
-};
+import { formatMatchTime } from './utils/formatTime';
 
 interface MatchDetailPageProps {
   match: Match;
@@ -58,6 +28,8 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
    const [loadingDetails, setLoadingDetails] = useState(true);
    const [standings, setStandings] = useState<any[]>([]);
    const [loadingStandings, setLoadingStandings] = useState(false);
+   const [relatedNews, setRelatedNews] = useState<NewsStory[]>([]);
+   const [loadingNews, setLoadingNews] = useState(false);
    const [liveScore, setLiveScore] = useState<{ home: number | null; away: number | null }>({ 
      home: match.score?.home ?? null, 
      away: match.score?.away ?? null 
@@ -140,6 +112,66 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
        fetchMatchDetails();
    }, [match.id, match.metadata?.fixture_id]);
+
+   // Fetch related news for team matches
+   useEffect(() => {
+       const fetchRelatedNews = async () => {
+           setLoadingNews(true);
+           try {
+               const response = await fetch(
+                   `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/get-news`,
+                   {
+                       method: 'GET',
+                       headers: {
+                           'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                           'Content-Type': 'application/json',
+                       },
+                   }
+               );
+               if (response.ok) {
+                   const allNews = await response.json();
+                   // Filter news related to either team
+                   const homeTeamLower = match.homeTeam.name.toLowerCase();
+                   const awayTeamLower = match.awayTeam.name.toLowerCase();
+                   const leagueLower = match.league.toLowerCase();
+                   
+                   const related = (allNews || []).filter((news: any) => {
+                       const title = (news.title || '').toLowerCase();
+                       const content = (news.content || '').toLowerCase();
+                       const tags = (news.tags || []).map((t: string) => t.toLowerCase());
+                       
+                       return title.includes(homeTeamLower) || 
+                              title.includes(awayTeamLower) ||
+                              content.includes(homeTeamLower) ||
+                              content.includes(awayTeamLower) ||
+                              tags.includes(leagueLower) ||
+                              tags.includes(homeTeamLower) ||
+                              tags.includes(awayTeamLower);
+                   }).slice(0, 5);
+                   
+                   setRelatedNews(related.map((n: any) => ({
+                       id: n.id,
+                       type: 'NEWS' as const,
+                       title: n.title || '',
+                       summary: n.excerpt || '',
+                       imageUrl: n.image_url || n.featured_image_url || '',
+                       source: n.source || 'Sheena Desk',
+                       timestamp: n.created_at ? new Date(n.created_at).toLocaleDateString() : 'Recent',
+                       likes: 0,
+                       comments: 0,
+                       tags: n.tags || [],
+                       contentBlocks: typeof n.content === 'string' ? JSON.parse(n.content || '[]') : n.content || []
+                   })));
+               }
+           } catch (error) {
+               console.error('Error fetching related news:', error);
+           } finally {
+               setLoadingNews(false);
+           }
+       };
+
+       fetchRelatedNews();
+   }, [match.homeTeam.name, match.awayTeam.name, match.league]);
 
    // Fetch standings when TABLE tab is activated
    useEffect(() => {
@@ -378,13 +410,16 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
           {/* TABS SCROLL */}
           <div className="flex items-center gap-6 px-6 overflow-x-auto no-scrollbar border-t border-[#2C2C2C]">
-              {['STREAM', 'TIMELINE', 'BOX SCORE', 'STATS', 'LINEUPS', 'ODDS', 'TABLE', 'COMMUNITY'].map(tab => (
+              {['STREAM', 'NEWS', 'TIMELINE', 'BOX SCORE', 'STATS', 'LINEUPS', 'ODDS', 'TABLE', 'COMMUNITY'].map(tab => (
                   <button 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`py-4 font-condensed font-bold text-sm uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors ${activeTab === tab ? 'text-white border-indigo-500' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
                   >
                       {tab}
+                      {tab === 'NEWS' && relatedNews.length > 0 && (
+                          <span className="ml-1.5 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{relatedNews.length}</span>
+                      )}
                   </button>
               ))}
           </div>
@@ -649,6 +684,59 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                            Ask Pweza for Live Analysis
                        </button>
                   </div>
+              </div>
+          )}
+
+          {/* TAB: NEWS (Related Stories) */}
+          {activeTab === 'NEWS' && (
+              <div className="py-4 px-4 animate-in fade-in">
+                  <div className="flex items-center gap-2 mb-4">
+                      <Newspaper size={16} className="text-indigo-400" />
+                      <h3 className="font-condensed font-bold text-lg uppercase text-gray-400">Related Stories</h3>
+                  </div>
+                  
+                  {loadingNews ? (
+                      <div className="py-10 text-center">
+                          <RefreshCw size={24} className="mx-auto mb-3 animate-spin text-gray-500" />
+                          <p className="text-gray-500 text-sm">Loading news...</p>
+                      </div>
+                  ) : relatedNews.length > 0 ? (
+                      <div className="space-y-3">
+                          {relatedNews.map((news) => (
+                              <div 
+                                  key={news.id}
+                                  onClick={() => navigate(`/article/${news.id}`)}
+                                  className="bg-[#121212] border border-[#2C2C2C] rounded-xl p-4 cursor-pointer hover:border-indigo-500/50 transition-colors"
+                              >
+                                  <div className="flex gap-4">
+                                      {news.imageUrl && (
+                                          <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 bg-[#1E1E1E]">
+                                              <img src={news.imageUrl} className="w-full h-full object-cover" alt={news.title} />
+                                          </div>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                              <span className="text-[9px] font-bold text-indigo-400 uppercase">{news.source}</span>
+                                              <span className="text-[9px] text-gray-600">• {news.timestamp}</span>
+                                          </div>
+                                          <h4 className="font-condensed font-bold text-base text-white leading-tight line-clamp-2">
+                                              {news.title}
+                                          </h4>
+                                          {news.summary && (
+                                              <p className="text-xs text-gray-400 mt-1 line-clamp-1">{news.summary}</p>
+                                          )}
+                                      </div>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  ) : (
+                      <div className="py-10 text-center text-gray-500">
+                          <Newspaper size={40} className="mx-auto mb-3 opacity-20" />
+                          <p className="font-condensed font-bold uppercase mb-2">No Related Stories</p>
+                          <p className="text-sm text-gray-600">News about {match.homeTeam.name} or {match.awayTeam.name} will appear here.</p>
+                      </div>
+                  )}
               </div>
           )}
 
