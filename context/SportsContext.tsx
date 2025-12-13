@@ -166,6 +166,23 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     const matchesArray = Array.isArray(data) ? data : (data.matches || []);
                     console.log('Fetched matches:', matchesArray.length);
                     
+                    // Check if any matches are missing logos and trigger logo fetch
+                    const needsLogos = matchesArray.some((m: any) => 
+                        !m.home_team_json?.logo || !m.away_team_json?.logo
+                    );
+                    if (needsLogos) {
+                        // Trigger logo fetch in background (don't await)
+                        fetch(`${SUPABASE_URL}/functions/v1/fetch-team-logos`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json',
+                            },
+                        }).then(() => {
+                            console.log('Logo fetch triggered');
+                        }).catch(err => console.error('Logo fetch failed:', err));
+                    }
+                    
                     // Predictions are already included from the edge function
                     setMatches(matchesArray);
                 } else {
