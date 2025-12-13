@@ -5,6 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isProduction = mode === 'production';
+
     return {
       server: {
         host: "::",
@@ -24,9 +26,35 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
+        // Optimize bundle size
         rollupOptions: {
-          external: [/^supabase\/functions\/.*/]
-        }
-      }
+          external: [/^supabase\/functions\/.*/],
+          output: {
+            manualChunks: {
+              // Split vendor chunks for better caching
+              'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+              'ui-vendor': ['lucide-react'],
+              'supabase-vendor': ['@supabase/supabase-js'],
+              'ai-vendor': ['@google/genai'],
+            },
+          },
+        },
+        // Enable source maps in production for debugging
+        sourcemap: !isProduction,
+        // Optimize chunk size
+        chunkSizeWarningLimit: 600,
+        // Enable compression
+        minify: 'terser',
+        terserOptions: {
+          compress: {
+            drop_console: isProduction, // Remove console.logs in production
+            drop_debugger: isProduction,
+          },
+        },
+      },
+      // CDN and caching optimizations
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js'],
+      },
     };
 });

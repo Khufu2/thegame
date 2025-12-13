@@ -7,6 +7,37 @@ import { useSports } from '../context/SportsContext';
 import { ScoreShotModal } from './ScoreShotModal';
 import { useLivePolling } from './hooks/useLivePolling';
 
+// Helper function to format timestamps
+const formatMatchTime = (timeString: string) => {
+    try {
+        // Handle ISO timestamp format
+        if (timeString.includes('T')) {
+            const date = new Date(timeString);
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        // Handle simple time format like "15:00"
+        if (timeString.includes(':')) {
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+
+        // Return as-is for other formats
+        return timeString;
+    } catch (error) {
+        return timeString;
+    }
+};
+
 interface MatchDetailPageProps {
   match: Match;
   onOpenPweza: (prompt?: string) => void;
@@ -296,7 +327,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                            {match.status === MatchStatus.SCHEDULED ? 'VS' : `${liveScore.home ?? match.score?.home ?? 0}-${liveScore.away ?? match.score?.away ?? 0}`}
                        </span>
                        <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${match.status === MatchStatus.LIVE ? 'bg-red-600 text-white animate-pulse' : 'bg-[#2C2C2C] text-gray-400'}`}>
-                           {match.time}
+                           {formatMatchTime(match.time)}
                        </div>
                   </div>
 
@@ -412,6 +443,27 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                        ))}
                                    </div>
                                )}
+
+                               {/* ADDITIONAL BETTING MARKETS */}
+                               <div className="grid grid-cols-2 gap-3 mb-4">
+                                   {/* BTTS */}
+                                   <div className="bg-black/40 p-3 rounded-lg border border-[#333]">
+                                       <div className="flex items-center justify-between mb-1">
+                                           <span className="text-[10px] font-bold text-gray-400 uppercase">BTTS</span>
+                                           <span className="text-xs font-bold text-[#00FFB2]">Yes 2.45</span>
+                                       </div>
+                                       <div className="text-xs text-gray-300">Both teams score</div>
+                                   </div>
+
+                                   {/* Over/Under */}
+                                   <div className="bg-black/40 p-3 rounded-lg border border-[#333]">
+                                       <div className="flex items-center justify-between mb-1">
+                                           <span className="text-[10px] font-bold text-gray-400 uppercase">O/U 2.5</span>
+                                           <span className="text-xs font-bold text-[#00FFB2]">Over 1.85</span>
+                                       </div>
+                                       <div className="text-xs text-gray-300">Goals: Over 2.5</div>
+                                   </div>
+                               </div>
                                
                                <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#2C2C2C]">
                                    <div>

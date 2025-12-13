@@ -175,11 +175,11 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
 
         {/* BODY CONTENT RENDERER */}
         <article className="prose dark:prose-invert prose-lg max-w-none">
-            {story.contentBlocks ? (
+            {story.contentBlocks && story.contentBlocks.length > 0 ? (
                 story.contentBlocks.map((block, idx) => (
                     <ContentBlockRenderer key={idx} block={block} dataSaver={dataSaver} />
                 ))
-            ) : story.body ? (
+            ) : story.body && Array.isArray(story.body) ? (
                 // Fallback for old string[] body
                 story.body.map((paragraph, idx) => (
                      <p key={idx} className="mb-6 font-sans text-[17px] leading-[1.6] text-gray-800 dark:text-[#D1D1D1]">
@@ -187,7 +187,15 @@ export const ArticlePage: React.FC<ArticlePageProps> = ({ story, relatedStories 
                      </p>
                 ))
             ) : (
-                <p className="font-sans text-lg text-gray-500 italic">Content loading...</p>
+                <div className="text-center py-8">
+                    <p className="font-sans text-lg text-gray-500 italic mb-4">No content available</p>
+                    <p className="text-sm text-gray-400">This article may still be processing or content may be missing.</p>
+                    <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <p className="text-xs text-gray-500">Debug Info:</p>
+                        <p className="text-xs text-gray-400">contentBlocks: {story.contentBlocks ? 'present' : 'missing'}</p>
+                        <p className="text-xs text-gray-400">body: {story.body ? 'present' : 'missing'}</p>
+                    </div>
+                </div>
             )}
         </article>
 

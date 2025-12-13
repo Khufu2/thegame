@@ -13,3 +13,40 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+// Register service worker for caching and offline functionality (disabled for debugging)
+// if ('serviceWorker' in navigator && import.meta.env.PROD) {
+//   window.addEventListener('load', () => {
+//     navigator.serviceWorker.register('/sw.js')
+//       .then((registration) => {
+//         console.log('SW registered: ', registration);
+
+//         // Request notification permission
+//         if ('Notification' in window && 'serviceWorker' in navigator) {
+//           Notification.requestPermission().then((permission) => {
+//             if (permission === 'granted') {
+//               console.log('Notification permission granted');
+//             }
+//           });
+//         }
+
+//         // Handle service worker updates
+//         registration.addEventListener('updatefound', () => {
+//           const newWorker = registration.installing;
+//           if (newWorker) {
+//             newWorker.addEventListener('statechange', () => {
+//               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+//                 // New content is available, notify user
+//                 if (confirm('New content is available. Reload to get the latest version?')) {
+//                   window.location.reload();
+//                 }
+//               }
+//             });
+//           }
+//         });
+//       })
+//       .catch((registrationError) => {
+//         console.log('SW registration failed: ', registrationError);
+//       });
+//   });
+// }

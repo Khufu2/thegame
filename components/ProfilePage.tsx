@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, BetSlipItem, Match } from '../types';
-import { Settings, Award, TrendingUp, Shield, Crown, ChevronRight, LogOut, Bell, Heart, CreditCard, Plus, Check, Lock, Trophy, X, Coins, Copy, Loader2 } from 'lucide-react';
+import { Settings, Award, TrendingUp, Shield, Crown, ChevronRight, LogOut, Bell, Heart, CreditCard, Plus, Check, Lock, Trophy, X, Coins, Copy, Loader2, Target, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { initiateStripeCheckout, verifyCryptoTransaction } from '../services/paymentService';
@@ -20,14 +20,48 @@ const SUGGESTED_TEAMS = [
 ];
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) => {
-   const navigate = useNavigate();
-   const { updatePreferences, logout } = useSports(); // Use this to upgrade user locally after success
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SQUAD' | 'HISTORY'>('OVERVIEW');
-  const [favorites, setFavorites] = useState<string[]>(user.preferences.favoriteLeagues);
-  const [followedTeams, setFollowedTeams] = useState<string[]>(user.preferences.favoriteTeams);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const navigate = useNavigate();
+    const { updatePreferences, logout } = useSports(); // Use this to upgrade user locally after success
+   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SQUAD' | 'HISTORY' | 'PREDICTIONS'>('OVERVIEW');
+   const [favorites, setFavorites] = useState<string[]>(user.preferences.favoriteLeagues);
+   const [followedTeams, setFollowedTeams] = useState<string[]>(user.preferences.favoriteTeams);
+   const [showPaymentModal, setShowPaymentModal] = useState(false);
+   const [predictionStats, setPredictionStats] = useState<any>(null);
+   const [loadingStats, setLoadingStats] = useState(false);
 
-  const toggleLeague = (league: string) => {
+   useEffect(() => {
+       fetchPredictionStats();
+   }, []);
+
+   const fetchPredictionStats = async () => {
+       try {
+           setLoadingStats(true);
+           const response = await fetch(
+               `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/prediction-analytics`,
+               {
+                   method: 'POST',
+                   headers: {
+                       'Authorization': `Bearer ${localStorage.getItem('sheena_access_token')}`,
+                       'Content-Type': 'application/json',
+                   },
+                   body: JSON.stringify({
+                       timeframe: '30d'
+                   }),
+               }
+           );
+
+           if (response.ok) {
+               const data = await response.json();
+               setPredictionStats(data.analytics);
+           }
+       } catch (error) {
+           console.error('Error fetching prediction stats:', error);
+       } finally {
+           setLoadingStats(false);
+       }
+   };
+
+   const toggleLeague = (league: string) => {
       if (favorites.includes(league)) {
           setFavorites(prev => prev.filter(l => l !== league));
       } else {
@@ -87,32 +121,55 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
                 </div>
             </div>
 
-            {/* STATS DASHBOARD (Gamification) */}
+            {/* PREDICTION PERFORMANCE DASHBOARD */}
             <div className="grid grid-cols-3 gap-3 mb-6">
                 <div className="bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C] flex flex-col items-center">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Win Rate</span>
-                    <span className={`font-condensed font-black text-2xl ${user.stats.winRate > 50 ? 'text-[#00FFB2]' : 'text-gray-200'}`}>
-                        {user.stats.winRate}%
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">AI Accuracy</span>
+                    <span className={`font-condensed font-black text-2xl ${predictionStats?.overall?.accuracy > 50 ? 'text-[#00FFB2]' : 'text-gray-200'}`}>
+                        {loadingStats ? '...' : `${predictionStats?.overall?.accuracy || 0}%`}
                     </span>
                 </div>
                 <div className="bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C] flex flex-col items-center">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Profit (Virtual)</span>
-                    <span className={`font-condensed font-black text-2xl ${user.stats.netProfit >= 0 ? 'text-[#00FFB2]' : 'text-red-500'}`}>
-                        {user.stats.netProfit > 0 ? '+' : ''}{user.stats.netProfit}u
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">Total Points</span>
+                    <span className={`font-condensed font-black text-2xl ${predictionStats?.overall?.totalPoints >= 0 ? 'text-[#00FFB2]' : 'text-red-500'}`}>
+                        {loadingStats ? '...' : (predictionStats?.overall?.totalPoints > 0 ? '+' : '') + (predictionStats?.overall?.totalPoints || 0)}
                     </span>
                 </div>
                 <div className="bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C] flex flex-col items-center">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Bets</span>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">Predictions</span>
                     <span className="font-condensed font-black text-2xl text-white">
-                        {user.stats.betsPlaced}
+                        {loadingStats ? '...' : predictionStats?.overall?.totalPredictions || 0}
                     </span>
                 </div>
             </div>
+
+            {/* PREDICTION INSIGHTS */}
+            {predictionStats && (
+                <div className="mb-6 p-4 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C]">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Target size={16} className="text-indigo-400" />
+                        <span className="font-condensed font-bold text-sm uppercase text-white">AI Performance Insights</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                            <span className="text-gray-500">Avg Confidence:</span>
+                            <span className="text-white font-bold ml-1">{predictionStats.overall?.averageConfidence}%</span>
+                        </div>
+                        <div>
+                            <span className="text-gray-500">ROI:</span>
+                            <span className={`font-bold ml-1 ${predictionStats.overall?.roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {predictionStats.overall?.roi > 0 ? '+' : ''}{predictionStats.overall?.roi}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* TABS */}
             <div className="flex p-1 bg-[#1E1E1E] rounded-lg mb-4">
                 <TabButton label="Overview" active={activeTab === 'OVERVIEW'} onClick={() => setActiveTab('OVERVIEW')} />
                 <TabButton label="My Squad" active={activeTab === 'SQUAD'} onClick={() => setActiveTab('SQUAD')} />
+                <TabButton label="Predictions" active={activeTab === 'PREDICTIONS'} onClick={() => setActiveTab('PREDICTIONS')} />
                 <TabButton label="History" active={activeTab === 'HISTORY'} onClick={() => setActiveTab('HISTORY')} />
             </div>
         </div>
@@ -240,7 +297,37 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
                 </div>
             )}
 
-            {/* 3. HISTORY: BET TRACKING */}
+            {/* 3. PREDICTIONS: AI PERFORMANCE TRACKING */}
+            {activeTab === 'PREDICTIONS' && (
+                <div className="space-y-4">
+                    {!predictionStats?.recentPredictions || predictionStats.recentPredictions.length === 0 ? (
+                        <div className="text-center py-10 opacity-50">
+                            <BarChart2 size={40} className="mx-auto mb-2" />
+                            <p className="font-condensed font-bold uppercase">No prediction data yet</p>
+                            <p className="text-xs text-gray-500 mt-1">Predictions will appear here once matches are resolved</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {predictionStats.recentPredictions.slice(0, 20).map((prediction: any) => (
+                                <PredictionItem
+                                    key={prediction.id}
+                                    homeTeam={prediction.home_team}
+                                    awayTeam={prediction.away_team}
+                                    league={prediction.league}
+                                    predicted={prediction.predicted_outcome}
+                                    actual={prediction.actual_outcome}
+                                    confidence={prediction.confidence}
+                                    points={prediction.points_earned}
+                                    status={prediction.status}
+                                    date={prediction.created_at}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* 4. HISTORY: BET TRACKING */}
             {activeTab === 'HISTORY' && (
                 <div className="space-y-4">
                     {betHistory.filter(b => b.status === 'WON' || b.status === 'LOST').length === 0 && (
@@ -249,28 +336,28 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, betHistory }) =>
                             <p className="font-condensed font-bold uppercase">No settled bets yet</p>
                         </div>
                     )}
-                    
+
                     {/* Mock History Items */}
-                    <HistoryItem 
-                        match="Lakers vs Warriors" 
-                        selection="Lakers -4.5" 
-                        odds={1.91} 
-                        result="WON" 
-                        profit={9.10} 
+                    <HistoryItem
+                        match="Lakers vs Warriors"
+                        selection="Lakers -4.5"
+                        odds={1.91}
+                        result="WON"
+                        profit={9.10}
                     />
-                    <HistoryItem 
-                        match="Arsenal vs Chelsea" 
-                        selection="Arsenal ML" 
-                        odds={1.65} 
-                        result="WON" 
-                        profit={6.50} 
+                    <HistoryItem
+                        match="Arsenal vs Chelsea"
+                        selection="Arsenal ML"
+                        odds={1.65}
+                        result="WON"
+                        profit={6.50}
                     />
-                     <HistoryItem 
-                        match="Jon Jones vs Miocic" 
-                        selection="Miocic KO" 
-                        odds={4.50} 
-                        result="LOST" 
-                        profit={-10.00} 
+                     <HistoryItem
+                        match="Jon Jones vs Miocic"
+                        selection="Miocic KO"
+                        odds={4.50}
+                        result="LOST"
+                        profit={-10.00}
                     />
                 </div>
             )}
@@ -434,6 +521,42 @@ const MenuItem = ({ icon, label, value, danger, onClick }: any) => (
             <ChevronRight size={16} className="text-gray-600" />
         </div>
     </button>
+);
+
+const PredictionItem = ({ homeTeam, awayTeam, league, predicted, actual, confidence, points, status, date }: any) => (
+    <div className="bg-[#1E1E1E] rounded-lg p-3 border border-[#2C2C2C] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+            <div className={`w-3 h-3 rounded-full ${
+                status === 'RESOLVED'
+                    ? (predicted === actual ? 'bg-green-500' : 'bg-red-500')
+                    : 'bg-yellow-500'
+            }`}></div>
+            <div>
+                <h4 className="font-bold text-white text-sm">{homeTeam} vs {awayTeam}</h4>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-500 uppercase">{league}</span>
+                    <span className="text-[10px] text-indigo-400">• {confidence}% confidence</span>
+                </div>
+            </div>
+        </div>
+        <div className="text-right">
+            <div className="text-xs text-gray-400 mb-1">
+                Predicted: <span className="text-white font-bold">{predicted}</span>
+            </div>
+            {status === 'RESOLVED' ? (
+                <div>
+                    <span className={`block font-black text-sm uppercase ${predicted === actual ? 'text-green-500' : 'text-red-500'}`}>
+                        {predicted === actual ? '✓ CORRECT' : '✗ WRONG'}
+                    </span>
+                    <span className={`text-xs font-mono font-bold ${points > 0 ? 'text-green-400' : points < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                        {points > 0 ? '+' : ''}{points} pts
+                    </span>
+                </div>
+            ) : (
+                <span className="text-xs text-yellow-400 font-bold uppercase">Pending</span>
+            )}
+        </div>
+    </div>
 );
 
 const HistoryItem = ({ match, selection, odds, result, profit }: any) => (

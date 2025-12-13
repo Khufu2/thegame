@@ -117,7 +117,63 @@ serve(async (req) => {
     } = body;
 
     if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY environment variable not set");
+      // Fallback: Generate basic news without AI if API key is missing
+      console.warn("GEMINI_API_KEY not set, generating basic news template");
+
+      const basicNews = {
+        title: `${topic} - Latest Update`,
+        summary: `Breaking news about ${topic} in the world of sports.`,
+        blocks: [
+          {
+            type: "TEXT",
+            content: `This is a placeholder article about ${topic}. To generate AI-powered content, please set the GEMINI_API_KEY environment variable in your Supabase Edge Functions.`
+          }
+        ],
+        socialCaption: `🚨 ${topic} - Stay tuned for updates! #SheenaSports`,
+        entities: [],
+        contentTags: [],
+        language: language.toLowerCase(),
+        wordCount: 50,
+        readingTimeMinutes: 1,
+        excerpt: `News about ${topic}...`
+      };
+
+      // Save basic news to feeds table
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+      const { data: feed, error: feedError } = await supabase
+        .from("feeds")
+        .insert({
+          title: basicNews.title,
+          content: JSON.stringify(basicNews.blocks),
+          source: "AI News Agent (Basic Mode)",
+          type: "news",
+          sentiment: "neutral",
+          language: basicNews.language,
+          word_count: basicNews.wordCount,
+          reading_time_minutes: basicNews.readingTimeMinutes,
+          excerpt: basicNews.excerpt,
+        })
+        .select()
+        .single();
+
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          article: {
+            ...basicNews,
+            id: feed?.id,
+            created_at: feed?.created_at,
+          },
+          timestamp: new Date().toISOString(),
+          warning: "Generated in basic mode - API key not configured"
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
     }
 
     // Build search query

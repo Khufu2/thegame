@@ -2,6 +2,7 @@
 import React from 'react';
 import { Match, MatchStatus } from '../types';
 import { X, Download, Share2, Instagram, CheckCircle2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 interface ScoreShotModalProps {
     match: Match;
@@ -10,21 +11,56 @@ interface ScoreShotModalProps {
 
 export const ScoreShotModal: React.FC<ScoreShotModalProps> = ({ match, onClose }) => {
     
-    // NOTE FOR NEXT ENGINEER:
-    // To make this fully functional, install 'html2canvas'.
-    // import html2canvas from 'html2canvas';
-    // const handleDownload = async () => {
-    //    const element = document.getElementById('scoreshot-canvas');
-    //    const canvas = await html2canvas(element);
-    //    const data = canvas.toDataURL('image/png');
-    //    const link = document.createElement('a');
-    //    link.href = data;
-    //    link.download = 'sheena-pick.png';
-    //    link.click();
-    // }
+    const handleDownload = async () => {
+        try {
+            const element = document.getElementById('scoreshot-canvas');
+            if (!element) {
+                alert("Canvas element not found");
+                return;
+            }
 
-    const handleDownload = () => {
-        alert("Developer Note: Integrate 'html2canvas' library to enable actual image generation from this DOM element.");
+            // Wait for images to load
+            const images = element.querySelectorAll('img');
+            const imagePromises = Array.from(images).map(img => {
+                return new Promise((resolve, reject) => {
+                    if (img.complete) {
+                        resolve(true);
+                    } else {
+                        img.onload = () => resolve(true);
+                        img.onerror = () => {
+                            // If image fails to load, replace with a placeholder
+                            img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiMzMzMzMzMiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxMy4xIDEyIDE0IDExLjEgMTQgMTBDMTQgOC45IDEzLjEgOCA4IDhDNi45IDggNiA4LjkgNiAxMEM2IDExLjEgNi45IDEyIDEyIDEyWk0xMiAxNUMxMy4xIDE1IDE0IDE0LjEgMTQgMTMuNWMwLS41NS0uNDUtMS0xLTEuNUM4LjQ1IDEyLjUgOCA5IDguNDUgOSA5IDlDOS41NSA5LjQ1IDEwIDlDMTAgOS41NSAxMC40NSAxMCAxMSAxMEMxMS41NSAxMC41IDEyIDExLjUgMTIgMTVaIiBmaWxsPSIjNjY2NjY2Ii8+Cjwvc3ZnPgo8L3N2Zz4=';
+                            resolve(true);
+                        };
+                    }
+                });
+            });
+
+            // Wait for all images to load
+            await Promise.all(imagePromises);
+
+            // Small delay to ensure rendering is complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#000000',
+                scale: 2, // Higher resolution
+                useCORS: true,
+                allowTaint: true, // Allow images from different domains
+                width: element.offsetWidth,
+                height: element.offsetHeight,
+                logging: false
+            });
+
+            const data = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = data;
+            link.download = `sheena-pick-${match.homeTeam.name}-vs-${match.awayTeam.name}.png`;
+            link.click();
+        } catch (error) {
+            console.error('Error generating image:', error);
+            alert("Failed to generate image. Please try again.");
+        }
     };
 
     const handleShare = async () => {
@@ -72,12 +108,44 @@ export const ScoreShotModal: React.FC<ScoreShotModalProps> = ({ match, onClose }
                         
                         <div className="flex items-center justify-center gap-6 w-full px-4">
                              <div className="flex flex-col items-center gap-2">
-                                 <img src={match.homeTeam.logo} className="w-20 h-20 object-contain drop-shadow-lg" />
+                                 <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center">
+                                     <img
+                                         src={match.homeTeam.logo}
+                                         className="w-16 h-16 object-contain drop-shadow-lg"
+                                         onError={(e) => {
+                                             const target = e.target as HTMLImageElement;
+                                             target.style.display = 'none';
+                                             const parent = target.parentElement;
+                                             if (parent) {
+                                                 const fallback = document.createElement('div');
+                                                 fallback.className = 'w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center text-white font-black text-xl';
+                                                 fallback.textContent = match.homeTeam.name.charAt(0);
+                                                 parent.appendChild(fallback);
+                                             }
+                                         }}
+                                     />
+                                 </div>
                                  <span className="font-condensed font-bold text-2xl uppercase text-white">{match.homeTeam.name}</span>
                              </div>
                              <span className="font-condensed font-black text-5xl text-gray-700 italic">VS</span>
                              <div className="flex flex-col items-center gap-2">
-                                 <img src={match.awayTeam.logo} className="w-20 h-20 object-contain drop-shadow-lg" />
+                                 <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center">
+                                     <img
+                                         src={match.awayTeam.logo}
+                                         className="w-16 h-16 object-contain drop-shadow-lg"
+                                         onError={(e) => {
+                                             const target = e.target as HTMLImageElement;
+                                             target.style.display = 'none';
+                                             const parent = target.parentElement;
+                                             if (parent) {
+                                                 const fallback = document.createElement('div');
+                                                 fallback.className = 'w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center text-white font-black text-xl';
+                                                 fallback.textContent = match.awayTeam.name.charAt(0);
+                                                 parent.appendChild(fallback);
+                                             }
+                                         }}
+                                     />
+                                 </div>
                                  <span className="font-condensed font-bold text-2xl uppercase text-white">{match.awayTeam.name}</span>
                              </div>
                         </div>

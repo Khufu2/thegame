@@ -12,6 +12,7 @@ import { AuthPage } from './components/AuthPage';
 import { Onboarding } from './components/Onboarding';
 import { ExplorePage } from './components/ExplorePage'; 
 import { AdminPage } from './components/AdminPage';
+import { AdminDashboard } from './components/AdminDashboard';
 import { LeaderboardPage } from './components/LeaderboardPage';
 import { SettingsPage } from './components/SettingsPage';
 import { SourceProfilePage } from './components/SourceProfilePage';
@@ -169,6 +170,11 @@ const AppContent = () => {
         <Route path="/admin" element={
             <ProtectedRoute>
                 <AdminPage />
+            </ProtectedRoute>
+        } />
+        <Route path="/admin/dashboard" element={
+            <ProtectedRoute>
+                <AdminDashboard />
             </ProtectedRoute>
         } />
         <Route path="/settings" element={

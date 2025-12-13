@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSports } from '../context/SportsContext';
 import { NewsStory, SystemAlert, ArticleBlock, MatchStatus } from '../types';
 import { generateMatchNews, shareExternalNews } from '../services/newsAgentService';
-import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin, ExternalLink, Newspaper, Loader2 } from 'lucide-react';
+import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin, ExternalLink, Newspaper, Loader2, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import supabase from '../services/supabaseClient';
 
@@ -18,9 +18,12 @@ const NEWS_SOURCES = [
 export const AdminPage: React.FC = () => {
     const { addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert, user, matches, news, alerts } = useSports();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'SHARE_NEWS' | 'MANAGE'>('NEWS');
+    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'SHARE_NEWS' | 'MANAGE' | 'BACKTEST'>('NEWS');
+    const [publishedNews, setPublishedNews] = useState<any[]>([]);
+    const [editingNews, setEditingNews] = useState<any>(null);
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
     const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+    const [apiKeysAvailable, setApiKeysAvailable] = useState<boolean | null>(null);
 
     // Check admin status from database
     useEffect(() => {
@@ -59,12 +62,52 @@ export const AdminPage: React.FC = () => {
         checkAdminStatus();
     }, [user]);
 
+    // Check API key availability
+    useEffect(() => {
+        const checkApiKeys = async () => {
+            try {
+                const response = await fetch(
+                    `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/generate-news`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            topic: "test",
+                            persona: "SHEENA",
+                            tone: "RECAP",
+                            language: "ENGLISH",
+                            useGrounding: false
+                        }),
+                    }
+                );
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setApiKeysAvailable(!data.warning); // If warning exists, keys are not available
+                } else {
+                    setApiKeysAvailable(false);
+                }
+            } catch (error) {
+                console.error('Error checking API keys:', error);
+                setApiKeysAvailable(false);
+            }
+        };
+
+        if (isAdmin) {
+            checkApiKeys();
+        }
+    }, [isAdmin]);
+
     // --- NEWS STATE ---
     const [newsTitle, setNewsTitle] = useState('');
     const [newsSummary, setNewsSummary] = useState('');
     const [newsImage, setNewsImage] = useState('https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=1000&auto=format&fit=crop');
     const [newsTag, setNewsTag] = useState('NBA');
     const [blocks, setBlocks] = useState<ArticleBlock[]>([]);
+    const [uploadingImage, setUploadingImage] = useState(false);
     
     // --- ALERT STATE ---
     const [alertTitle, setAlertTitle] = useState('');
@@ -104,6 +147,13 @@ export const AdminPage: React.FC = () => {
     // --- TEAM MANAGEMENT STATE ---
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('JOURNALIST');
+
+    // --- BACKTEST STATE ---
+    const [backtestDays, setBacktestDays] = useState(30);
+    const [backtestModel, setBacktestModel] = useState('');
+    const [backtestLeague, setBacktestLeague] = useState('');
+    const [backtestResults, setBacktestResults] = useState<any>(null);
+    const [isRunningBacktest, setIsRunningBacktest] = useState(false);
 
     if (isCheckingAdmin) {
         return (
@@ -152,13 +202,28 @@ export const AdminPage: React.FC = () => {
     };
 
     const publishNews = async () => {
+        if (!newsTitle.trim()) {
+            alert('Please enter a title');
+            return;
+        }
+
+        if (!newsSummary.trim()) {
+            alert('Please enter a summary');
+            return;
+        }
+
+        if (blocks.length === 0) {
+            alert('Please add at least one content block');
+            return;
+        }
+
         const story: NewsStory = {
             id: `news_${Date.now()}`,
             type: 'NEWS',
             title: newsTitle,
             summary: newsSummary,
             imageUrl: newsImage,
-            source: aiPersona === 'ORACLE' ? 'The Oracle' : 'Sheena Desk', 
+            source: aiPersona === 'ORACLE' ? 'The Oracle' : 'Sheena Desk',
             timestamp: 'Just Now',
             likes: 0,
             comments: 0,
@@ -286,6 +351,227 @@ export const AdminPage: React.FC = () => {
         setLinkTag('News');
     };
 
+    const handleRunBacktest = async () => {
+        setIsRunningBacktest(true);
+        try {
+            const response = await fetch(
+                `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/backtest-predictions`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        days: backtestDays,
+                        model: backtestModel || undefined,
+                        league: backtestLeague || undefined,
+                    }),
+                }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                setBacktestResults(data.backtest);
+            } else {
+                alert('Failed to run backtest');
+            }
+        } catch (error) {
+            console.error('Backtest error:', error);
+            alert('Error running backtest');
+        }
+        setIsRunningBacktest(false);
+    };
+
+    const fetchPublishedNews = async () => {
+        try {
+            const response = await fetch(
+                `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/get-news`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                setPublishedNews(data);
+            } else {
+                console.error('Failed to fetch published news');
+            }
+        } catch (error) {
+            console.error('Error fetching published news:', error);
+        }
+    };
+
+    const deletePublishedNews = async (newsId: string) => {
+        if (!confirm('Are you sure you want to delete this news article?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('feeds')
+                .delete()
+                .eq('id', newsId);
+
+            if (error) {
+                console.error('Error deleting news:', error);
+                alert('Failed to delete news article');
+            } else {
+                alert('News article deleted successfully');
+                fetchPublishedNews(); // Refresh the list
+            }
+        } catch (error) {
+            console.error('Error deleting news:', error);
+            alert('Error deleting news article');
+        }
+    };
+
+    const startEditingNews = (newsItem: any) => {
+        setEditingNews(newsItem);
+        setNewsTitle(newsItem.title || '');
+        setNewsSummary(newsItem.excerpt || '');
+        setNewsImage(newsItem.image_url || '');
+        setNewsTag(newsItem.tags?.[0] || 'News');
+
+        // Parse content blocks - handle both JSON string and already parsed array
+        try {
+            let contentBlocks;
+            if (typeof newsItem.content === 'string') {
+                contentBlocks = JSON.parse(newsItem.content || '[]');
+            } else if (Array.isArray(newsItem.content)) {
+                contentBlocks = newsItem.content;
+            } else {
+                contentBlocks = [];
+            }
+            setBlocks(contentBlocks);
+        } catch (error) {
+            console.warn('Failed to parse content blocks:', error);
+            setBlocks([]);
+        }
+
+        setActiveTab('NEWS');
+    };
+
+    const handleImageUpload = async (file: File) => {
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size must be less than 5MB');
+            return;
+        }
+
+        setUploadingImage(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}.${fileExt}`;
+            const filePath = `news-images/${fileName}`;
+
+            console.log('Attempting to upload to:', filePath);
+
+            const { error: uploadError } = await supabase.storage
+                .from('images')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error('Upload error:', uploadError);
+
+                // Try alternative approach - convert to base64 for now
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64 = e.target?.result as string;
+                    setNewsImage(base64);
+                    alert('Image uploaded successfully (stored locally)!');
+                    setUploadingImage(false);
+                };
+                reader.onerror = () => {
+                    alert('Failed to process image. Please try again.');
+                    setUploadingImage(false);
+                };
+                reader.readAsDataURL(file);
+                return;
+            }
+
+            const { data } = supabase.storage
+                .from('images')
+                .getPublicUrl(filePath);
+
+            if (data.publicUrl) {
+                setNewsImage(data.publicUrl);
+                alert('Image uploaded successfully!');
+            } else {
+                throw new Error('Failed to get public URL');
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error);
+
+            // Fallback to base64
+            try {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64 = e.target?.result as string;
+                    setNewsImage(base64);
+                    alert('Image uploaded successfully (stored locally)!');
+                    setUploadingImage(false);
+                };
+                reader.onerror = () => {
+                    alert('Failed to upload image. Please try again.');
+                    setUploadingImage(false);
+                };
+                reader.readAsDataURL(file);
+            } catch (fallbackError) {
+                alert('Failed to upload image. Please try again.');
+                setUploadingImage(false);
+            }
+        } finally {
+            // Only set to false if not using base64 fallback
+            if (!uploadingImage) {
+                setUploadingImage(false);
+            }
+        }
+    };
+
+    const updatePublishedNews = async () => {
+        if (!editingNews) return;
+
+        try {
+            const { error } = await supabase
+                .from('feeds')
+                .update({
+                    title: newsTitle,
+                    excerpt: newsSummary,
+                    content: JSON.stringify(blocks),
+                    image_url: newsImage,
+                    tags: [newsTag]
+                })
+                .eq('id', editingNews.id);
+
+            if (error) {
+                console.error('Error updating news:', error);
+                alert('Failed to update news article');
+            } else {
+                alert('News article updated successfully');
+                setEditingNews(null);
+                fetchPublishedNews(); // Refresh the list
+            }
+        } catch (error) {
+            console.error('Error updating news:', error);
+            alert('Error updating news article');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#050505] text-white pb-24 font-sans">
             
@@ -298,9 +584,12 @@ export const AdminPage: React.FC = () => {
                     <span className="font-condensed font-black text-xl uppercase tracking-tighter italic">Command Center</span>
                 </div>
                 <div className="flex gap-2 overflow-x-auto">
+                    <button onClick={() => navigate('/admin/dashboard')} className="px-4 py-1.5 text-xs font-bold uppercase rounded whitespace-nowrap bg-purple-600 text-white hover:bg-purple-500">📊 Dashboard</button>
                     <button onClick={() => setActiveTab('NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded whitespace-nowrap ${activeTab === 'NEWS' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>News Desk</button>
                     <button onClick={() => setActiveTab('AI_AGENT')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'AI_AGENT' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-white'}`}><Wand2 size={12}/> AI Agent</button>
                     <button onClick={() => setActiveTab('SHARE_NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'SHARE_NEWS' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-white'}`}><ExternalLink size={12}/> Share News</button>
+                    <button onClick={() => { setActiveTab('MANAGE'); fetchPublishedNews(); }} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'MANAGE' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:text-white'}`}>📝 Manage</button>
+                    <button onClick={() => setActiveTab('BACKTEST')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'BACKTEST' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-white'}`}>📊 Backtest</button>
                     <button onClick={() => setActiveTab('WAR_ROOM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded whitespace-nowrap ${activeTab === 'WAR_ROOM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>War Room</button>
                 </div>
             </div>
@@ -468,6 +757,21 @@ export const AdminPage: React.FC = () => {
                                  </div>
                              </div>
 
+                             {/* API Keys Warning */}
+                             {apiKeysAvailable === false && (
+                                 <div className="mb-6 p-4 bg-yellow-900/20 border border-yellow-500/50 rounded-lg">
+                                     <div className="flex items-center gap-3">
+                                         <div className="w-8 h-8 rounded-full bg-yellow-600 flex items-center justify-center">
+                                             <AlertTriangle size={16} className="text-white" />
+                                         </div>
+                                         <div>
+                                             <h4 className="font-bold text-yellow-400 text-sm">AI Features Limited</h4>
+                                             <p className="text-xs text-yellow-300">API keys not configured. News generation will use basic templates.</p>
+                                         </div>
+                                     </div>
+                                 </div>
+                             )}
+
                              <div className="space-y-4">
                                  {/* Mode Selector */}
                                  <div className="flex bg-black rounded p-1 border border-[#333]">
@@ -616,12 +920,27 @@ export const AdminPage: React.FC = () => {
                                         value={newsSummary}
                                         onChange={e => setNewsSummary(e.target.value)}
                                     />
-                                    <input 
-                                        className="w-full bg-black border border-[#333] p-3 rounded text-sm placeholder-gray-600" 
-                                        placeholder="Image URL"
-                                        value={newsImage}
-                                        onChange={e => setNewsImage(e.target.value)}
-                                    />
+                                    <div className="space-y-3">
+                                        <input
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-sm placeholder-gray-600"
+                                            placeholder="Image URL (or upload below)"
+                                            value={newsImage}
+                                            onChange={e => setNewsImage(e.target.value)}
+                                        />
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) handleImageUpload(file);
+                                                }}
+                                                className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500"
+                                                disabled={uploadingImage}
+                                            />
+                                            {uploadingImage && <Loader2 size={16} className="animate-spin text-indigo-400" />}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -690,10 +1009,374 @@ export const AdminPage: React.FC = () => {
                     </>
                 )}
 
-                {/* --- WAR ROOM CONSOLE (Keep existing) --- */}
+                {/* --- BACKTEST DASHBOARD --- */}
+                {activeTab === 'BACKTEST' && (
+                    <div className="col-span-2 max-w-[800px] mx-auto w-full space-y-6">
+
+                        {/* BACKTEST CONTROLS */}
+                        <div className="bg-[#121212] border border-purple-500/50 rounded-xl p-6 shadow-2xl">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                                    <BarChart2 size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">Prediction Backtest</h3>
+                                    <p className="text-xs text-purple-400">Analyze ML model performance over time</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4 mb-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Period</label>
+                                    <select
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-purple-500"
+                                        value={backtestDays}
+                                        onChange={(e) => setBacktestDays(Number(e.target.value))}
+                                    >
+                                        <option value={7}>7 days</option>
+                                        <option value={30}>30 days</option>
+                                        <option value={90}>90 days</option>
+                                        <option value={180}>180 days</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Model Filter</label>
+                                    <select
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-purple-500"
+                                        value={backtestModel}
+                                        onChange={(e) => setBacktestModel(e.target.value)}
+                                    >
+                                        <option value="">All Models</option>
+                                        <option value="Elo Rating System">Elo Ratings</option>
+                                        <option value="Poisson Regression">Regression</option>
+                                        <option value="AI Enhanced">AI Enhanced</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">League Filter</label>
+                                    <select
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-purple-500"
+                                        value={backtestLeague}
+                                        onChange={(e) => setBacktestLeague(e.target.value)}
+                                    >
+                                        <option value="">All Leagues</option>
+                                        <option value="Premier League">Premier League</option>
+                                        <option value="La Liga">La Liga</option>
+                                        <option value="Bundesliga">Bundesliga</option>
+                                        <option value="Serie A">Serie A</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleRunBacktest}
+                                disabled={isRunningBacktest}
+                                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                            >
+                                {isRunningBacktest ? (
+                                    <><RefreshCw size={16} className="animate-spin" /> Running Backtest...</>
+                                ) : (
+                                    <><BarChart2 size={16} /> Run Backtest Analysis</>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* BACKTEST RESULTS */}
+                        {backtestResults && (
+                            <div className="bg-[#121212] border border-purple-500/50 rounded-xl p-6 shadow-2xl">
+                                <h3 className="font-condensed font-black text-xl uppercase text-white mb-6">Backtest Results</h3>
+
+                                {/* OVERVIEW STATS */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                    <div className="bg-black/40 p-4 rounded-lg border border-[#333]">
+                                        <div className="text-2xl font-bold text-purple-400">{backtestResults.accuracy?.toFixed(1)}%</div>
+                                        <div className="text-xs text-gray-500 uppercase">Accuracy</div>
+                                    </div>
+                                    <div className="bg-black/40 p-4 rounded-lg border border-[#333]">
+                                        <div className="text-2xl font-bold text-green-400">${backtestResults.profitLoss?.toFixed(0)}</div>
+                                        <div className="text-xs text-gray-500 uppercase">Profit/Loss</div>
+                                    </div>
+                                    <div className="bg-black/40 p-4 rounded-lg border border-[#333]">
+                                        <div className="text-2xl font-bold text-blue-400">{backtestResults.totalPredictions}</div>
+                                        <div className="text-xs text-gray-500 uppercase">Total Predictions</div>
+                                    </div>
+                                    <div className="bg-black/40 p-4 rounded-lg border border-[#333]">
+                                        <div className="text-2xl font-bold text-yellow-400">{backtestResults.avgConfidence?.toFixed(0)}%</div>
+                                        <div className="text-xs text-gray-500 uppercase">Avg Confidence</div>
+                                    </div>
+                                </div>
+
+                                {/* MODEL BREAKDOWN */}
+                                {backtestResults.modelBreakdown && Object.keys(backtestResults.modelBreakdown).length > 0 && (
+                                    <div className="mb-6">
+                                        <h4 className="font-bold text-white mb-3">Model Performance</h4>
+                                        <div className="space-y-2">
+                                            {Object.entries(backtestResults.modelBreakdown).map(([model, stats]: [string, any]) => (
+                                                <div key={model} className="flex justify-between items-center bg-black/20 p-3 rounded">
+                                                    <span className="text-sm text-gray-300">{model}</span>
+                                                    <div className="flex gap-4 text-xs">
+                                                        <span className="text-gray-500">{stats.correct}/{stats.total}</span>
+                                                        <span className={`font-bold ${stats.accuracy > 60 ? 'text-green-400' : stats.accuracy > 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                                            {stats.accuracy.toFixed(1)}%
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* CONFIDENCE BREAKDOWN */}
+                                {backtestResults.confidenceBreakdown && Object.keys(backtestResults.confidenceBreakdown).length > 0 && (
+                                    <div>
+                                        <h4 className="font-bold text-white mb-3">Confidence Analysis</h4>
+                                        <div className="space-y-2">
+                                            {Object.entries(backtestResults.confidenceBreakdown).map(([range, stats]: [string, any]) => (
+                                                <div key={range} className="flex justify-between items-center bg-black/20 p-3 rounded">
+                                                    <span className="text-sm text-gray-300">{range} confidence</span>
+                                                    <div className="flex gap-4 text-xs">
+                                                        <span className="text-gray-500">{stats.correct}/{stats.total}</span>
+                                                        <span className={`font-bold ${stats.accuracy > 60 ? 'text-green-400' : stats.accuracy > 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                                            {stats.accuracy.toFixed(1)}%
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* --- MANAGE NEWS --- */}
+                {activeTab === 'MANAGE' && (
+                    <div className="col-span-2 max-w-[1000px] mx-auto w-full space-y-6">
+
+                        {/* PUBLISHED NEWS LIST */}
+                        <div className="bg-[#121212] border border-orange-500/50 rounded-xl p-6 shadow-2xl">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center">
+                                    <Newspaper size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">Published News</h3>
+                                    <p className="text-xs text-orange-400">Edit, delete, and manage your published articles</p>
+                                </div>
+                                <button
+                                    onClick={fetchPublishedNews}
+                                    className="ml-auto px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold uppercase rounded flex items-center gap-2"
+                                >
+                                    <RefreshCw size={14} /> Refresh
+                                </button>
+                            </div>
+
+                            {publishedNews.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    <Newspaper size={48} className="mx-auto mb-4 opacity-50" />
+                                    <p>No published news found. Create some articles first!</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {publishedNews.map((newsItem: any) => (
+                                        <div key={newsItem.id} className="bg-black/40 border border-[#333] rounded-lg p-4">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-white text-lg mb-2">{newsItem.title}</h4>
+                                                    <p className="text-gray-400 text-sm mb-3 line-clamp-2">{newsItem.excerpt}</p>
+                                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                                        <span>{newsItem.source}</span>
+                                                        <span>{new Date(newsItem.created_at).toLocaleDateString()}</span>
+                                                        <span>{newsItem.type}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 ml-4">
+                                                    <button
+                                                        onClick={() => startEditingNews(newsItem)}
+                                                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase rounded"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deletePublishedNews(newsItem.id)}
+                                                        className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs font-bold uppercase rounded"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* EDITING MODE INDICATOR */}
+                        {editingNews && (
+                            <div className="bg-yellow-900/20 border border-yellow-500/50 rounded-xl p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-yellow-600 flex items-center justify-center">
+                                            <PenTool size={16} className="text-white" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-yellow-400">Editing: {editingNews.title}</h4>
+                                            <p className="text-sm text-gray-400">Make your changes in the News Desk tab, then save.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={updatePublishedNews}
+                                            className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-bold uppercase rounded"
+                                        >
+                                            Save Changes
+                                        </button>
+                                        <button
+                                            onClick={() => setEditingNews(null)}
+                                            className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm font-bold uppercase rounded"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* --- WAR ROOM ALERT SYSTEM --- */}
                 {activeTab === 'WAR_ROOM' && (
-                    <div className="col-span-2 bg-[#121212] p-5 rounded-xl border border-[#2C2C2C] text-center text-gray-500">
-                        War Room Console Active.
+                    <div className="col-span-2 max-w-[600px] mx-auto w-full space-y-6">
+
+                        {/* WAR ROOM HEADER */}
+                        <div className="bg-[#121212] border border-red-500/50 rounded-xl p-6 shadow-2xl">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                                    <Siren size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">War Room</h3>
+                                    <p className="text-xs text-red-400">Strategic Intelligence & Alert Broadcasting</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Alert Title</label>
+                                    <input
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500"
+                                        placeholder="e.g., SHARP MONEY ALERT: Arsenal ML"
+                                        value={alertTitle}
+                                        onChange={(e) => setAlertTitle(e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Alert Description</label>
+                                    <textarea
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500 h-24 resize-none"
+                                        placeholder="Detailed analysis and reasoning..."
+                                        value={alertDesc}
+                                        onChange={(e) => setAlertDesc(e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data Point</label>
+                                    <input
+                                        className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500"
+                                        placeholder="e.g., $2.1M on Arsenal ML"
+                                        value={alertData}
+                                        onChange={(e) => setAlertData(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">League</label>
+                                        <select
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500"
+                                            value={alertLeague}
+                                            onChange={(e) => setAlertLeague(e.target.value)}
+                                        >
+                                            <option value="NFL">NFL</option>
+                                            <option value="NBA">NBA</option>
+                                            <option value="EPL">Premier League</option>
+                                            <option value="LaLiga">La Liga</option>
+                                            <option value="Serie A">Serie A</option>
+                                            <option value="UFC">UFC</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Alert Type</label>
+                                        <select
+                                            className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500"
+                                            value={alertType}
+                                            onChange={(e) => setAlertType(e.target.value as SystemAlert['alertType'])}
+                                        >
+                                            <option value="SHARP_MONEY">Sharp Money</option>
+                                            <option value="LINE_MOVEMENT">Line Movement</option>
+                                            <option value="INJURY_UPDATE">Injury Update</option>
+                                            <option value="WEATHER_ALERT">Weather Alert</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="broadcastToBots"
+                                        checked={broadcastToBots}
+                                        onChange={(e) => setBroadcastToBots(e.target.checked)}
+                                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
+                                    />
+                                    <label htmlFor="broadcastToBots" className="text-sm font-medium text-gray-300">
+                                        Broadcast to Telegram/WhatsApp bots
+                                    </label>
+                                </div>
+
+                                <button
+                                    onClick={publishAlert}
+                                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                >
+                                    <Radio size={16} /> Broadcast Alert
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* RECENT ALERTS */}
+                        <div className="bg-[#121212] border border-red-500/50 rounded-xl p-6 shadow-2xl">
+                            <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 mb-4 flex items-center gap-2">
+                                <Radio size={16} /> Recent Alerts
+                            </h3>
+
+                            {alerts.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    <Siren size={48} className="mx-auto mb-4 opacity-50" />
+                                    <p>No alerts broadcasted yet.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {alerts.slice(0, 5).map((alert: SystemAlert) => (
+                                        <div key={alert.id} className="bg-black/40 border border-[#333] rounded-lg p-4">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-red-400 text-sm mb-1">{alert.title}</h4>
+                                                    <p className="text-gray-400 text-xs mb-2 line-clamp-2">{alert.description}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                        <span className="bg-red-900/30 text-red-300 px-2 py-0.5 rounded">{alert.alertType}</span>
+                                                        <span>{alert.league}</span>
+                                                        <span>{alert.timestamp}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 

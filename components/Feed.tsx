@@ -57,10 +57,11 @@ const WeatherIcon = ({ condition, size = 14 }: { condition?: string, size?: numb
 }
 
 export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOpenPweza, onTailBet }) => {
-  const { user } = useSports(); 
-  const [activeLeague, setActiveLeague] = useState("For You"); // Default to For You
+  const { user } = useSports();
+  const [activeLeague, setActiveLeague] = useState("All"); // Default to All for more content
   const navigate = useNavigate();
   const dataSaver = user?.preferences.dataSaver || false;
+
 
   // 1. FILTERING LOGIC
   const { filteredStreamItems, topPicks, valuePicks, featuredMatch } = useMemo(() => {
@@ -364,15 +365,15 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                     // RENDER: MATCH
                     if ('homeTeam' in item) {
                         return (
-                            <SmartPredictionCard 
-                                key={(item as Match).id} 
-                                match={item as Match} 
-                                onClick={() => handleMatchClick((item as Match).id)} 
-                                onOpenPweza={() => openPwezaForMatch(item as Match)} 
+                            <SmartPredictionCard
+                                key={(item as Match).id}
+                                match={item as Match}
+                                onClick={() => handleMatchClick((item as Match).id)}
+                                onOpenPweza={() => openPwezaForMatch(item as Match)}
                                 isLocked={!user}
                             />
                         );
-                    } 
+                    }
                     // RENDER: NEWS
                     else if ('source' in item) {
                          const story = item as NewsStory;
@@ -506,13 +507,32 @@ const PremiumPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpe
             <div className="flex justify-between items-center px-4 py-2 border-b border-white/5 bg-black/20">
                 <div className="flex items-center gap-2">
                     <span className="font-condensed font-black text-sm uppercase italic text-white/80">{match.league}</span>
-                    {match.prediction?.confidence && match.prediction.confidence > 80 && (
-                        <div className="flex items-center gap-1 bg-[#00FFB2]/20 text-[#00FFB2] text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
-                            <Sparkles size={10} /> Lock
+                    {match.prediction?.confidence && (
+                        <div className={`flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                            match.prediction.confidence > 80 ? 'bg-[#00FFB2]/20 text-[#00FFB2]' :
+                            match.prediction.confidence > 60 ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                        }`}>
+                            <Sparkles size={10} />
+                            {match.prediction.systemRecord === 'Basic Fallback' ? 'Basic' :
+                             match.prediction.systemRecord === 'Elo-based' ? 'Elo' :
+                             match.prediction.confidence > 80 ? 'Lock' :
+                             match.prediction.confidence > 60 ? 'Safe' : 'Risk'}
                         </div>
                     )}
                 </div>
-                <span className="text-[10px] font-bold text-white/50 uppercase">{match.time}</span>
+                <div className="flex items-center gap-2">
+                    {match.prediction?.confidence && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                            match.prediction.confidence > 80 ? 'text-[#00FFB2] border-[#00FFB2]/30 bg-[#00FFB2]/10' :
+                            match.prediction.confidence > 60 ? 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10' :
+                            'text-red-400 border-red-400/30 bg-red-400/10'
+                        }`}>
+                            {match.prediction.confidence}%
+                        </span>
+                    )}
+                    <span className="text-[10px] font-bold text-white/50 uppercase">{match.time}</span>
+                </div>
             </div>
 
             {/* Matchup */}
@@ -543,13 +563,19 @@ const PremiumPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpe
                     <span className="block text-[9px] font-bold text-gray-400 uppercase">Sheena's Pick</span>
                     <div className="flex items-center gap-2">
                         <span className="font-condensed font-black text-xl text-white uppercase tracking-tight">
-                            {match.prediction?.outcome === 'HOME' ? match.homeTeam.name : match.prediction?.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
+                            {match.prediction?.outcome === 'HOME' ? match.homeTeam.name :
+                             match.prediction?.outcome === 'AWAY' ? match.awayTeam.name :
+                             match.prediction?.outcome === 'DRAW' ? 'Draw' :
+                             'Analyzing...'}
                         </span>
                         {match.prediction?.odds && (
                              <span className="font-mono text-xs font-bold text-[#00FFB2] bg-[#00FFB2]/10 px-1.5 rounded">
-                                 {match.prediction?.outcome === 'HOME' ? match.prediction.odds.home : match.prediction.odds.away}
+                                 {match.prediction?.outcome === 'HOME' ? match.prediction.odds.home :
+                                  match.prediction?.outcome === 'AWAY' ? match.prediction.odds.away :
+                                  match.prediction?.outcome === 'DRAW' ? match.prediction.odds.draw :
+                                  '—'} odds
                              </span>
-                        )}
+                         )}
                     </div>
                 </div>
                 
@@ -601,16 +627,33 @@ const CompactPredictionCard: React.FC<{ match: Match, onClick: () => void, isLoc
                      </div>
                  </div>
 
-                 {/* Odds / Lock */}
+                 {/* Odds / Confidence */}
                  <div className="text-right shrink-0 pl-2">
                      {isLocked ? (
                         <div className="bg-black/40 p-1.5 rounded">
                             <Lock size={10} className="text-gray-500" />
                         </div>
                      ) : (
-                         <div className="bg-black/40 px-2 py-1 rounded border border-white/10 group-hover:border-[#00FFB2]/30 transition-colors">
-                             <span className="block font-mono font-bold text-xs text-[#00FFB2]">
-                                 {match.prediction?.potentialReturn}
+                         <div className={`px-2 py-1 rounded border transition-colors ${
+                             match.prediction?.confidence > 80 ? 'bg-[#00FFB2]/10 border-[#00FFB2]/30' :
+                             match.prediction?.confidence > 60 ? 'bg-yellow-400/10 border-yellow-400/30' :
+                             'bg-red-400/10 border-red-400/30'
+                         }`}>
+                             <span className={`block font-mono font-bold text-xs ${
+                                 match.prediction?.confidence > 80 ? 'text-[#00FFB2]' :
+                                 match.prediction?.confidence > 60 ? 'text-yellow-400' :
+                                 'text-red-400'
+                             }`}>
+                                 {match.prediction?.confidence || 0}%
+                             </span>
+                             <span className={`block font-mono text-[8px] uppercase ${
+                                 match.prediction?.systemRecord === 'Elo-based' ? 'text-blue-400' :
+                                 match.prediction?.systemRecord === 'Basic Fallback' ? 'text-gray-400' :
+                                 'text-indigo-400'
+                             }`}>
+                                 {match.prediction?.systemRecord === 'Elo-based' ? 'Elo' :
+                                  match.prediction?.systemRecord === 'Basic Fallback' ? 'Basic' :
+                                  'AI'}
                              </span>
                          </div>
                      )}
@@ -639,10 +682,15 @@ const SmartPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpenP
                         <span className="font-condensed font-bold text-xs text-gray-400 uppercase tracking-wide">{match.league}</span>
                         <span className="text-[10px] text-gray-600 font-bold uppercase">• {match.time}</span>
                     </div>
-                     {/* PWEZA BADGE */}
-                     <div className="flex items-center gap-1 bg-indigo-900/30 border border-indigo-500/30 px-1.5 py-0.5 rounded">
-                         <span className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Pweza Edge</span>
-                     </div>
+                     {/* WEATHER ICON */}
+                     {match.prediction?.weather && (
+                         <div className="flex items-center gap-1" title={match.prediction.weather}>
+                             <WeatherIcon condition={match.prediction.weather} size={12} />
+                             <span className="text-[9px] font-bold text-gray-400 uppercase hidden sm:block">
+                                 {match.prediction.weather.split(' ')[0]}
+                             </span>
+                         </div>
+                     )}
                 </div>
 
                 {/* Matchup Row */}
