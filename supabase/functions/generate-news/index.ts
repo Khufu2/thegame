@@ -2,8 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const GROK_API_KEY = Deno.env.get("GROK_API_KEY");
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -19,133 +18,75 @@ interface GenerateNewsRequest {
    persona?: "SHEENA" | "ORACLE" | "STREET" | "JOURNALIST";
    tone?: "HYPE" | "RECAP" | "ANALYTICAL" | "RUMOR";
    language?: "ENGLISH" | "SWAHILI";
-   aiProvider?: "GEMINI" | "GROK";
 }
 
-async function generateWithGemini(prompt: string): Promise<any> {
-   try {
-     console.log("Calling Gemini API for news generation...");
-     console.log("Gemini API Key available:", !!GEMINI_API_KEY);
+async function generateWithLovableAI(prompt: string): Promise<any> {
+  try {
+    console.log("Calling Lovable AI for news generation...");
+    console.log("Lovable API Key available:", !!LOVABLE_API_KEY);
 
-     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-       method: "POST",
-       headers: {
-         "Content-Type": "application/json",
-       },
-       body: JSON.stringify({
-         contents: [
-           {
-             parts: [
-               {
-                 text: prompt
-               }
-             ]
-           }
-         ],
-         generationConfig: {
-           temperature: 0.7,
-           maxOutputTokens: 2048,
-         }
-       }),
-     });
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content: "You are a sports news writer. You generate engaging sports articles in valid JSON format. Always respond with valid JSON only, no markdown formatting."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+      }),
+    });
 
-     if (!response.ok) {
-       const errorText = await response.text();
-       console.error("Gemini API error:", response.status, errorText);
-       throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
-     }
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Lovable AI error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        throw new Error("Rate limit exceeded. Please try again later.");
+      }
+      if (response.status === 402) {
+        throw new Error("Payment required. Please add credits to your Lovable workspace.");
+      }
+      
+      throw new Error(`Lovable AI error: ${response.status} - ${errorText}`);
+    }
 
-     const data = await response.json();
-     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content;
 
-     if (!text) {
-       console.error("Gemini response:", JSON.stringify(data, null, 2));
-       throw new Error("No content generated from Gemini");
-     }
+    if (!text) {
+      console.error("Lovable AI response:", JSON.stringify(data, null, 2));
+      throw new Error("No content generated from Lovable AI");
+    }
 
-     console.log("Gemini response received, parsing JSON...");
+    console.log("Lovable AI response received, parsing JSON...");
 
-     // Clean potential markdown formatting
-     let cleanedText = text.trim();
-     if (cleanedText.startsWith("```json")) {
-       cleanedText = cleanedText.slice(7);
-     }
-     if (cleanedText.startsWith("```")) {
-       cleanedText = cleanedText.slice(3);
-     }
-     if (cleanedText.endsWith("```")) {
-       cleanedText = cleanedText.slice(0, -3);
-     }
+    // Clean potential markdown formatting
+    let cleanedText = text.trim();
+    if (cleanedText.startsWith("```json")) {
+      cleanedText = cleanedText.slice(7);
+    }
+    if (cleanedText.startsWith("```")) {
+      cleanedText = cleanedText.slice(3);
+    }
+    if (cleanedText.endsWith("```")) {
+      cleanedText = cleanedText.slice(0, -3);
+    }
 
-     return JSON.parse(cleanedText.trim());
-   } catch (error) {
-     console.error("Gemini generation error:", error);
-     throw error;
-   }
-}
-
-async function generateWithGrok(prompt: string): Promise<any> {
-   try {
-     console.log("Calling Grok AI for news generation...");
-     console.log("Grok API Key available:", !!GROK_API_KEY);
-
-     // xAI official endpoint
-     const response = await fetch("https://api.x.ai/v1/chat/completions", {
-       method: "POST",
-       headers: {
-         "Authorization": `Bearer ${GROK_API_KEY}`,
-         "Content-Type": "application/json",
-       },
-       body: JSON.stringify({
-         model: "grok-2-1212",
-         messages: [
-           {
-             role: "system",
-             content: "You are a sports news writer. You generate engaging sports articles in valid JSON format. Always respond with valid JSON only, no markdown formatting."
-           },
-           {
-             role: "user",
-             content: prompt
-           }
-         ],
-         temperature: 0.7,
-         max_tokens: 2048,
-       }),
-     });
-
-     if (!response.ok) {
-       const errorText = await response.text();
-       console.error("Grok API error:", response.status, errorText);
-       throw new Error(`Grok API error: ${response.status} - ${errorText}`);
-     }
-
-     const data = await response.json();
-     const text = data.choices?.[0]?.message?.content;
-
-     if (!text) {
-       console.error("Grok response:", JSON.stringify(data, null, 2));
-       throw new Error("No content generated from Grok");
-     }
-
-     console.log("Grok response received, parsing JSON...");
-
-     // Clean potential markdown formatting
-     let cleanedText = text.trim();
-     if (cleanedText.startsWith("```json")) {
-       cleanedText = cleanedText.slice(7);
-     }
-     if (cleanedText.startsWith("```")) {
-       cleanedText = cleanedText.slice(3);
-     }
-     if (cleanedText.endsWith("```")) {
-       cleanedText = cleanedText.slice(0, -3);
-     }
-
-     return JSON.parse(cleanedText.trim());
-   } catch (error) {
-     console.error("Grok AI generation error:", error);
-     throw error;
-   }
+    return JSON.parse(cleanedText.trim());
+  } catch (error) {
+    console.error("Lovable AI generation error:", error);
+    throw error;
+  }
 }
 
 serve(async (req) => {
@@ -159,10 +100,8 @@ serve(async (req) => {
     if (url.pathname.endsWith("/test")) {
       return new Response(
         JSON.stringify({
-          grok_key_available: !!GROK_API_KEY,
-          grok_key_length: GROK_API_KEY?.length || 0,
-          gemini_key_available: !!GEMINI_API_KEY,
-          gemini_key_length: GEMINI_API_KEY?.length || 0,
+          lovable_key_available: !!LOVABLE_API_KEY,
+          lovable_key_length: LOVABLE_API_KEY?.length || 0,
           timestamp: new Date().toISOString(),
         }),
         {
@@ -180,25 +119,13 @@ serve(async (req) => {
       persona = "SHEENA",
       tone = "RECAP",
       language = "ENGLISH",
-      aiProvider = "GEMINI",
     } = body;
 
-    // Check API keys based on provider
-    if (aiProvider === "GEMINI" && !GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY not configured");
+    // Check API key
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Gemini AI service not configured. Please set GEMINI_API_KEY in Supabase secrets." }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (aiProvider === "GROK" && !GROK_API_KEY) {
-      console.error("GROK_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: "Grok AI service not configured. Please set GROK_API_KEY in Supabase secrets." }),
+        JSON.stringify({ error: "AI service not configured. Please enable Lovable AI in your project." }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -253,33 +180,10 @@ You MUST respond with ONLY valid JSON in this exact format (no other text before
   "excerpt": "Short excerpt for previews..."
 }`;
 
-    // Generate with selected AI provider
-    console.log(`🤖 Generating news with ${aiProvider}...`);
-    let generated;
-
-    try {
-      if (aiProvider === "GROK") {
-        generated = await generateWithGrok(prompt);
-      } else {
-        generated = await generateWithGemini(prompt);
-      }
-      console.log(`✅ Generated article: ${generated.title}`);
-    } catch (error) {
-      console.error(`❌ ${aiProvider} generation failed:`, error);
-
-      // Fallback to other provider
-      if (aiProvider === "GROK" && GEMINI_API_KEY) {
-        console.log("🔄 Falling back to Gemini...");
-        generated = await generateWithGemini(prompt);
-        console.log(`✅ Generated article with Gemini fallback: ${generated.title}`);
-      } else if (aiProvider === "GEMINI" && GROK_API_KEY) {
-        console.log("🔄 Falling back to Grok...");
-        generated = await generateWithGrok(prompt);
-        console.log(`✅ Generated article with Grok fallback: ${generated.title}`);
-      } else {
-        throw error;
-      }
-    }
+    // Generate with Lovable AI
+    console.log("🤖 Generating news with Lovable AI...");
+    const generated = await generateWithLovableAI(prompt);
+    console.log(`✅ Generated article: ${generated.title}`);
 
     // Save to feeds table
     if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
@@ -347,7 +251,6 @@ You MUST respond with ONLY valid JSON in this exact format (no other text before
       JSON.stringify({
         success: true,
         article: generated,
-        aiProvider,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
