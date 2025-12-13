@@ -43,14 +43,8 @@ export default defineConfig(({ mode }) => {
         sourcemap: !isProduction,
         // Optimize chunk size
         chunkSizeWarningLimit: 600,
-        // Enable compression
-        minify: 'terser',
-        terserOptions: {
-          compress: {
-            drop_console: isProduction, // Remove console.logs in production
-            drop_debugger: isProduction,
-          },
-        },
+        // Enable compression with esbuild (built into Vite)
+        minify: 'esbuild',
       },
       // CDN and caching optimizations
       optimizeDeps: {
