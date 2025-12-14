@@ -3,8 +3,55 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const LEAGUE_IDS = (Deno.env.get('THESPORTSDB_LEAGUE_IDS') || '').trim(); // e.g. "4328,4331,4332,4334" (Premier League, La Liga, etc.)
-const SEASON = (Deno.env.get('SEASON') || '').trim(); // e.g. "2024-2025"
+
+// Extended league coverage - TheSportsDB league IDs (free API)
+// These are soccer leagues available on the free tier
+const DEFAULT_LEAGUES = [
+  // Top European Leagues
+  { id: 4328, name: 'English Premier League' },
+  { id: 4331, name: 'German Bundesliga' },
+  { id: 4332, name: 'Italian Serie A' },
+  { id: 4335, name: 'Spanish La Liga' },
+  { id: 4334, name: 'French Ligue 1' },
+  // Secondary leagues
+  { id: 4329, name: 'English Championship' },
+  { id: 4337, name: 'Portuguese Primeira Liga' },
+  { id: 4344, name: 'Dutch Eredivisie' },
+  { id: 4359, name: 'Scottish Premiership' },
+  // African leagues
+  { id: 4841, name: 'Tanzanian Premier League' },
+  { id: 4609, name: 'Kenyan Premier League' },
+  { id: 4696, name: 'Nigerian Professional Football League' },
+  // South American
+  { id: 4406, name: 'Brazilian Serie A' },
+  { id: 4480, name: 'Argentine Primera División' }
+];
+
+const LEAGUE_IDS = Deno.env.get('THESPORTSDB_LEAGUE_IDS') 
+  ? Deno.env.get('THESPORTSDB_LEAGUE_IDS')!.split(',').map(id => ({
+      id: parseInt(id.trim()),
+      name: `League ${id.trim()}`
+    }))
+  : DEFAULT_LEAGUES;
+
+// In-memory cache
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function getCached(key: string): any | null {
+  const cached = cache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+  console.log(`[cache:hit] ${key}`);
+  return cached.data;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
 
 function assertEnv() {
   const missing: string[] = [];
@@ -14,7 +61,7 @@ function assertEnv() {
     console.error(`[env] Missing: ${missing.join(', ')}`);
     return { ok: false, missing } as const;
   }
-  console.log(`[env] OK. leagues="${LEAGUE_IDS}", season="${SEASON}"`);
+  console.log(`[env] OK. leagues=${LEAGUE_IDS.length}`);
   return { ok: true } as const;
 }
 
@@ -33,9 +80,11 @@ interface Match {
   strSeason: string;
   strHomeTeamBadge?: string;
   strAwayTeamBadge?: string;
+  strVenue?: string;
+  strThumb?: string;
 }
 
-// TheSportsDB has no rate limits mentioned, but be conservative
+// TheSportsDB has no strict rate limits but be conservative
 let reqCount = 0;
 let windowStart = Date.now();
 
@@ -50,7 +99,7 @@ async function rateLimitedFetch(url: string, label?: string) {
     windowStart = now;
   }
 
-  if (reqCount >= 30) { // Conservative limit
+  if (reqCount >= 50) { // Conservative limit
     const wait = 60_000 - (now - windowStart) + 200;
     console.log(`[rateLimit] Waiting ${wait}ms before calling ${label}`);
     await sleep(wait);
@@ -75,6 +124,10 @@ async function rateLimitedFetch(url: string, label?: string) {
 }
 
 async function fetchLiveMatches() {
+  const cacheKey = 'sportsdb-live';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   try {
     const res = await rateLimitedFetch('https://www.thesportsdb.com/api/v1/json/3/eventslive.php', 'live-matches');
 
@@ -84,59 +137,101 @@ async function fetchLiveMatches() {
     const events = data.events || [];
 
     // Filter for soccer/football events
-    return events.filter((e: any) => e.strSport === 'Soccer');
+    const soccerEvents = events.filter((e: any) => e.strSport === 'Soccer');
+    setCache(cacheKey, soccerEvents);
+    return soccerEvents;
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
   }
 }
 
-async function fetchUpcomingMatches() {
+async function fetchPastMatches(leagueId: number, leagueName: string) {
+  const cacheKey = `sportsdb-past-${leagueId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   try {
-    const leagues = LEAGUE_IDS
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
+    const url = `https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=${leagueId}`;
+    const res = await rateLimitedFetch(url, `past-${leagueId}`);
 
-    if (leagues.length === 0) {
-      console.log('[upcoming] No leagues configured');
-      return [];
-    }
+    if (!res.ok) return [];
 
-    console.log(`[upcoming] Fetching for leagues: ${leagues.join(', ')}`);
-
-    let allMatches: any[] = [];
-    for (const leagueId of leagues) {
-      const url = `https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id=${leagueId}`;
-      const res = await rateLimitedFetch(url, `upcoming-${leagueId}`);
-
-      if (!res.ok) continue;
-
-      const data = await res.json();
-      const events = data.events || [];
-      console.log(`[league ${leagueId}] count=${events.length}`);
-      allMatches.push(...events);
-    }
-
-    // Limit to next 50 matches to avoid too much data
-    return allMatches.slice(0, 50);
-
+    const data = await res.json();
+    const events = data.events || [];
+    console.log(`[past ${leagueName}] Found ${events.length} matches`);
+    setCache(cacheKey, events);
+    return events;
   } catch (error) {
-    console.error('Error fetching upcoming matches:', error);
+    console.error(`Error fetching past matches for ${leagueName}:`, error);
     return [];
   }
 }
 
+async function fetchUpcomingMatches(leagueId: number, leagueName: string) {
+  const cacheKey = `sportsdb-upcoming-${leagueId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const url = `https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id=${leagueId}`;
+    const res = await rateLimitedFetch(url, `upcoming-${leagueId}`);
+
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    const events = data.events || [];
+    console.log(`[upcoming ${leagueName}] Found ${events.length} matches`);
+    setCache(cacheKey, events);
+    return events;
+  } catch (error) {
+    console.error(`Error fetching upcoming matches for ${leagueName}:`, error);
+    return [];
+  }
+}
+
+async function fetchTeamDetails(teamName: string): Promise<any> {
+  const cacheKey = `sportsdb-team-${teamName}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(teamName)}`;
+    const res = await rateLimitedFetch(url, `team-${teamName}`);
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const teams = data.teams || [];
+    const team = teams.find((t: any) => 
+      t.strTeam?.toLowerCase() === teamName.toLowerCase() ||
+      t.strTeamShort?.toLowerCase() === teamName.toLowerCase()
+    ) || teams[0];
+
+    if (team) {
+      setCache(cacheKey, team);
+    }
+    return team || null;
+  } catch (error) {
+    console.error(`Error fetching team details for ${teamName}:`, error);
+    return null;
+  }
+}
+
 async function saveMatches(matches: Match[]) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+
+  let savedCount = 0;
+  let errorCount = 0;
 
   for (const match of matches) {
-    const kickoffTime = `${match.dateEvent}T${match.strTime || '00:00:00'}Z`;
+    const kickoffTime = `${match.dateEvent}T${match.strTime || '12:00:00'}Z`;
 
     const status =
-      match.strStatus === "Match Finished" ? "finished" :
-      match.strStatus === "Not Started" ? "scheduled" :
-      "scheduled"; // TheSportsDB doesn't have live status
+      match.strStatus === "Match Finished" || match.strStatus === "FT" ? "finished" :
+      match.strStatus === "Not Started" || match.strStatus === "NS" ? "scheduled" :
+      match.strStatus?.includes("'") ? "live" : // Live match shows minute like "45'"
+      "scheduled";
 
     const homeScore = match.intHomeScore ? parseInt(match.intHomeScore) : null;
     const awayScore = match.intAwayScore ? parseInt(match.intAwayScore) : null;
@@ -151,8 +246,7 @@ async function saveMatches(matches: Match[]) {
       .upsert(
         {
           id: `thesportsdb-${match.idEvent}`,
-          league_id: null, // TODO: Map to league uuid
-          // Old fields for backward compatibility
+          league_id: null,
           home_team: match.strHomeTeam,
           away_team: match.strAwayTeam,
           kickoff_time: kickoffTime,
@@ -163,36 +257,46 @@ async function saveMatches(matches: Match[]) {
           league: match.strLeague,
           season: match.strSeason,
           fixture_id: parseInt(match.idEvent),
-          // New jsonb fields
+          venue: match.strVenue || null,
           home_team_json: {
             name: match.strHomeTeam,
-            id: null, // TheSportsDB doesn't provide team IDs in this endpoint
-            logo: match.strHomeTeamBadge
+            id: null,
+            logo: match.strHomeTeamBadge || null,
+            crest: match.strHomeTeamBadge || null
           },
           away_team_json: {
             name: match.strAwayTeam,
             id: null,
-            logo: match.strAwayTeamBadge
+            logo: match.strAwayTeamBadge || null,
+            crest: match.strAwayTeamBadge || null
           },
           score: {
             home: homeScore,
             away: awayScore
           },
-          venue: null,
-          venue_details: null,
+          venue_details: match.strVenue ? { name: match.strVenue } : null,
           metadata: {
             fixture_id: parseInt(match.idEvent),
             league: match.strLeague,
             league_id: parseInt(match.idLeague),
             season: match.strSeason,
-            result: status === "finished" ? result : null
+            result: status === "finished" ? result : null,
+            thumbnail: match.strThumb || null,
+            source: 'thesportsdb'
           }
         },
         { onConflict: "id" }
       );
 
-    if (error) console.error(`Error saving match ${match.idEvent}:`, error);
+    if (error) {
+      console.error(`Error saving match ${match.idEvent}:`, error.message);
+      errorCount++;
+    } else {
+      savedCount++;
+    }
   }
+
+  console.log(`[save] Saved ${savedCount} matches, ${errorCount} errors`);
 }
 
 Deno.serve(async (req) => {
@@ -201,7 +305,7 @@ Deno.serve(async (req) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
     });
   }
@@ -219,15 +323,38 @@ Deno.serve(async (req) => {
     const liveMatches = await fetchLiveMatches();
     console.log(`✅ Found ${liveMatches.length} live matches`);
 
-    console.log("📅 Fetching UPCOMING matches from TheSportsDB...");
-    const upcomingMatches = await fetchUpcomingMatches();
-    console.log(`✅ Found ${upcomingMatches.length} upcoming matches`);
+    let allUpcoming: any[] = [];
+    let allPast: any[] = [];
 
-    const allMatches = [...liveMatches, ...upcomingMatches];
+    // Fetch from all configured leagues
+    console.log(`📅 Fetching matches from ${LEAGUE_IDS.length} leagues...`);
+    for (const league of LEAGUE_IDS) {
+      const upcoming = await fetchUpcomingMatches(league.id, league.name);
+      const past = await fetchPastMatches(league.id, league.name);
+      allUpcoming.push(...upcoming);
+      allPast.push(...past);
+      
+      // Small delay between leagues to be nice to the API
+      await sleep(100);
+    }
 
-    if (allMatches.length > 0) {
-      console.log(`💾 Saving ${allMatches.length} matches to database...`);
-      await saveMatches(allMatches);
+    console.log(`✅ Found ${allUpcoming.length} upcoming, ${allPast.length} past matches`);
+
+    const allMatches = [...liveMatches, ...allUpcoming, ...allPast];
+
+    // De-duplicate by event ID
+    const uniqueMatches = new Map<string, any>();
+    for (const match of allMatches) {
+      if (match.idEvent && !uniqueMatches.has(match.idEvent)) {
+        uniqueMatches.set(match.idEvent, match);
+      }
+    }
+
+    const dedupedMatches = Array.from(uniqueMatches.values());
+
+    if (dedupedMatches.length > 0) {
+      console.log(`💾 Saving ${dedupedMatches.length} unique matches to database...`);
+      await saveMatches(dedupedMatches);
       console.log("✅ Matches saved successfully");
     }
 
@@ -235,7 +362,10 @@ Deno.serve(async (req) => {
       JSON.stringify({
         status: "success",
         liveCount: liveMatches.length,
-        upcomingCount: upcomingMatches.length,
+        upcomingCount: allUpcoming.length,
+        pastCount: allPast.length,
+        totalSaved: dedupedMatches.length,
+        leagues: LEAGUE_IDS.length,
         timestamp: new Date().toISOString(),
         provider: "thesportsdb"
       }),
@@ -243,6 +373,7 @@ Deno.serve(async (req) => {
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=300" // Cache response for 5 minutes
         },
       }
     );

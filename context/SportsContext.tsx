@@ -147,11 +147,11 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     useEffect(() => {
-        // Fetch matches via edge function - predictions are now generated server-side
+        // Fetch matches via edge function - with caching headers
         const fetchMatches = async () => {
             try {
                 const response = await fetch(
-                    `${SUPABASE_URL}/functions/v1/get-matches?limit=100`,
+                    `${SUPABASE_URL}/functions/v1/get-matches?limit=200`,
                     {
                         method: 'GET',
                         headers: {
@@ -166,9 +166,10 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     const matchesArray = Array.isArray(data) ? data : (data.matches || []);
                     console.log('Fetched matches:', matchesArray.length);
                     
-                    // Check if any matches are missing logos and trigger logo fetch
-                    const needsLogos = matchesArray.some((m: any) => 
-                        !m.home_team_json?.logo || !m.away_team_json?.logo
+                    // Check if any matches are missing logos (only check first 20)
+                    const needsLogos = matchesArray.slice(0, 20).some((m: any) => 
+                        !m.homeTeam?.logo || !m.awayTeam?.logo ||
+                        m.homeTeam?.logo?.includes('ui-avatars') || m.awayTeam?.logo?.includes('ui-avatars')
                     );
                     if (needsLogos) {
                         // Trigger logo fetch in background (don't await)
@@ -183,7 +184,6 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         }).catch(err => console.error('Logo fetch failed:', err));
                     }
                     
-                    // Predictions are already included from the edge function
                     setMatches(matchesArray);
                 } else {
                     console.error('Failed to fetch matches:', response.status);
@@ -192,7 +192,6 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 }
             } catch (error) {
                 console.error('Error fetching matches:', error);
-                // Fallback to mock data if network fails
                 console.log('Using mock data as fallback');
                 setMatches(getMockMatches());
             }

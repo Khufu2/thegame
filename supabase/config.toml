@@ -45,9 +45,6 @@ verify_jwt = false
 [functions.fetch-matches]
 verify_jwt = false
 
-[functions.fetch-matches-apifootball]
-verify_jwt = false
-
 [functions.populate-leagues]
 verify_jwt = false
 
@@ -94,4 +91,43 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.enrich-match-details]
+verify_jwt = false
+
+[functions.fetch-sportmonks-leagues]
+verify_jwt = false
+
+[functions.get-cached-matches]
+verify_jwt = false
+
+[functions.generate-predictions]
+verify_jwt = false
+
+[functions.generate-predictions-queue]
+verify_jwt = false
+
+[functions.resolve-predictions]
+verify_jwt = false
+
+[functions.prediction-analytics]
+verify_jwt = false
+
+[functions.backtest-predictions]
+verify_jwt = false
+
+[functions.ab-testing]
+verify_jwt = false
+
+[functions.optimize-prompts]
+verify_jwt = false
+
+[functions.collect-team-stats]
+verify_jwt = false
+
+[functions.calculate-elo-ratings]
+verify_jwt = false
+
+[functions.regression-predictions]
+verify_jwt = false
+
+[functions.track-news-share]
 verify_jwt = false

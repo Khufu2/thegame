@@ -229,20 +229,38 @@ serve(async (req) => {
     const url = new URL(req.url);
     const league = url.searchParams.get('league');
     const status = url.searchParams.get('status');
-    const date = url.searchParams.get('date');
+    const date = url.searchParams.get('date'); // YYYY-MM-DD format
+    const dateFrom = url.searchParams.get('dateFrom');
+    const dateTo = url.searchParams.get('dateTo');
+    const limit = parseInt(url.searchParams.get('limit') || '200');
 
-    console.log('Fetching matches with params:', { league, status, date });
+    console.log('Fetching matches with params:', { league, status, date, dateFrom, dateTo, limit });
 
-    // By default, fetch matches from 3 days ago to 7 days in future
+    // Determine date range
     const now = new Date();
-    const defaultStartDate = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const defaultEndDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    let startDate: string;
+    let endDate: string;
+
+    if (date) {
+      // Specific date requested
+      startDate = `${date}T00:00:00Z`;
+      endDate = `${date}T23:59:59Z`;
+    } else if (dateFrom && dateTo) {
+      startDate = `${dateFrom}T00:00:00Z`;
+      endDate = `${dateTo}T23:59:59Z`;
+    } else {
+      // Default: 7 days ago to 14 days in future (wider range)
+      const defaultStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const defaultEndDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      startDate = `${defaultStartDate}T00:00:00Z`;
+      endDate = `${defaultEndDate}T23:59:59Z`;
+    }
 
     let query = supabase
       .from('matches')
       .select('*')
-      .gte('kickoff_time', `${defaultStartDate}T00:00:00Z`)
-      .lte('kickoff_time', `${defaultEndDate}T23:59:59Z`)
+      .gte('kickoff_time', startDate)
+      .lte('kickoff_time', endDate)
       .order('kickoff_time', { ascending: true });
 
     if (league) {
@@ -261,17 +279,7 @@ serve(async (req) => {
       query = query.eq('status', dbStatus);
     }
 
-    if (date) {
-      // Override default date range if specific date provided
-      query = supabase
-        .from('matches')
-        .select('*')
-        .gte('kickoff_time', `${date}T00:00:00Z`)
-        .lte('kickoff_time', `${date}T23:59:59Z`)
-        .order('kickoff_time', { ascending: true });
-    }
-
-    const { data: matches, error } = await query.limit(100);
+    const { data: matches, error } = await query.limit(limit);
 
     if (error) {
       console.error('Error fetching matches:', error);
@@ -355,13 +363,14 @@ serve(async (req) => {
       return transformed;
     }));
 
+    // Return flat array for consistency with frontend expectations
     return new Response(
-      JSON.stringify({ matches: transformedMatches }),
+      JSON.stringify(transformedMatches),
       {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
+          'Cache-Control': 'public, max-age=120' // Cache for 2 minutes for fresher data
         },
         status: 200
       }

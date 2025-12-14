@@ -11,11 +11,41 @@ const corsHeaders = {
 const SPORTMONKS_API_KEY = Deno.env.get('SPORTMONKS_API_KEY');
 const BASE_URL = 'https://api.sportmonks.com/v3/football';
 
-// League IDs for free tier
+// Extended league coverage for SportMonks
+// Check your subscription tier for available leagues
 const LEAGUES = {
+  // Free tier leagues
   'Danish Superliga': 271,
-  'Scottish Premiership': 501
+  'Scottish Premiership': 501,
+  // Additional leagues (may require higher tier)
+  'English Premier League': 8,
+  'German Bundesliga': 82,
+  'Italian Serie A': 384,
+  'Spanish La Liga': 564,
+  'French Ligue 1': 301,
+  'Dutch Eredivisie': 72,
+  'Portuguese Primeira Liga': 462,
+  'Belgian Pro League': 27,
 };
+
+// In-memory cache
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache
+
+function getCached(key: string): any | null {
+  const cached = cache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+  console.log(`[cache:hit] ${key}`);
+  return cached.data;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
 
 interface SportMonksFixture {
   id: number;
@@ -49,15 +79,22 @@ async function fetchWithRetry(url: string, retries = 3): Promise<any> {
     try {
       const response = await fetch(url, {
         headers: {
-          'Authorization': SPORTMONKS_API_KEY,
+          'Authorization': SPORTMONKS_API_KEY!,
           'Accept': 'application/json'
         }
       });
 
       if (response.status === 429) {
         // Rate limited, wait longer
-        await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+        const waitTime = 2000 * (i + 1);
+        console.log(`[rateLimit] 429 received, waiting ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
+      }
+
+      if (response.status === 403) {
+        console.warn(`[auth] 403 Forbidden - check API key or subscription tier`);
+        return null;
       }
 
       if (!response.ok) {
@@ -70,76 +107,110 @@ async function fetchWithRetry(url: string, retries = 3): Promise<any> {
       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
     }
   }
+  return null;
 }
 
-async function fetchLeagueFixtures(leagueId: number, season: string): Promise<SportMonksFixture[]> {
-  const fixtures: SportMonksFixture[] = [];
-  let page = 1;
-  const perPage = 50;
+async function fetchUpcomingFixtures(leagueId: number, leagueName: string): Promise<SportMonksFixture[]> {
+  const cacheKey = `sm-upcoming-${leagueId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
 
-  while (true) {
-    const url = `${BASE_URL}/fixtures?league_id=${leagueId}&season_id=${season}&per_page=${perPage}&page=${page}&include=participants;venue;referee;events;stats;lineups;predictions;weather`;
-
-    try {
-      const data = await fetchWithRetry(url);
-
-      if (!data.data || data.data.length === 0) break;
-
-      fixtures.push(...data.data);
-
-      if (data.pagination?.has_more !== true) break;
-
-      page++;
-
-      // Rate limiting - 180 calls per hour = ~3 per minute, so 20 second delay
-      await new Promise(resolve => setTimeout(resolve, 20000));
-
-    } catch (error) {
-      console.error(`Error fetching fixtures for league ${leagueId}, page ${page}:`, error);
-      break;
-    }
-  }
-
-  return fixtures;
-}
-
-async function fetchLeagueStandings(leagueId: number, season: string): Promise<any[]> {
-  const url = `${BASE_URL}/standings?league_id=${leagueId}&season_id=${season}`;
   try {
+    // Get today's date and 14 days from now
+    const today = new Date().toISOString().split('T')[0];
+    const future = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    const url = `${BASE_URL}/fixtures?filters=fixtureLeagues:${leagueId};fixtureStartDate:${today};fixtureEndDate:${future}&include=participants;venue&per_page=50`;
+
+    console.log(`[${leagueName}] Fetching upcoming fixtures...`);
     const data = await fetchWithRetry(url);
-    return data.data || [];
+
+    if (!data || !data.data) {
+      console.warn(`[${leagueName}] No data returned`);
+      return [];
+    }
+
+    console.log(`[${leagueName}] Found ${data.data.length} upcoming fixtures`);
+    setCache(cacheKey, data.data);
+    return data.data;
+  } catch (error) {
+    console.error(`[${leagueName}] Error fetching fixtures:`, error);
+    return [];
+  }
+}
+
+async function fetchLiveFixtures(): Promise<SportMonksFixture[]> {
+  const cacheKey = 'sm-live';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const url = `${BASE_URL}/livescores/inplay?include=participants;venue`;
+    
+    console.log('[live] Fetching live fixtures...');
+    const data = await fetchWithRetry(url);
+
+    if (!data || !data.data) {
+      console.warn('[live] No data returned');
+      return [];
+    }
+
+    console.log(`[live] Found ${data.data.length} live fixtures`);
+    setCache(cacheKey, data.data);
+    return data.data;
+  } catch (error) {
+    console.error('[live] Error fetching fixtures:', error);
+    return [];
+  }
+}
+
+async function fetchLeagueStandings(leagueId: number, seasonId: number): Promise<any[]> {
+  const cacheKey = `sm-standings-${leagueId}-${seasonId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const url = `${BASE_URL}/standings/seasons/${seasonId}?include=participant`;
+    const data = await fetchWithRetry(url);
+    
+    if (!data || !data.data) return [];
+    
+    setCache(cacheKey, data.data);
+    return data.data;
   } catch (error) {
     console.error(`Error fetching standings for league ${leagueId}:`, error);
     return [];
   }
 }
 
-async function fetchLeagueTopScorers(leagueId: number, season: string): Promise<any[]> {
-  const url = `${BASE_URL}/topscorers?league_id=${leagueId}&season_id=${season}`;
-  try {
-    const data = await fetchWithRetry(url);
-    return data.data || [];
-  } catch (error) {
-    console.error(`Error fetching top scorers for league ${leagueId}:`, error);
-    return [];
-  }
-}
-
 function transformFixture(fixture: SportMonksFixture, leagueName: string) {
   const statusMap: Record<string, string> = {
-    'NS': 'SCHEDULED',
-    'LIVE': 'LIVE',
-    'FT': 'FINISHED',
-    'HT': 'LIVE',
-    'PST': 'POSTPONED',
-    'CANC': 'CANCELLED'
+    'NS': 'scheduled',
+    'LIVE': 'live',
+    '1H': 'live',
+    '2H': 'live',
+    'HT': 'live',
+    'FT': 'finished',
+    'AET': 'finished',
+    'PEN': 'finished',
+    'PST': 'postponed',
+    'CANC': 'cancelled',
+    'ABD': 'cancelled',
+    'SUSP': 'postponed'
   };
 
-  const homeTeam = fixture.participants?.find(p => p.id === fixture.home_team_id);
-  const awayTeam = fixture.participants?.find(p => p.id === fixture.away_team_id);
+  const homeTeam = fixture.participants?.find((p: any) => p.meta?.location === 'home');
+  const awayTeam = fixture.participants?.find((p: any) => p.meta?.location === 'away');
+
+  const status = statusMap[fixture.status] || 'scheduled';
+  const hasScore = fixture.home_score !== null && fixture.away_score !== null && status === 'finished';
+  const result = hasScore
+    ? (fixture.home_score > fixture.away_score ? 'home_win' : 
+       fixture.away_score > fixture.home_score ? 'away_win' : 'draw')
+    : null;
 
   return {
-    id: `sm_${fixture.id}`,
+    id: `sportmonks-${fixture.id}`,
     league: leagueName,
     home_team: homeTeam?.name || 'Unknown',
     away_team: awayTeam?.name || 'Unknown',
@@ -148,14 +219,9 @@ function transformFixture(fixture: SportMonksFixture, leagueName: string) {
     home_team_score: fixture.home_score,
     away_team_score: fixture.away_score,
     kickoff_time: fixture.starting_at,
-    status: statusMap[fixture.status] || 'SCHEDULED',
-    venue: fixture.details?.venue?.name,
-    referee: fixture.details?.referee?.name,
-    events: fixture.events || [],
-    stats: fixture.stats || [],
-    lineups: fixture.lineups || [],
-    predictions: fixture.predictions,
-    weather: fixture.weather,
+    status: status,
+    result: status === 'finished' ? result : null,
+    venue: fixture.details?.venue?.name || null,
     home_team_json: {
       id: fixture.home_team_id,
       name: homeTeam?.name,
@@ -168,10 +234,15 @@ function transformFixture(fixture: SportMonksFixture, leagueName: string) {
       logo: awayTeam?.image_path,
       crest: awayTeam?.image_path
     },
+    score: {
+      home: fixture.home_score,
+      away: fixture.away_score
+    },
     metadata: {
       sportmonks_id: fixture.id,
       league_id: fixture.league_id,
-      season_id: fixture.season_id
+      season_id: fixture.season_id,
+      source: 'sportmonks'
     }
   };
 }
@@ -195,59 +266,57 @@ serve(async (req) => {
 
     const url = new URL(req.url);
     const leagueParam = url.searchParams.get('league');
-    const season = url.searchParams.get('season') || '2024'; // Default to current season
 
-    console.log('Fetching SportMonks data for:', { league: leagueParam, season });
+    console.log('Fetching SportMonks data...');
 
-    const results = [];
+    const results: any[] = [];
+    let totalSaved = 0;
 
+    // Fetch live fixtures first
+    console.log('🔴 Fetching live fixtures...');
+    const liveFixtures = await fetchLiveFixtures();
+    console.log(`✅ Found ${liveFixtures.length} live fixtures`);
+
+    // Save live fixtures
+    for (const fixture of liveFixtures) {
+      const leagueName = Object.entries(LEAGUES).find(([_, id]) => id === fixture.league_id)?.[0] || 'Unknown League';
+      const transformed = transformFixture(fixture, leagueName);
+      
+      const { error } = await supabase
+        .from('matches')
+        .upsert(transformed, { onConflict: 'id' });
+
+      if (!error) totalSaved++;
+    }
+
+    // Fetch from configured leagues
     for (const [leagueName, leagueId] of Object.entries(LEAGUES)) {
       if (leagueParam && leagueParam !== leagueName) continue;
 
-      console.log(`Fetching ${leagueName} (ID: ${leagueId})`);
+      console.log(`📅 Fetching ${leagueName}...`);
 
       try {
-        // Fetch fixtures
-        const fixtures = await fetchLeagueFixtures(leagueId, season);
-        console.log(`Fetched ${fixtures.length} fixtures for ${leagueName}`);
-
-        // Fetch standings
-        const standings = await fetchLeagueStandings(leagueId, season);
-        console.log(`Fetched standings for ${leagueName}`);
-
-        // Fetch top scorers
-        const topScorers = await fetchLeagueTopScorers(leagueId, season);
-        console.log(`Fetched top scorers for ${leagueName}`);
+        const fixtures = await fetchUpcomingFixtures(leagueId, leagueName);
 
         // Transform and save fixtures
-        const transformedFixtures = fixtures.map(f => transformFixture(f, leagueName));
+        for (const fixture of fixtures) {
+          const transformed = transformFixture(fixture, leagueName);
 
-        // Save to database
-        for (const fixture of transformedFixtures) {
           const { error } = await supabase
             .from('matches')
-            .upsert(fixture, {
-              onConflict: 'id',
-              ignoreDuplicates: false
-            });
+            .upsert(transformed, { onConflict: 'id' });
 
-          if (error) {
-            console.error(`Error saving fixture ${fixture.id}:`, error);
-          }
+          if (!error) totalSaved++;
+          else console.error(`Error saving ${transformed.id}:`, error.message);
         }
-
-        // Save standings (you might want a separate table for this)
-        // For now, we'll store in metadata or create a standings table
 
         results.push({
           league: leagueName,
-          fixtures: transformedFixtures.length,
-          standings: standings.length,
-          topScorers: topScorers.length
+          fixtures: fixtures.length
         });
 
-        // Rate limiting between leagues
-        await new Promise(resolve => setTimeout(resolve, 30000));
+        // Small delay between leagues
+        await new Promise(resolve => setTimeout(resolve, 500));
 
       } catch (error) {
         console.error(`Error processing ${leagueName}:`, error);
@@ -258,16 +327,21 @@ serve(async (req) => {
       }
     }
 
+    console.log(`✅ Saved ${totalSaved} total fixtures`);
+
     return new Response(
       JSON.stringify({
         message: 'SportMonks data fetched successfully',
-        results
+        liveCount: liveFixtures.length,
+        totalSaved,
+        results,
+        timestamp: new Date().toISOString()
       }),
       {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
+          'Cache-Control': 'public, max-age=1800' // Cache for 30 minutes
         },
         status: 200
       }
