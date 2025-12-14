@@ -4,8 +4,29 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const FOOTBALL_DATA_API_KEY = Deno.env.get("FOOTBALL_DATA_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const LEAGUE_IDS = (Deno.env.get('LEAGUE_IDS') || 'PL,BL1').trim(); // Conservative default: Premier League, Bundesliga only
+// Extended leagues coverage - Football-Data.org free tier supports these
+// PL=Premier League, BL1=Bundesliga, SA=Serie A, PD=La Liga, FL1=Ligue 1, 
+// ELC=Championship, CL=Champions League, EC=Euro
+const LEAGUE_IDS = (Deno.env.get('FOOTBALL_DATA_LEAGUES') || 'PL,BL1,SA,PD,FL1,ELC,CL').trim();
 const SEASON = (Deno.env.get('SEASON') || '').trim(); // e.g. "2024"
+
+// In-memory cache to reduce API calls
+const matchCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+
+function getCached(key: string): any | null {
+  const cached = matchCache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.timestamp > CACHE_TTL) {
+    matchCache.delete(key);
+    return null;
+  }
+  return cached.data;
+}
+
+function setCache(key: string, data: any): void {
+  matchCache.set(key, { data, timestamp: Date.now() });
+}
 
 function assertEnv() {
   const missing: string[] = [];
@@ -120,13 +141,22 @@ async function rateLimitedFetch(url: string, label?: string) {
 }
 
 async function fetchLiveMatches() {
+  const cacheKey = 'live-matches';
+  const cached = getCached(cacheKey);
+  if (cached) {
+    console.log('[cache] Using cached live matches');
+    return cached;
+  }
+
   try {
     const res = await rateLimitedFetch(`https://api.football-data.org/v4/matches?status=LIVE`, 'live-matches');
 
     if (!res.ok) return [];
 
     const data = await res.json();
-    return data.matches || [];
+    const matches = data.matches || [];
+    setCache(cacheKey, matches);
+    return matches;
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
@@ -174,6 +204,13 @@ async function fetchFinishedMatches() {
 }
 
 async function fetchUpcomingMatches() {
+  const cacheKey = 'upcoming-matches';
+  const cached = getCached(cacheKey);
+  if (cached) {
+    console.log('[cache] Using cached upcoming matches');
+    return cached;
+  }
+
   try {
     const leagues = LEAGUE_IDS
       .split(',')
@@ -186,17 +223,26 @@ async function fetchUpcomingMatches() {
     }
 
     const today = new Date();
-    const sevenDaysLater = new Date(today);
-    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+    const fourteenDaysLater = new Date(today);
+    fourteenDaysLater.setDate(fourteenDaysLater.getDate() + 14); // Extended to 14 days
     
     const dateFrom = today.toISOString().split('T')[0];
-    const dateTo = sevenDaysLater.toISOString().split('T')[0];
+    const dateTo = fourteenDaysLater.toISOString().split('T')[0];
 
     console.log(`[upcoming] Fetching from ${dateFrom} to ${dateTo}, leagues: ${leagues.join(', ')}`);
 
     let allMatches: any[] = [];
     
     for (const leagueCode of leagues) {
+      // Check per-league cache
+      const leagueCacheKey = `upcoming-${leagueCode}-${dateFrom}`;
+      const leagueCached = getCached(leagueCacheKey);
+      if (leagueCached) {
+        console.log(`[cache] Using cached matches for ${leagueCode}`);
+        allMatches.push(...leagueCached);
+        continue;
+      }
+
       // Fetch SCHEDULED and TIMED matches
       const url = `https://api.football-data.org/v4/competitions/${leagueCode}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
       const res = await rateLimitedFetch(url, `upcoming-${leagueCode}`);
@@ -208,6 +254,9 @@ async function fetchUpcomingMatches() {
         m.status === 'SCHEDULED' || m.status === 'TIMED'
       );
       console.log(`[upcoming ${leagueCode}] Found ${matches.length} scheduled matches`);
+      
+      // Cache per-league results
+      setCache(leagueCacheKey, matches);
       allMatches.push(...matches);
     }
 
@@ -219,7 +268,9 @@ async function fetchUpcomingMatches() {
       }
     }
 
-    return Array.from(uniqueMatches.values());
+    const result = Array.from(uniqueMatches.values());
+    setCache(cacheKey, result);
+    return result;
 
   } catch (error) {
     console.error('Error fetching upcoming matches:', error);
