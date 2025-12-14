@@ -55,18 +55,48 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
 
    const dynamicDates = generateDateRange();
 
-  // Helper to parse match time safely
-  const parseMatchDate = (timeStr: string | undefined | null): Date | null => {
+  // Helper to get the LOCAL date string (YYYY-MM-DD) for a match time
+  const getMatchLocalDateStr = (timeStr: string | undefined | null): string | null => {
     if (!timeStr) return null;
     try {
+      // Parse the date - handle various formats
       let date: Date;
+      
       if (timeStr.includes('T')) {
-        date = new Date(timeStr.endsWith('Z') ? timeStr : timeStr + 'Z');
+        // ISO format - parse as-is (browser will handle timezone)
+        date = new Date(timeStr);
       } else if (timeStr.includes('-') && timeStr.length === 10) {
-        date = new Date(timeStr + 'T12:00:00Z');
+        // Date only format like "2024-12-14" - treat as local date
+        return timeStr; // Return as-is since it's already a date string
       } else {
         date = new Date(timeStr);
       }
+      
+      if (isNaN(date.getTime())) return null;
+      
+      // Convert to local date string YYYY-MM-DD
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return null;
+    }
+  };
+
+  // Helper to get local date string for a Date object
+  const getLocalDateStr = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper to parse match time for sorting
+  const parseMatchDate = (timeStr: string | undefined | null): Date | null => {
+    if (!timeStr) return null;
+    try {
+      const date = new Date(timeStr);
       return isNaN(date.getTime()) ? null : date;
     } catch {
       return null;
@@ -84,17 +114,14 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches, onOpenPweza }) 
         filtered = filtered.filter(m => m.status === MatchStatus.LIVE);
     }
 
-    // Filter by Date - apply date filter but show all if no matches found
+    // Filter by Date - compare using local date strings to avoid timezone issues
     const targetDateEntry = dynamicDates.find(d => d.date === activeDate);
     if (targetDateEntry && activeDate !== 'All') {
-        const targetDate = targetDateEntry.dateObj;
+        const targetDateStr = getLocalDateStr(targetDateEntry.dateObj);
         const dateFiltered = filtered.filter(match => {
-            const matchDate = parseMatchDate(match.time);
-            if (!matchDate) return activeDate === 'Today'; // Show timeless matches on Today
-            
-            const matchLocal = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
-            const targetLocal = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-            return matchLocal.getTime() === targetLocal.getTime();
+            const matchDateStr = getMatchLocalDateStr(match.time);
+            if (!matchDateStr) return activeDate === 'Today'; // Show timeless matches on Today
+            return matchDateStr === targetDateStr;
         });
         
          // If no matches for selected date, show all upcoming matches instead
