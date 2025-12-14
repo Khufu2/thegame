@@ -406,10 +406,11 @@ export interface SportsContextType {
     leaderboard: LeaderboardEntry[]; // NEW
     
     addToSlip: (match: Match) => void;
+    addBetSlipItem: (item: BetSlipItem) => void;
     removeFromSlip: (id: string) => void;
     clearSlip: () => void;
     addRandomPick: () => void;
-    generateMkeka: (type: MkekaType) => void; 
+    generateMkeka: (type: MkekaType) => void;
     
     // Community & Alerts
     addComment: (matchId: string, text: string, teamSupport?: 'HOME' | 'AWAY') => void;

@@ -396,7 +396,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const addToSlip = (match: Match) => {
         if (betSlip.find(b => b.matchId === match.id)) return;
-        
+
         let selection = 'Draw';
         let odds = match.prediction?.odds?.draw || 3.0;
         let outcome: 'HOME'|'DRAW'|'AWAY' = 'DRAW';
@@ -421,8 +421,13 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             timestamp: Date.now(),
             confidence: match.prediction?.confidence
         };
-        
+
         setBetSlip(prev => [...prev, newItem]);
+    };
+
+    const addBetSlipItem = (item: BetSlipItem) => {
+        if (betSlip.find(b => b.id === item.id)) return;
+        setBetSlip(prev => [...prev, item]);
     };
 
     const removeFromSlip = (id: string) => {
@@ -568,7 +573,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         <SportsContext.Provider value={{
             user, authState, authToken, matches, news, feedItems, betSlip, isPwezaOpen, pwezaPrompt, flashAlert, alerts, leaderboard,
             login, loginAsGuest, logout, completeOnboarding, updatePreferences,
-            addToSlip, removeFromSlip, clearSlip, addRandomPick, generateMkeka,
+            addToSlip, addBetSlipItem, removeFromSlip, clearSlip, addRandomPick, generateMkeka,
             setIsPwezaOpen: (open, prompt) => { setIsPwezaOpen(open); if(prompt) setPwezaPrompt(prompt); else setPwezaPrompt(null); },
             addComment, triggerFlashAlert,
             addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert

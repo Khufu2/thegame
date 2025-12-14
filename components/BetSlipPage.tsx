@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { BetSlipItem, Match, MkekaType } from '../types';
 import { Trash2, Share2, TrendingUp, Sparkles, Camera, Plus, Check, AlertTriangle, ArrowRight, DollarSign, ExternalLink, Trophy, X, Shield, Rocket, Goal } from 'lucide-react';
 import { useSports } from '../context/SportsContext';
+import { ScanBetSlipModal } from './ScanBetSlipModal';
 
 interface BetSlipPageProps {
   slipItems: BetSlipItem[];
@@ -11,15 +12,17 @@ interface BetSlipPageProps {
   matches: Match[]; // Passed to generate random picks
   onAddRandomPick: () => void;
   onOpenPweza: () => void;
+  onAddItem: (item: BetSlipItem) => void;
 }
 
-export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveItem, onClearSlip, matches, onAddRandomPick, onOpenPweza }) => {
+export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveItem, onClearSlip, matches, onAddRandomPick, onOpenPweza, onAddItem }) => {
   const { generateMkeka } = useSports();
   const [wager, setWager] = useState<number>(10);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [shared, setShared] = useState(false);
   const [showExecution, setShowExecution] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   // Calculate Parlay Odds (Simple Multiplication)
   const totalOdds = slipItems.reduce((acc, item) => acc * item.odds, 1);
@@ -35,11 +38,7 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
   };
 
   const handleScanSlip = () => {
-      setIsScanning(true);
-      setTimeout(() => {
-          setIsScanning(false);
-          // In a real app, this would open camera/file picker
-      }, 2000);
+      setShowScanModal(true);
   };
 
   const handleShare = () => {
@@ -245,12 +244,19 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
 
         {/* EXECUTION HUB MODAL */}
         {showExecution && (
-            <ExecutionModal 
-                wager={wager} 
-                totalOdds={totalOdds} 
-                onClose={() => setShowExecution(false)} 
+            <ExecutionModal
+                wager={wager}
+                totalOdds={totalOdds}
+                onClose={() => setShowExecution(false)}
             />
         )}
+
+        {/* SCAN BET SLIP MODAL */}
+        <ScanBetSlipModal
+            isOpen={showScanModal}
+            onClose={() => setShowScanModal(false)}
+            onAddItem={onAddItem}
+        />
     </div>
   );
 };

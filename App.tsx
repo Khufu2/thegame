@@ -52,18 +52,19 @@ const ProtectedRoute = ({ children, requireAuth = false }: PropsWithChildren<{ r
 }
 
 const AppContent = () => {
-  const { 
-      authState, 
-      user, 
-      matches, 
-      news, 
-      feedItems, 
-      betSlip, 
-      addToSlip, 
-      removeFromSlip, 
-      clearSlip, 
-      addRandomPick, 
-      isPwezaOpen, 
+  const {
+      authState,
+      user,
+      matches,
+      news,
+      feedItems,
+      betSlip,
+      addToSlip,
+      addBetSlipItem,
+      removeFromSlip,
+      clearSlip,
+      addRandomPick,
+      isPwezaOpen,
       setIsPwezaOpen,
       logout // Needed to reset from Guest to Auth
   } = useSports();
@@ -151,13 +152,14 @@ const AppContent = () => {
         {/* PROTECTED ROUTES (Require Login) */}
         <Route path="/slip" element={
             <ProtectedRoute>
-                <BetSlipPage 
-                    slipItems={betSlip} 
-                    onRemoveItem={removeFromSlip} 
-                    onClearSlip={clearSlip} 
+                <BetSlipPage
+                    slipItems={betSlip}
+                    onRemoveItem={removeFromSlip}
+                    onClearSlip={clearSlip}
                     matches={matches}
                     onAddRandomPick={addRandomPick}
                     onOpenPweza={() => handleOpenPweza()}
+                    onAddItem={addBetSlipItem}
                 />
             </ProtectedRoute>
         } />

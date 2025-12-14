@@ -357,7 +357,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ matches: transformedMatches }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
+        },
+        status: 200
+      }
     );
 
   } catch (error) {
