@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Match, MatchStatus } from '../types';
 import { ChevronLeft, ChevronRight, Calendar, Star, Search, X } from 'lucide-react';
