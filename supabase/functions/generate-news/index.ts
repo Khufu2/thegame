@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const GROK_API_KEY = Deno.env.get("GROK_API_KEY");
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -13,76 +13,69 @@ const corsHeaders = {
 };
 
 interface GenerateNewsRequest {
-   topic?: string;
-   match_id?: string;
-   persona?: "SHEENA" | "ORACLE" | "STREET" | "JOURNALIST";
-   tone?: "HYPE" | "RECAP" | "ANALYTICAL" | "RUMOR";
-   language?: "ENGLISH" | "SWAHILI";
+  topic?: string;
+  match_id?: string;
+  persona?: "SHEENA" | "ORACLE" | "STREET" | "JOURNALIST";
+  tone?: "HYPE" | "RECAP" | "ANALYTICAL" | "RUMOR";
+  language?: "ENGLISH" | "SWAHILI";
 }
 
-async function generateWithGrok(prompt: string): Promise<any> {
-  try {
-    console.log("Calling Grok AI for news generation...");
-    console.log("Grok API Key available:", !!GROK_API_KEY);
+async function generateWithGemini(prompt: string): Promise<any> {
+  console.log("Calling Gemini AI for news generation...");
 
-    if (!GROK_API_KEY) {
-      throw new Error("GROK_API_KEY is not configured");
-    }
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
 
-    const response = await fetch("https://api.x.ai/v1/chat/completions", {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROK_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "grok-4-latest",
-        messages: [
+        contents: [
           {
-            role: "system",
-            content:
-              "You are a sports news writer. You generate engaging sports articles in valid JSON format. Always respond with valid JSON only, no markdown formatting.",
-          },
-          {
-            role: "user",
-            content: prompt,
+            parts: [{ text: prompt }],
           },
         ],
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
+        },
       }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Grok API error:", response.status, errorText);
-      throw new Error(`Grok API error: ${response.status} - ${errorText}`);
     }
+  );
 
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content;
-
-    if (!text) {
-      console.error("Grok response:", JSON.stringify(data, null, 2));
-      throw new Error("No content generated from Grok");
-    }
-
-    console.log("Grok response received, parsing JSON...");
-
-    let cleanedText = text.trim();
-    if (cleanedText.startsWith("```json")) {
-      cleanedText = cleanedText.slice(7);
-    }
-    if (cleanedText.startsWith("```")) {
-      cleanedText = cleanedText.slice(3);
-    }
-    if (cleanedText.endsWith("```")) {
-      cleanedText = cleanedText.slice(0, -3);
-    }
-
-    return JSON.parse(cleanedText.trim());
-  } catch (error) {
-    console.error("Grok generation error:", error);
-    throw error;
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Gemini API error:", response.status, errorText);
+    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
   }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!text) {
+    console.error("Gemini response:", JSON.stringify(data, null, 2));
+    throw new Error("No content generated from Gemini");
+  }
+
+  console.log("Gemini response received, parsing JSON...");
+
+  // Clean up any markdown formatting
+  let cleanedText = text.trim();
+  if (cleanedText.startsWith("```json")) {
+    cleanedText = cleanedText.slice(7);
+  }
+  if (cleanedText.startsWith("```")) {
+    cleanedText = cleanedText.slice(3);
+  }
+  if (cleanedText.endsWith("```")) {
+    cleanedText = cleanedText.slice(0, -3);
+  }
+
+  return JSON.parse(cleanedText.trim());
 }
 
 serve(async (req) => {
@@ -96,8 +89,7 @@ serve(async (req) => {
     if (url.pathname.endsWith("/test")) {
       return new Response(
         JSON.stringify({
-          grok_key_available: !!GROK_API_KEY,
-          grok_key_length: GROK_API_KEY?.length || 0,
+          gemini_key_available: !!GEMINI_API_KEY,
           timestamp: new Date().toISOString(),
         }),
         {
@@ -117,10 +109,10 @@ serve(async (req) => {
       language = "ENGLISH",
     } = body;
 
-    if (!GROK_API_KEY) {
-      console.error("GROK_API_KEY not configured");
+    if (!GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Grok AI service not configured. Please add GROK_API_KEY to your environment." }),
+        JSON.stringify({ error: "Gemini AI service not configured. Please add GEMINI_API_KEY to your environment." }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -130,7 +122,7 @@ serve(async (req) => {
 
     // Build search query
     let searchQuery = topic;
-    
+
     if (match_id && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
       const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
       const { data: match } = await supabaseClient
@@ -153,7 +145,7 @@ TOPIC: ${searchQuery}
 
 TONE: ${tone}
 
-You MUST respond with ONLY valid JSON in this exact format (no other text before or after):
+Respond with ONLY valid JSON in this exact format:
 {
   "title": "Catchy Headline",
   "summary": "1 sentence hook",
@@ -175,9 +167,9 @@ You MUST respond with ONLY valid JSON in this exact format (no other text before
   "excerpt": "Short excerpt for previews..."
 }`;
 
-    // Generate with Grok
-    console.log("🤖 Generating news with Grok AI...");
-    const generated = await generateWithGrok(prompt);
+    // Generate with Gemini
+    console.log("🤖 Generating news with Gemini AI...");
+    const generated = await generateWithGemini(prompt);
     console.log(`✅ Generated article: ${generated.title}`);
 
     // Save to feeds table
@@ -254,9 +246,9 @@ You MUST respond with ONLY valid JSON in this exact format (no other text before
   } catch (error: any) {
     console.error("Generate news error:", error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message || "Failed to generate news",
-        details: error.toString()
+        details: error.toString(),
       }),
       {
         status: 500,
