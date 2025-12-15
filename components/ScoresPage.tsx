@@ -19,6 +19,31 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches: initialMatches,
    const [showSearch, setShowSearch] = useState(false);
    const [showCalendar, setShowCalendar] = useState(false);
 
+   // Helper to get local date string (YYYY-MM-DD) from Date object
+   const getLocalDateStr = useCallback((date: Date): string => {
+     const year = date.getFullYear();
+     const month = String(date.getMonth() + 1).padStart(2, '0');
+     const day = String(date.getDate()).padStart(2, '0');
+     return `${year}-${month}-${day}`;
+   }, []);
+
+   // Helper to get local date string from match time (handles timezone properly)
+   const getMatchLocalDateStr = useCallback((timeStr: string | undefined | null): string | null => {
+     if (!timeStr) return null;
+     try {
+       // If it's already a date-only string, return as-is
+       if (timeStr.length === 10 && timeStr.includes('-')) {
+         return timeStr;
+       }
+       // Parse as Date and convert to local date string
+       const date = new Date(timeStr);
+       if (isNaN(date.getTime())) return null;
+       return getLocalDateStr(date);
+     } catch {
+       return null;
+     }
+   }, [getLocalDateStr]);
+
    // Generate date range for the date strip
    const generateDateRange = useCallback(() => {
        const today = new Date();
@@ -41,12 +66,12 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches: initialMatches,
                label = dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3);
            }
            
-           const dateStr = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+           const dateStr = getLocalDateStr(dateObj);
            dates.push({ label, dateStr, dateObj, isToday: i === 0 });
        }
        
        return dates;
-   }, []);
+   }, [getLocalDateStr]);
 
    const dynamicDates = useMemo(() => generateDateRange(), [generateDateRange]);
 
@@ -57,86 +82,66 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches: initialMatches,
 
    // Check if a date matches the selected date
    const isSelectedDate = (dateObj: Date) => {
-       return dateObj.toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0];
+       return getLocalDateStr(dateObj) === getLocalDateStr(selectedDate);
    };
 
-  // Helper to get the LOCAL date string (YYYY-MM-DD) for a match time
-  const getMatchLocalDateStr = (timeStr: string | undefined | null): string | null => {
-    if (!timeStr) return null;
-    try {
-      // Parse the date - handle various formats
-      let date: Date;
-      
-      if (timeStr.includes('T')) {
-        // ISO format - parse as-is (browser will handle timezone)
-        date = new Date(timeStr);
-      } else if (timeStr.includes('-') && timeStr.length === 10) {
-        // Date only format like "2024-12-14" - treat as local date
-        return timeStr; // Return as-is since it's already a date string
-      } else {
-        date = new Date(timeStr);
-      }
-      
-      if (isNaN(date.getTime())) return null;
-      
-      // Convert to local date string YYYY-MM-DD
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } catch {
-      return null;
-    }
-  };
-
-  // Helper to get local date string for a Date object
-  const getLocalDateStr = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Helper to parse match time for sorting
-  const parseMatchDate = (timeStr: string | undefined | null): Date | null => {
-    if (!timeStr) return null;
-    try {
-      const date = new Date(timeStr);
-      return isNaN(date.getTime()) ? null : date;
-    } catch {
-      return null;
-    }
-  };
+   // Fetch matches for selected date
+   const fetchMatchesForDate = useCallback(async (date: Date) => {
+       setLoading(true);
+       try {
+           const dateStr = getLocalDateStr(date);
+           console.log('Fetching matches for date:', dateStr);
+           
+           const response = await fetch(
+               `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/get-matches?date=${dateStr}&limit=200`,
+               {
+                   headers: {
+                       'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                       'Content-Type': 'application/json'
+                   }
+               }
+           );
+           
+           if (!response.ok) throw new Error('Failed to fetch matches');
+           
+           const matchesData = await response.json();
+           console.log(`Fetched ${matchesData.length} matches for ${dateStr}`);
+           setMatches(Array.isArray(matchesData) ? matchesData : []);
+       } catch (error) {
+           console.error('Error fetching matches:', error);
+           setMatches([]);
+       } finally {
+           setLoading(false);
+       }
+   }, [getLocalDateStr]);
 
    // Fetch on date change
    useEffect(() => {
        fetchMatchesForDate(selectedDate);
    }, [selectedDate, fetchMatchesForDate]);
 
-   // Filter matches by search query and status
+   // Filter matches by search query and status - with proper local date filtering
    const groupedMatches = useMemo(() => {
        let filtered = Array.isArray(matches) ? matches : [];
+       const selectedDateStr = getLocalDateStr(selectedDate);
 
-    // Filter by Date - compare using local date strings to avoid timezone issues
-    const targetDateEntry = dynamicDates.find(d => d.date === activeDate);
-    if (targetDateEntry && activeDate !== 'All') {
-        const targetDateStr = getLocalDateStr(targetDateEntry.dateObj);
-        const dateFiltered = filtered.filter(match => {
-            const matchDateStr = getMatchLocalDateStr(match.time);
-            if (!matchDateStr) return activeDate === 'Today'; // Show timeless matches on Today
-            return matchDateStr === targetDateStr;
-        });
-        
-         // If no matches for selected date, show all upcoming matches instead
-         if (dateFiltered.length > 0) {
-             filtered = dateFiltered;
-         } else if (activeDate === 'Today') {
-             // Show upcoming scheduled matches when today has no games
-             filtered = safeMatches.filter(m => 
-                 m.status === MatchStatus.SCHEDULED || (m.status as string) === 'TIMED' || m.status === MatchStatus.FINISHED
-             ).slice(0, 50);
-         }
-    }
+       // Filter by date using local date comparison
+       filtered = filtered.filter(match => {
+           const matchTime = match.time || (match as any).kickoff_time;
+           const matchDateStr = getMatchLocalDateStr(matchTime);
+           // Show matches for selected date, or if no date show all
+           return matchDateStr === selectedDateStr;
+       });
+
+       // Filter by search query
+       if (searchQuery.trim()) {
+           const query = searchQuery.toLowerCase();
+           filtered = filtered.filter(m => 
+               m.homeTeam?.name?.toLowerCase().includes(query) ||
+               m.awayTeam?.name?.toLowerCase().includes(query) ||
+               m.league?.toLowerCase().includes(query)
+           );
+       }
 
        // Filter by status
        if (filter === 'LIVE') {
@@ -161,7 +166,7 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches: initialMatches,
        });
 
        return groups;
-   }, [matches, filter, searchQuery]);
+   }, [matches, filter, searchQuery, selectedDate, getLocalDateStr, getMatchLocalDateStr]);
 
    const leagueKeys = Object.keys(groupedMatches);
 
@@ -245,10 +250,13 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches: initialMatches,
                    </div>
                    <input
                        type="date"
-                       value={selectedDate.toISOString().split('T')[0]}
+                       value={getLocalDateStr(selectedDate)}
                        onChange={(e) => {
                            if (e.target.value) {
-                               setSelectedDate(new Date(e.target.value + 'T12:00:00'));
+                               // Parse the date parts to avoid timezone issues
+                               const [year, month, day] = e.target.value.split('-').map(Number);
+                               const newDate = new Date(year, month - 1, day, 12, 0, 0);
+                               setSelectedDate(newDate);
                                setShowCalendar(false);
                            }
                        }}
@@ -441,6 +449,29 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick }) => {
         }
     };
 
+    // Cached image component with fallback
+    const TeamLogo: React.FC<{ logo?: string; name?: string }> = ({ logo, name }) => {
+        const [imgError, setImgError] = useState(false);
+        
+        if (!logo || imgError) {
+            return (
+                <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                    {name?.charAt(0) || '?'}
+                </div>
+            );
+        }
+        
+        return (
+            <img 
+                src={logo} 
+                className="w-5 h-5 object-contain" 
+                alt={name}
+                loading="lazy"
+                onError={() => setImgError(true)}
+            />
+        );
+    };
+
     return (
         <div onClick={onClick} className={`bg-[#000000] hover:bg-[#0A0A0A] transition-colors cursor-pointer flex items-center py-3 px-4 ${!isLast ? 'border-b border-[#1E1E1E]' : ''}`}>
             
@@ -449,7 +480,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick }) => {
                 {isLive ? (
                     <>
                         <span className="text-[10px] font-black text-red-500 uppercase">Live</span>
-                        <span className="text-xs font-bold text-red-500">{formatLocalTime(match.time || match.kickoff_time)}</span>
+                        <span className="text-xs font-bold text-red-500">{formatLocalTime(match.time || (match as any).kickoff_time)}</span>
                     </>
                 ) : isFinished ? (
                     <>
@@ -457,7 +488,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick }) => {
                         <span className="text-xs font-bold text-gray-500">Final</span>
                     </>
                 ) : (
-                    <span className="text-xs font-bold text-blue-400">{formatLocalTime(match.time || match.kickoff_time)}</span>
+                    <span className="text-xs font-bold text-blue-400">{formatLocalTime(match.time || (match as any).kickoff_time)}</span>
                 )}
             </div>
 
@@ -471,13 +502,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick }) => {
                 {/* Home Team */}
                 <div className="flex items-center justify-between h-[20px]">
                     <div className="flex items-center gap-3">
-                        {(match.homeTeam?.logo || (match.homeTeam as any)?.crest) ? (
-                            <img src={match.homeTeam.logo || (match.homeTeam as any).crest} className="w-5 h-5 object-contain" alt={match.homeTeam?.name} />
-                        ) : (
-                            <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
-                                {match.homeTeam?.name?.charAt(0) || 'H'}
-                            </div>
-                        )}
+                        <TeamLogo logo={match.homeTeam?.logo || (match.homeTeam as any)?.crest} name={match.homeTeam?.name} />
                         <span className={`font-condensed font-bold text-[15px] uppercase ${isWinnerHome || homeScore == null ? 'text-white' : 'text-gray-500'}`}>
                             {match.homeTeam?.name || 'Home'}
                         </span>
@@ -490,13 +515,7 @@ const ScoreRow: React.FC<ScoreRowProps> = ({ match, isLast, onClick }) => {
                 {/* Away Team */}
                 <div className="flex items-center justify-between h-[20px]">
                      <div className="flex items-center gap-3">
-                        {(match.awayTeam?.logo || (match.awayTeam as any)?.crest) ? (
-                            <img src={match.awayTeam.logo || (match.awayTeam as any).crest} className="w-5 h-5 object-contain" alt={match.awayTeam?.name} />
-                        ) : (
-                            <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
-                                {match.awayTeam?.name?.charAt(0) || 'A'}
-                            </div>
-                        )}
+                        <TeamLogo logo={match.awayTeam?.logo || (match.awayTeam as any)?.crest} name={match.awayTeam?.name} />
                         <span className={`font-condensed font-bold text-[15px] uppercase ${isWinnerAway || awayScore == null ? 'text-white' : 'text-gray-500'}`}>
                             {match.awayTeam?.name || 'Away'}
                         </span>

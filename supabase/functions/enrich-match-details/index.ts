@@ -1,13 +1,11 @@
 // @ts-nocheck
 /**
- * Enhanced Match Details Fetcher using API-Football
- * Fetches timeline (events), statistics, and lineups for a specific match
- * Use sparingly - each call uses 3 API calls (events, stats, lineups)
+ * Match Details Enricher using TheSportsDB (FREE) and cached DB data
+ * Fetches timeline, statistics and lineups without consuming paid API quotas
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const API_FOOTBALL_KEY = Deno.env.get("API_FOOTBALL_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -16,132 +14,179 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function apiFootballFetch(endpoint: string, params: Record<string, string | number> = {}) {
-  const queryString = new URLSearchParams(
-    Object.entries(params).map(([k, v]) => [k, String(v)])
-  ).toString();
-  
-  const url = `https://v3.football.api-sports.io/${endpoint}?${queryString}`;
-  
-  console.log(`[APIFootball] Fetching ${endpoint}...`);
-  
-  const res = await fetch(url, {
-    headers: {
-      "x-apisports-key": API_FOOTBALL_KEY || "",
-    },
-  });
-  
-  if (!res.ok) {
-    console.error(`[APIFootball] Error: ${res.status}`);
+// In-memory cache for match details (5 min TTL)
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// TheSportsDB (free) event lookup
+async function fetchTheSportsDBEvent(eventId: string): Promise<any | null> {
+  try {
+    const url = `https://www.thesportsdb.com/api/v1/json/3/lookupevent.php?id=${eventId}`;
+    console.log(`[TheSportsDB] Fetching event ${eventId}`);
+    
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    return data.events?.[0] || null;
+  } catch (e) {
+    console.error("[TheSportsDB] Error:", e);
     return null;
   }
-  
-  const data = await res.json();
-  return data.response || [];
 }
 
-// Fetch match events (goals, cards, subs)
-async function fetchEvents(fixtureId: number) {
-  const events = await apiFootballFetch("fixtures/events", { fixture: fixtureId });
-  if (!events) return [];
-  
-  return events.map((e: any) => ({
-    time: e.time.elapsed + (e.time.extra || 0),
-    type: e.type.toLowerCase(),
-    detail: e.detail,
-    team: e.team.name,
-    teamId: e.team.id,
-    player: e.player?.name,
-    assist: e.assist?.name,
-    comments: e.comments,
-  }));
+// Search for event by teams and date
+async function searchTheSportsDBEvent(homeTeam: string, awayTeam: string, date: string): Promise<any | null> {
+  try {
+    // Clean team names
+    const cleanName = (name: string) => name.replace(/ FC$/, '').replace(/ CF$/, '').replace(/^FC /, '').trim();
+    const home = cleanName(homeTeam);
+    
+    const url = `https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${encodeURIComponent(home)}&d=${date}`;
+    console.log(`[TheSportsDB] Searching: ${home} on ${date}`);
+    
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    const events = data.event || [];
+    
+    // Find matching event
+    const away = cleanName(awayTeam).toLowerCase();
+    const match = events.find((e: any) => 
+      e.strAwayTeam?.toLowerCase().includes(away) || 
+      away.includes(e.strAwayTeam?.toLowerCase())
+    );
+    
+    return match || null;
+  } catch (e) {
+    console.error("[TheSportsDB] Search error:", e);
+    return null;
+  }
 }
 
-// Fetch match statistics
-async function fetchStatistics(fixtureId: number) {
-  const stats = await apiFootballFetch("fixtures/statistics", { fixture: fixtureId });
-  if (!stats || stats.length < 2) return null;
+// Parse timeline from TheSportsDB event
+function parseTimeline(event: any): any[] {
+  const timeline: any[] = [];
   
-  const homeStats = stats[0];
-  const awayStats = stats[1];
-  
-  const formatStat = (statArray: any[], type: string) => {
-    const stat = statArray.find((s: any) => s.type === type);
-    return stat?.value ?? 0;
+  // TheSportsDB stores goal details in strHomeGoalDetails and strAwayGoalDetails
+  const parseGoals = (details: string, isHome: boolean) => {
+    if (!details) return;
+    // Format: "Player Name:45';Another Player:67'"
+    details.split(';').forEach((goal, idx) => {
+      const match = goal.match(/(.+?):(\d+)/);
+      if (match) {
+        timeline.push({
+          id: `goal-${isHome ? 'home' : 'away'}-${idx}`,
+          type: 'GOAL',
+          minute: `${match[2]}'`,
+          player: match[1].trim(),
+          team: isHome ? event.strHomeTeam : event.strAwayTeam,
+          description: `Goal! ${match[1].trim()}`
+        });
+      }
+    });
   };
   
-  return {
-    homeTeam: homeStats.team.name,
-    awayTeam: awayStats.team.name,
-    possession: {
-      home: parseInt(formatStat(homeStats.statistics, "Ball Possession")) || 50,
-      away: parseInt(formatStat(awayStats.statistics, "Ball Possession")) || 50,
-    },
-    shots: {
-      home: formatStat(homeStats.statistics, "Total Shots"),
-      away: formatStat(awayStats.statistics, "Total Shots"),
-    },
-    shotsOnTarget: {
-      home: formatStat(homeStats.statistics, "Shots on Goal"),
-      away: formatStat(awayStats.statistics, "Shots on Goal"),
-    },
-    corners: {
-      home: formatStat(homeStats.statistics, "Corner Kicks"),
-      away: formatStat(awayStats.statistics, "Corner Kicks"),
-    },
-    fouls: {
-      home: formatStat(homeStats.statistics, "Fouls"),
-      away: formatStat(awayStats.statistics, "Fouls"),
-    },
-    yellowCards: {
-      home: formatStat(homeStats.statistics, "Yellow Cards"),
-      away: formatStat(awayStats.statistics, "Yellow Cards"),
-    },
-    redCards: {
-      home: formatStat(homeStats.statistics, "Red Cards"),
-      away: formatStat(awayStats.statistics, "Red Cards"),
-    },
-    passes: {
-      home: formatStat(homeStats.statistics, "Total passes"),
-      away: formatStat(awayStats.statistics, "Total passes"),
-    },
-    passAccuracy: {
-      home: parseInt(formatStat(homeStats.statistics, "Passes %")) || 0,
-      away: parseInt(formatStat(awayStats.statistics, "Passes %")) || 0,
-    },
-  };
-}
-
-// Fetch match lineups
-async function fetchLineups(fixtureId: number) {
-  const lineups = await apiFootballFetch("fixtures/lineups", { fixture: fixtureId });
-  if (!lineups || lineups.length < 2) return null;
+  parseGoals(event.strHomeGoalDetails, true);
+  parseGoals(event.strAwayGoalDetails, false);
   
-  const formatLineup = (lineup: any) => ({
-    team: lineup.team.name,
-    teamId: lineup.team.id,
-    teamLogo: lineup.team.logo,
-    formation: lineup.formation,
-    coach: lineup.coach?.name,
-    startXI: lineup.startXI?.map((p: any) => ({
-      id: p.player.id,
-      name: p.player.name,
-      number: p.player.number,
-      pos: p.player.pos,
-      grid: p.player.grid,
-    })) || [],
-    substitutes: lineup.substitutes?.map((p: any) => ({
-      id: p.player.id,
-      name: p.player.name,
-      number: p.player.number,
-      pos: p.player.pos,
-    })) || [],
+  // Parse cards if available
+  const parseCards = (details: string, isHome: boolean, cardType: string) => {
+    if (!details) return;
+    details.split(';').forEach((card, idx) => {
+      const match = card.match(/(.+?):(\d+)/);
+      if (match) {
+        timeline.push({
+          id: `card-${cardType}-${isHome ? 'home' : 'away'}-${idx}`,
+          type: 'CARD',
+          cardType,
+          minute: `${match[2]}'`,
+          player: match[1].trim(),
+          team: isHome ? event.strHomeTeam : event.strAwayTeam,
+          description: `${cardType} card for ${match[1].trim()}`
+        });
+      }
+    });
+  };
+  
+  parseCards(event.strHomeYellowCards, true, 'YELLOW');
+  parseCards(event.strAwayYellowCards, false, 'YELLOW');
+  parseCards(event.strHomeRedCards, true, 'RED');
+  parseCards(event.strAwayRedCards, false, 'RED');
+  
+  // Sort by minute
+  timeline.sort((a, b) => {
+    const minA = parseInt(a.minute) || 0;
+    const minB = parseInt(b.minute) || 0;
+    return minA - minB;
   });
   
+  return timeline;
+}
+
+// Generate basic stats from event data
+function generateStats(event: any): any {
+  // TheSportsDB free tier has limited stats, but we can derive some
+  const homeScore = parseInt(event.intHomeScore) || 0;
+  const awayScore = parseInt(event.intAwayScore) || 0;
+  
   return {
-    home: formatLineup(lineups[0]),
-    away: formatLineup(lineups[1]),
+    possession: { home: 50, away: 50 }, // Not available in free API
+    shots: { home: 0, away: 0 },
+    shotsOnTarget: { home: 0, away: 0 },
+    corners: { home: 0, away: 0 },
+    fouls: { home: 0, away: 0 },
+    yellowCards: { 
+      home: (event.strHomeYellowCards?.split(';').filter(Boolean).length) || 0,
+      away: (event.strAwayYellowCards?.split(';').filter(Boolean).length) || 0
+    },
+    redCards: {
+      home: (event.strHomeRedCards?.split(';').filter(Boolean).length) || 0,
+      away: (event.strAwayRedCards?.split(';').filter(Boolean).length) || 0
+    },
+    // Calculate goals from score
+    goals: { home: homeScore, away: awayScore }
   };
+}
+
+// Parse lineups from event
+function parseLineups(event: any): any | null {
+  const parseTeamLineup = (lineupStr: string, formation: string, teamName: string) => {
+    if (!lineupStr) return null;
+    
+    const players = lineupStr.split(';').filter(Boolean).map((name, idx) => ({
+      id: `player-${idx}`,
+      name: name.trim(),
+      number: idx + 1,
+      position: idx === 0 ? 'GK' : (idx < 5 ? 'DEF' : (idx < 8 ? 'MID' : 'FWD'))
+    }));
+    
+    return {
+      formation: formation || '4-4-2',
+      team: teamName,
+      starting: players.slice(0, 11),
+      subs: players.slice(11)
+    };
+  };
+  
+  const homeLineup = parseTeamLineup(
+    event.strHomeLineupGoalkeeper + ';' + event.strHomeLineupDefense + ';' + 
+    event.strHomeLineupMidfield + ';' + event.strHomeLineupForward,
+    event.strHomeFormation,
+    event.strHomeTeam
+  );
+  
+  const awayLineup = parseTeamLineup(
+    event.strAwayLineupGoalkeeper + ';' + event.strAwayLineupDefense + ';' + 
+    event.strAwayLineupMidfield + ';' + event.strAwayLineupForward,
+    event.strAwayFormation,
+    event.strAwayTeam
+  );
+  
+  if (!homeLineup && !awayLineup) return null;
+  
+  return { home: homeLineup, away: awayLineup };
 }
 
 serve(async (req) => {
@@ -150,10 +195,6 @@ serve(async (req) => {
   }
 
   try {
-    if (!API_FOOTBALL_KEY) {
-      throw new Error("API_FOOTBALL_KEY not configured");
-    }
-
     const url = new URL(req.url);
     const matchId = url.searchParams.get("matchId");
     const fixtureId = url.searchParams.get("fixtureId");
@@ -162,70 +203,119 @@ serve(async (req) => {
       throw new Error("matchId or fixtureId required");
     }
 
+    // Check cache first
+    const cacheKey = matchId || fixtureId || '';
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log(`[Cache] Hit for ${cacheKey}`);
+      return new Response(
+        JSON.stringify(cached.data),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
     
-    // Get fixture ID from match if not provided
-    let actualFixtureId = fixtureId ? parseInt(fixtureId) : null;
-    
-    if (!actualFixtureId && matchId) {
-      const { data: match } = await supabase
+    // Get match from database first
+    let dbMatch: any = null;
+    if (matchId) {
+      const { data } = await supabase
         .from("matches")
-        .select("fixture_id")
+        .select("*")
         .eq("id", matchId)
         .maybeSingle();
-      
-      actualFixtureId = match?.fixture_id;
+      dbMatch = data;
     }
     
-    if (!actualFixtureId) {
-      throw new Error("Could not determine fixture ID");
-    }
-
-    console.log(`[EnrichMatch] Fetching details for fixture ${actualFixtureId}`);
-
-    // Fetch all data in parallel
-    const [events, statistics, lineups] = await Promise.all([
-      fetchEvents(actualFixtureId),
-      fetchStatistics(actualFixtureId),
-      fetchLineups(actualFixtureId),
-    ]);
-
-    // Update match in database with enriched data
-    if (matchId) {
-      const updateData: any = {
-        updated_at: new Date().toISOString(),
+    // If we already have enriched data in DB, return it
+    if (dbMatch?.timeline?.length > 0 || dbMatch?.stats || dbMatch?.lineups) {
+      const result = {
+        success: true,
+        source: "database",
+        matchId: dbMatch.id,
+        timeline: dbMatch.timeline || [],
+        stats: dbMatch.stats,
+        lineups: dbMatch.lineups,
       };
       
-      if (events && events.length > 0) {
-        updateData.timeline = events;
-      }
-      if (statistics) {
-        updateData.stats = statistics;
-      }
-      if (lineups) {
-        updateData.lineups = lineups;
-      }
+      cache.set(cacheKey, { data: result, timestamp: Date.now() });
       
-      const { error } = await supabase
-        .from("matches")
-        .update(updateData)
-        .eq("id", matchId);
-      
-      if (error) {
-        console.error("[EnrichMatch] Failed to update match:", error);
-      } else {
-        console.log("[EnrichMatch] Match updated successfully");
+      return new Response(
+        JSON.stringify(result),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Try to enrich from TheSportsDB
+    let sportsDbEvent: any = null;
+    
+    // If we have TheSportsDB event ID in metadata
+    const eventId = dbMatch?.metadata?.thesportsdb_id || dbMatch?.metadata?.event_id;
+    if (eventId) {
+      sportsDbEvent = await fetchTheSportsDBEvent(eventId);
+    }
+    
+    // Otherwise search by team names and date
+    if (!sportsDbEvent && dbMatch) {
+      const matchDate = dbMatch.kickoff_time?.split('T')[0];
+      if (matchDate) {
+        sportsDbEvent = await searchTheSportsDBEvent(
+          dbMatch.home_team,
+          dbMatch.away_team,
+          matchDate
+        );
       }
     }
+    
+    let timeline: any[] = [];
+    let stats: any = null;
+    let lineups: any = null;
+    
+    if (sportsDbEvent) {
+      console.log(`[TheSportsDB] Found event: ${sportsDbEvent.strEvent}`);
+      timeline = parseTimeline(sportsDbEvent);
+      stats = generateStats(sportsDbEvent);
+      lineups = parseLineups(sportsDbEvent);
+      
+      // Update match in database with enriched data
+      if (matchId && (timeline.length > 0 || stats || lineups)) {
+        const updateData: any = { updated_at: new Date().toISOString() };
+        if (timeline.length > 0) updateData.timeline = timeline;
+        if (stats) updateData.stats = stats;
+        if (lineups) updateData.lineups = lineups;
+        
+        // Store TheSportsDB event ID for future lookups
+        if (!eventId) {
+          updateData.metadata = {
+            ...(dbMatch?.metadata || {}),
+            thesportsdb_id: sportsDbEvent.idEvent
+          };
+        }
+        
+        await supabase
+          .from("matches")
+          .update(updateData)
+          .eq("id", matchId);
+        
+        console.log(`[EnrichMatch] Updated match ${matchId} with TheSportsDB data`);
+      }
+    } else {
+      console.log("[EnrichMatch] No TheSportsDB data found, using DB fallback");
+    }
+
+    const result = {
+      success: true,
+      source: sportsDbEvent ? "thesportsdb" : "database",
+      matchId: matchId || fixtureId,
+      timeline,
+      stats,
+      lineups,
+    };
+    
+    cache.set(cacheKey, { data: result, timestamp: Date.now() });
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        fixtureId: actualFixtureId,
-        timeline: events,
-        stats: statistics,
-        lineups,
-      }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
