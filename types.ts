@@ -425,4 +425,6 @@ export interface SportsContextType {
     isPwezaOpen: boolean;
     pwezaPrompt: string | null;
     setIsPwezaOpen: (open: boolean, prompt?: string) => void;
+    theme: 'LIGHT' | 'DARK';
+    toggleTheme: () => void;
 }

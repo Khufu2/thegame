@@ -98,6 +98,7 @@ const getMockMatches = (): Match[] => [
 
 const USER_STORAGE_KEY = 'sheena_user_profile';
 const TOKEN_STORAGE_KEY = 'sheena_access_token';
+const THEME_STORAGE_KEY = 'sheena_theme';
 
 const SportsContext = createContext<SportsContextType | undefined>(undefined);
 
@@ -105,6 +106,9 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [user, setUser] = useState<UserProfile | null>(null);
     const [authState, setAuthState] = useState<AuthState>('GUEST');
     const [authToken, setAuthToken] = useState<string | null>(null);
+    const [theme, setTheme] = useState<'LIGHT' | 'DARK'>(() => {
+        return (localStorage.getItem(THEME_STORAGE_KEY) as 'LIGHT' | 'DARK') || 'DARK';
+    });
     const [matches, setMatches] = useState<Match[]>([]);
     const [news, setNews] = useState<NewsStory[]>([]);
     const [alerts, setAlerts] = useState<SystemAlert[]>([]);
@@ -311,7 +315,6 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, []);
 
     useEffect(() => {
-        const theme = user?.preferences.theme || 'DARK';
         if (theme === 'LIGHT') {
             document.documentElement.classList.remove('dark');
             document.body.style.backgroundColor = '#ffffff';
@@ -321,7 +324,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             document.body.style.backgroundColor = '#000000';
             document.body.style.color = '#ffffff';
         }
-    }, [user?.preferences.theme]);
+    }, [theme]);
 
     useEffect(() => {
         if (matches.length > 0) {
@@ -357,6 +360,11 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setAuthToken(token);
             localStorage.setItem(TOKEN_STORAGE_KEY, token);
         }
+        // Sync theme from user preferences
+        if (profile.preferences.theme) {
+            setTheme(profile.preferences.theme);
+            localStorage.setItem(THEME_STORAGE_KEY, profile.preferences.theme);
+        }
     };
 
     const loginAsGuest = () => {
@@ -389,7 +397,28 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const { data, error } = await supabase.from('users').update({ preferences: updatedPrefs }).eq('id', user.id).select();
             if (!error && data) {
                 setUser({ ...user, preferences: updatedPrefs });
+                // Sync theme if it was updated
+                if (newPrefs.theme) {
+                    setTheme(newPrefs.theme);
+                    localStorage.setItem(THEME_STORAGE_KEY, newPrefs.theme);
+                }
             }
+        } else {
+            // For guests, update theme directly
+            if (newPrefs.theme) {
+                setTheme(newPrefs.theme);
+                localStorage.setItem(THEME_STORAGE_KEY, newPrefs.theme);
+            }
+        }
+    };
+
+    const toggleTheme = () => {
+        const newTheme = theme === 'DARK' ? 'LIGHT' : 'DARK';
+        setTheme(newTheme);
+        localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+        // Also update user preferences if logged in
+        if (user) {
+            updatePreferences({ theme: newTheme });
         }
     };
 
@@ -575,7 +604,8 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             addToSlip, addBetSlipItem, removeFromSlip, clearSlip, addRandomPick, generateMkeka,
             setIsPwezaOpen: (open, prompt) => { setIsPwezaOpen(open); if(prompt) setPwezaPrompt(prompt); else setPwezaPrompt(null); },
             addComment, triggerFlashAlert,
-            addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert
+            addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert,
+            theme, toggleTheme
         }}>
             {children}
         </SportsContext.Provider>

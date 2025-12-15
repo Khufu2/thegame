@@ -5,7 +5,7 @@ import { ArrowLeft, Bell, Globe, Shield, Moon, Monitor, MessageCircle, Mail, Wif
 import { useNavigate } from 'react-router-dom';
 
 export const SettingsPage: React.FC = () => {
-  const { user, updatePreferences } = useSports();
+   const { user, updatePreferences, theme, toggleTheme } = useSports();
   const navigate = useNavigate();
   const [waNumber, setWaNumber] = useState(user?.preferences.whatsappNumber || '');
 
@@ -16,10 +16,6 @@ export const SettingsPage: React.FC = () => {
       alert("WhatsApp Number Saved!");
   }
 
-  const toggleTheme = () => {
-      const newTheme = user.preferences.theme === 'DARK' ? 'LIGHT' : 'DARK';
-      updatePreferences({ theme: newTheme });
-  }
 
   return (
     <div className="min-h-screen bg-black text-white pb-24 font-sans">
@@ -126,10 +122,10 @@ export const SettingsPage: React.FC = () => {
 
                      <div className="p-4 flex items-center justify-between">
                          <div className="flex items-center gap-3">
-                             {user.preferences.theme === 'DARK' ? <Moon size={18} className="text-purple-500" /> : <Sun size={18} className="text-yellow-500" />}
+                             {theme === 'DARK' ? <Moon size={18} className="text-purple-500" /> : <Sun size={18} className="text-yellow-500" />}
                              <div>
                                  <span className="block font-bold text-sm text-white">App Theme</span>
-                                 <span className="text-xs text-gray-500">Current: {user.preferences.theme}</span>
+                                 <span className="text-xs text-gray-500">Current: {theme}</span>
                              </div>
                          </div>
                          <button onClick={toggleTheme} className="text-xs font-bold text-white bg-[#333] px-3 py-1.5 rounded uppercase hover:bg-[#444]">
