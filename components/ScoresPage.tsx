@@ -60,35 +60,53 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches: initialMatches,
        return dateObj.toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0];
    };
 
-   // Fetch matches for selected date
-   const fetchMatchesForDate = useCallback(async (date: Date) => {
-       setLoading(true);
-       try {
-           const dateStr = date.toISOString().split('T')[0];
-           console.log('Fetching matches for date:', dateStr);
-           
-           const response = await fetch(
-               `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/get-matches?date=${dateStr}&limit=200`,
-               {
-                   headers: {
-                       'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
-                       'Content-Type': 'application/json'
-                   }
-               }
-           );
-           
-           if (!response.ok) throw new Error('Failed to fetch matches');
-           
-           const matchesData = await response.json();
-           console.log(`Fetched ${matchesData.length} matches for ${dateStr}`);
-           setMatches(Array.isArray(matchesData) ? matchesData : []);
-       } catch (error) {
-           console.error('Error fetching matches:', error);
-           setMatches([]);
-       } finally {
-           setLoading(false);
-       }
-   }, []);
+  // Helper to get the LOCAL date string (YYYY-MM-DD) for a match time
+  const getMatchLocalDateStr = (timeStr: string | undefined | null): string | null => {
+    if (!timeStr) return null;
+    try {
+      // Parse the date - handle various formats
+      let date: Date;
+      
+      if (timeStr.includes('T')) {
+        // ISO format - parse as-is (browser will handle timezone)
+        date = new Date(timeStr);
+      } else if (timeStr.includes('-') && timeStr.length === 10) {
+        // Date only format like "2024-12-14" - treat as local date
+        return timeStr; // Return as-is since it's already a date string
+      } else {
+        date = new Date(timeStr);
+      }
+      
+      if (isNaN(date.getTime())) return null;
+      
+      // Convert to local date string YYYY-MM-DD
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return null;
+    }
+  };
+
+  // Helper to get local date string for a Date object
+  const getLocalDateStr = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper to parse match time for sorting
+  const parseMatchDate = (timeStr: string | undefined | null): Date | null => {
+    if (!timeStr) return null;
+    try {
+      const date = new Date(timeStr);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  };
 
    // Fetch on date change
    useEffect(() => {
@@ -99,15 +117,26 @@ export const ScoresPage: React.FC<ScoresPageProps> = ({ matches: initialMatches,
    const groupedMatches = useMemo(() => {
        let filtered = Array.isArray(matches) ? matches : [];
 
-       // Filter by search query
-       if (searchQuery.trim()) {
-           const query = searchQuery.toLowerCase();
-           filtered = filtered.filter(m => 
-               m.homeTeam?.name?.toLowerCase().includes(query) ||
-               m.awayTeam?.name?.toLowerCase().includes(query) ||
-               m.league?.toLowerCase().includes(query)
-           );
-       }
+    // Filter by Date - compare using local date strings to avoid timezone issues
+    const targetDateEntry = dynamicDates.find(d => d.date === activeDate);
+    if (targetDateEntry && activeDate !== 'All') {
+        const targetDateStr = getLocalDateStr(targetDateEntry.dateObj);
+        const dateFiltered = filtered.filter(match => {
+            const matchDateStr = getMatchLocalDateStr(match.time);
+            if (!matchDateStr) return activeDate === 'Today'; // Show timeless matches on Today
+            return matchDateStr === targetDateStr;
+        });
+        
+         // If no matches for selected date, show all upcoming matches instead
+         if (dateFiltered.length > 0) {
+             filtered = dateFiltered;
+         } else if (activeDate === 'Today') {
+             // Show upcoming scheduled matches when today has no games
+             filtered = safeMatches.filter(m => 
+                 m.status === MatchStatus.SCHEDULED || (m.status as string) === 'TIMED' || m.status === MatchStatus.FINISHED
+             ).slice(0, 50);
+         }
+    }
 
        // Filter by status
        if (filter === 'LIVE') {
