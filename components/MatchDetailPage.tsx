@@ -61,11 +61,11 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
      onUpdate: handleLiveUpdate
    });
 
-   // Fetch additional match details - first from DB, then enrich with API-Football
+   // Fetch match details from DB and enrich via TheSportsDB (free, no quota concerns)
    useEffect(() => {
         const fetchMatchDetails = async () => {
             try {
-                // First get basic details from DB
+                // First get details from DB
                 const response = await fetch(
                     `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/fetch-match-details?matchId=${match.id}`,
                     {
@@ -80,12 +80,12 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                    const details = await response.json();
                    setMatchDetails(details);
                    
-                   // If match has a fixture_id, enrich with API-Football data
-                   const fixtureId = details?.fixture_id || (match as any).metadata?.fixture_id;
-                   if (fixtureId) {
+                   // Enrich with TheSportsDB (free API, no quota issues)
+                   // Only enrich if we don't already have timeline data
+                   if (!details?.timeline?.length) {
                      try {
                        const enrichResponse = await fetch(
-                         `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/enrich-match-details?fixtureId=${fixtureId}`,
+                         `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/enrich-match-details?matchId=${match.id}`,
                          {
                            method: 'GET',
                            headers: {
@@ -96,7 +96,9 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                        );
                        if (enrichResponse.ok) {
                          const enrichedData = await enrichResponse.json();
-                         setMatchDetails(prev => ({ ...prev, ...enrichedData }));
+                         if (enrichedData.timeline?.length || enrichedData.stats || enrichedData.lineups) {
+                           setMatchDetails(prev => ({ ...prev, ...enrichedData }));
+                         }
                        }
                      } catch (e) {
                        console.log('Enrichment not available:', e);
@@ -111,7 +113,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
        };
 
        fetchMatchDetails();
-   }, [match.id, (match as any).metadata?.fixture_id]);
+   }, [match.id]);
 
    // Fetch related news for team matches
    useEffect(() => {
