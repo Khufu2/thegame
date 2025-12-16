@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-    SportsContextType, 
-    UserProfile, 
-    AuthState, 
-    Match, 
-    NewsStory, 
-    FeedItem, 
+import {
+    SportsContextType,
+    UserProfile,
+    AuthState,
+    Match,
+    NewsStory,
+    FeedItem,
     BetSlipItem,
     MatchStatus,
     SystemAlert,
@@ -13,7 +13,11 @@ import {
     FlashAlert,
     Comment,
     LeaderboardEntry,
-    UserPreferences
+    UserPreferences,
+    FollowedMatch,
+    FollowedBetslip,
+    Notification,
+    NotificationPreferences
 } from '../types';
 import supabase from '../services/supabaseClient';
 
@@ -118,6 +122,10 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [pwezaPrompt, setPwezaPrompt] = useState<string | null>(null);
     const [flashAlert, setFlashAlert] = useState<FlashAlert | null>(null);
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+    const [followedMatches, setFollowedMatches] = useState<FollowedMatch[]>([]);
+    const [followedBetslips, setFollowedBetslips] = useState<FollowedBetslip[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences | null>(null);
 
     const rebuildFeed = (currentMatches: Match[], currentNews: NewsStory[], currentAlerts: SystemAlert[]) => {
         const mixedFeed: FeedItem[] = [];
@@ -365,6 +373,95 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setTheme(profile.preferences.theme);
             localStorage.setItem(THEME_STORAGE_KEY, profile.preferences.theme);
         }
+        // Load user data
+        loadUserData(profile.id);
+    };
+
+    const loadUserData = async (userId: string) => {
+        try {
+            // Load followed matches
+            const { data: followedMatchesData } = await supabase
+                .from('followed_matches')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (followedMatchesData) {
+                const followed = followedMatchesData.map(fm => ({
+                    id: fm.id,
+                    userId: fm.user_id,
+                    matchId: fm.match_id,
+                    createdAt: new Date(fm.created_at).getTime()
+                }));
+                setFollowedMatches(followed);
+            }
+
+            // Load followed betslips
+            const { data: followedBetslipsData } = await supabase
+                .from('followed_betslips')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (followedBetslipsData) {
+                const followed = followedBetslipsData.map(fb => ({
+                    id: fb.id,
+                    userId: fb.user_id,
+                    betslipId: fb.betslip_id,
+                    createdAt: new Date(fb.created_at).getTime()
+                }));
+                setFollowedBetslips(followed);
+            }
+
+            // Load notification preferences
+            const { data: prefsData } = await supabase
+                .from('notification_preferences')
+                .select('*')
+                .eq('user_id', userId)
+                .single();
+
+            if (prefsData) {
+                setNotificationPreferences({
+                    id: prefsData.id,
+                    userId: prefsData.user_id,
+                    pushEnabled: prefsData.push_enabled,
+                    whatsappEnabled: prefsData.whatsapp_enabled,
+                    emailEnabled: prefsData.email_enabled,
+                    liveAlerts: prefsData.live_alerts,
+                    warRoomAlerts: prefsData.war_room_alerts,
+                    momentumAlerts: prefsData.momentum_alerts,
+                    createdAt: new Date(prefsData.created_at).getTime(),
+                    updatedAt: new Date(prefsData.updated_at).getTime()
+                });
+            }
+
+            // Load recent notifications
+            const { data: notificationsData } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (notificationsData) {
+                const notifications = notificationsData.map(n => ({
+                    id: n.id,
+                    userId: n.user_id,
+                    type: n.type,
+                    title: n.title,
+                    message: n.message,
+                    matchId: n.match_id,
+                    betslipId: n.betslip_id,
+                    data: n.data,
+                    read: n.read,
+                    sentPush: n.sent_push,
+                    sentWhatsapp: n.sent_whatsapp,
+                    sentEmail: n.sent_email,
+                    createdAt: new Date(n.created_at).getTime()
+                }));
+                setNotifications(notifications);
+            }
+        } catch (error) {
+            console.error('Error loading user data:', error);
+        }
     };
 
     const loginAsGuest = () => {
@@ -597,6 +694,148 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setAlerts(prev => prev.filter(a => a.id !== id));
     };
 
+    // Follow system functions
+    const followMatch = async (matchId: string) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase
+                .from('followed_matches')
+                .insert({ user_id: user.id, match_id: matchId });
+
+            if (!error) {
+                const newFollow: FollowedMatch = {
+                    id: `fm_${Date.now()}`,
+                    userId: user.id,
+                    matchId,
+                    createdAt: Date.now()
+                };
+                setFollowedMatches(prev => [...prev, newFollow]);
+            }
+        } catch (error) {
+            console.error('Error following match:', error);
+        }
+    };
+
+    const unfollowMatch = async (matchId: string) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase
+                .from('followed_matches')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('match_id', matchId);
+
+            if (!error) {
+                setFollowedMatches(prev => prev.filter(f => f.matchId !== matchId));
+            }
+        } catch (error) {
+            console.error('Error unfollowing match:', error);
+        }
+    };
+
+    const followBetslip = async (betslipId: string) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase
+                .from('followed_betslips')
+                .insert({ user_id: user.id, betslip_id: betslipId });
+
+            if (!error) {
+                const newFollow: FollowedBetslip = {
+                    id: `fb_${Date.now()}`,
+                    userId: user.id,
+                    betslipId,
+                    createdAt: Date.now()
+                };
+                setFollowedBetslips(prev => [...prev, newFollow]);
+            }
+        } catch (error) {
+            console.error('Error following betslip:', error);
+        }
+    };
+
+    const unfollowBetslip = async (betslipId: string) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase
+                .from('followed_betslips')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('betslip_id', betslipId);
+
+            if (!error) {
+                setFollowedBetslips(prev => prev.filter(f => f.betslipId !== betslipId));
+            }
+        } catch (error) {
+            console.error('Error unfollowing betslip:', error);
+        }
+    };
+
+    // Notification functions
+    const markNotificationRead = async (notificationId: string) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ read: true })
+                .eq('id', notificationId)
+                .eq('user_id', user.id);
+
+            if (!error) {
+                setNotifications(prev => prev.map(n =>
+                    n.id === notificationId ? { ...n, read: true } : n
+                ));
+            }
+        } catch (error) {
+            console.error('Error marking notification read:', error);
+        }
+    };
+
+    const updateNotificationPreferences = async (prefs: Partial<NotificationPreferences>) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase
+                .from('notification_preferences')
+                .upsert({
+                    user_id: user.id,
+                    ...prefs,
+                    updated_at: new Date().toISOString()
+                });
+
+            if (!error) {
+                setNotificationPreferences(prev => prev ? { ...prev, ...prefs } : null);
+            }
+        } catch (error) {
+            console.error('Error updating notification preferences:', error);
+        }
+    };
+
+    const sendNotification = async (notification: Omit<Notification, 'id' | 'userId' | 'createdAt'>) => {
+        if (!user) return;
+        try {
+            const { data, error } = await supabase
+                .from('notifications')
+                .insert({
+                    user_id: user.id,
+                    ...notification
+                })
+                .select()
+                .single();
+
+            if (!error && data) {
+                const newNotification: Notification = {
+                    ...notification,
+                    id: data.id,
+                    userId: user.id,
+                    createdAt: Date.now()
+                };
+                setNotifications(prev => [newNotification, ...prev]);
+            }
+        } catch (error) {
+            console.error('Error sending notification:', error);
+        }
+    };
+
     return (
         <SportsContext.Provider value={{
             user, authState, authToken, matches, news, feedItems, betSlip, isPwezaOpen, pwezaPrompt, flashAlert, alerts, leaderboard,
@@ -605,7 +844,9 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setIsPwezaOpen: (open, prompt) => { setIsPwezaOpen(open); if(prompt) setPwezaPrompt(prompt); else setPwezaPrompt(null); },
             addComment, triggerFlashAlert,
             addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert,
-            theme, toggleTheme
+            theme, toggleTheme,
+            followedMatches, followedBetslips, followMatch, unfollowMatch, followBetslip, unfollowBetslip,
+            notifications, notificationPreferences, markNotificationRead, updateNotificationPreferences, sendNotification
         }}>
             {children}
         </SportsContext.Provider>

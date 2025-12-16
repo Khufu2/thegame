@@ -382,6 +382,49 @@ export interface LeaderboardEntry {
     streak?: number;
 }
 
+export interface FollowedMatch {
+    id: string;
+    userId: string;
+    matchId: string;
+    createdAt: number;
+}
+
+export interface FollowedBetslip {
+    id: string;
+    userId: string;
+    betslipId: string;
+    createdAt: number;
+}
+
+export interface NotificationPreferences {
+    id: string;
+    userId: string;
+    pushEnabled: boolean;
+    whatsappEnabled: boolean;
+    emailEnabled: boolean;
+    liveAlerts: boolean;
+    warRoomAlerts: boolean;
+    momentumAlerts: boolean;
+    createdAt: number;
+    updatedAt: number;
+}
+
+export interface Notification {
+    id: string;
+    userId: string;
+    type: 'goal' | 'card' | 'var' | 'halftime' | 'fulltime' | 'momentum' | 'war_room' | 'cash_out';
+    title: string;
+    message: string;
+    matchId?: string;
+    betslipId?: string;
+    data?: any;
+    read: boolean;
+    sentPush: boolean;
+    sentWhatsapp: boolean;
+    sentEmail: boolean;
+    createdAt: number;
+}
+
 export type AuthState = 'UNAUTHENTICATED' | 'ONBOARDING' | 'AUTHENTICATED' | 'GUEST';
 
 export type MkekaType = 'SAFE' | 'LONGSHOT' | 'GOALS';
@@ -427,4 +470,19 @@ export interface SportsContextType {
     setIsPwezaOpen: (open: boolean, prompt?: string) => void;
     theme: 'LIGHT' | 'DARK';
     toggleTheme: () => void;
+
+    // Follow system
+    followedMatches: FollowedMatch[];
+    followedBetslips: FollowedBetslip[];
+    followMatch: (matchId: string) => Promise<void>;
+    unfollowMatch: (matchId: string) => Promise<void>;
+    followBetslip: (betslipId: string) => Promise<void>;
+    unfollowBetslip: (betslipId: string) => Promise<void>;
+
+    // Notifications
+    notifications: Notification[];
+    notificationPreferences: NotificationPreferences | null;
+    markNotificationRead: (notificationId: string) => Promise<void>;
+    updateNotificationPreferences: (prefs: Partial<NotificationPreferences>) => Promise<void>;
+    sendNotification: (notification: Omit<Notification, 'id' | 'userId' | 'createdAt'>) => Promise<void>;
 }

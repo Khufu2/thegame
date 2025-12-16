@@ -15,8 +15,8 @@ interface MatchDetailPageProps {
 }
 
 export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenPweza, onAddToSlip }) => {
-   const navigate = useNavigate();
-   const { betSlip, addComment, user, logout } = useSports();
+    const navigate = useNavigate();
+    const { betSlip, addComment, user, logout, followedMatches, followMatch, unfollowMatch } = useSports();
    const [activeTab, setActiveTab] = useState('STREAM');
    const [betSlipStatus, setBetSlipStatus] = useState<'IDLE' | 'CONFIRM' | 'ADDED'>('IDLE');
    const [isShared, setIsShared] = useState(false);
@@ -30,10 +30,27 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
    const [loadingStandings, setLoadingStandings] = useState(false);
    const [relatedNews, setRelatedNews] = useState<NewsStory[]>([]);
    const [loadingNews, setLoadingNews] = useState(false);
-   const [liveScore, setLiveScore] = useState<{ home: number | null; away: number | null }>({ 
-     home: match.score?.home ?? null, 
-     away: match.score?.away ?? null 
+   const [liveScore, setLiveScore] = useState<{ home: number | null; away: number | null }>({
+     home: match.score?.home ?? null,
+     away: match.score?.away ?? null
    });
+
+   const isFollowed = followedMatches.some(f => f.matchId === match.id);
+
+   const handleToggleFollow = async () => {
+       if (!user) {
+           if (confirm("Sign up to follow matches and get live notifications!")) {
+               logout();
+           }
+           return;
+       }
+
+       if (isFollowed) {
+           await unfollowMatch(match.id);
+       } else {
+           await followMatch(match.id);
+       }
+   };
 
    const dataSaver = user?.preferences.dataSaver || false;
    const isLive = match.status === MatchStatus.LIVE;
@@ -281,9 +298,14 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                  <span className="font-condensed font-bold text-sm tracking-widest uppercase text-gray-500">{match.league}</span>
                  {dataSaver && <div title="Data Saver Mode On"><WifiOff size={12} className="text-yellow-500" /></div>}
              </div>
-             <button onClick={handleShare} className="w-10 h-10 flex items-center justify-center -mr-2 text-gray-400 hover:text-white transition-colors">
-                <Share2 size={24} />
-             </button>
+             <div className="flex items-center gap-2">
+                 <button onClick={handleToggleFollow} className={`w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white transition-colors ${isFollowed ? 'text-indigo-400' : ''}`}>
+                     <Heart size={20} className={isFollowed ? 'fill-current' : ''} />
+                 </button>
+                 <button onClick={handleShare} className="w-10 h-10 flex items-center justify-center -mr-2 text-gray-400 hover:text-white transition-colors">
+                    <Share2 size={24} />
+                 </button>
+             </div>
           </div>
 
           {/* LIVE MOMENTUM BAR (For Live Games) */}

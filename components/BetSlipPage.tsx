@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { BetSlipItem, Match, MkekaType } from '../types';
-import { Trash2, Share2, TrendingUp, Sparkles, Camera, Plus, Check, AlertTriangle, ArrowRight, DollarSign, ExternalLink, Trophy, X, Shield, Rocket, Goal } from 'lucide-react';
+import { Trash2, Share2, TrendingUp, Sparkles, Camera, Plus, Check, AlertTriangle, ArrowRight, DollarSign, ExternalLink, Trophy, X, Shield, Rocket, Goal, Heart } from 'lucide-react';
 import { useSports } from '../context/SportsContext';
 import { ScanBetSlipModal } from './ScanBetSlipModal';
 
@@ -16,13 +16,34 @@ interface BetSlipPageProps {
 }
 
 export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveItem, onClearSlip, matches, onAddRandomPick, onOpenPweza, onAddItem }) => {
-  const { generateMkeka } = useSports();
+   const { generateMkeka, followedBetslips, followBetslip, unfollowBetslip, user, logout } = useSports();
   const [wager, setWager] = useState<number>(10);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [shared, setShared] = useState(false);
   const [showExecution, setShowExecution] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
+
+  // Generate a unique betslip ID based on current items
+  const betslipId = slipItems.length > 0 ? slipItems.map(item => item.id).sort().join('_') : null;
+  const isBetslipFollowed = betslipId ? followedBetslips.some(f => f.betslipId === betslipId) : false;
+
+  const handleToggleFollowBetslip = async () => {
+      if (!user) {
+          if (confirm("Sign up to follow betslips and get live notifications!")) {
+              logout();
+          }
+          return;
+      }
+
+      if (!betslipId) return;
+
+      if (isBetslipFollowed) {
+          await unfollowBetslip(betslipId);
+      } else {
+          await followBetslip(betslipId);
+      }
+  };
 
   // Calculate Parlay Odds (Simple Multiplication)
   const totalOdds = slipItems.reduce((acc, item) => acc * item.odds, 1);
@@ -62,11 +83,18 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
                 <span className="font-condensed font-black text-2xl uppercase italic tracking-tighter">My Slip</span>
                 <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{slipItems.length}</span>
             </div>
-            {slipItems.length > 0 && (
-                <button onClick={onClearSlip} className="text-xs font-bold text-gray-500 uppercase hover:text-red-500 transition-colors">
-                    Clear All
-                </button>
-            )}
+            <div className="flex items-center gap-2">
+                {slipItems.length > 0 && (
+                    <button onClick={handleToggleFollowBetslip} className={`w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white transition-colors ${isBetslipFollowed ? 'text-indigo-400' : ''}`}>
+                        <Heart size={16} className={isBetslipFollowed ? 'fill-current' : ''} />
+                    </button>
+                )}
+                {slipItems.length > 0 && (
+                    <button onClick={onClearSlip} className="text-xs font-bold text-gray-500 uppercase hover:text-red-500 transition-colors">
+                        Clear All
+                    </button>
+                )}
+            </div>
         </div>
 
         <div className="max-w-[600px] mx-auto">
