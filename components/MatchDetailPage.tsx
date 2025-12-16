@@ -329,9 +329,13 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                           </button>
                       </div>
                   </div>
-                  <div className="h-1.5 w-full bg-gray-800 rounded-full flex overflow-hidden">
+                  <div className="h-2 w-full bg-gray-800 rounded-full flex overflow-hidden">
                       <div className="bg-white transition-all duration-1000" style={{ width: `${match.momentum.home}%` }}></div>
                       <div className="bg-indigo-600 transition-all duration-1000" style={{ width: `${match.momentum.away}%` }}></div>
+                  </div>
+                  <div className="flex justify-between mt-1 text-[9px] text-gray-500">
+                      <span>{match.homeTeam.name}</span>
+                      <span>{match.awayTeam.name}</span>
                   </div>
               </div>
           )}
@@ -345,8 +349,8 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                           Updated {new Date(lastUpdate).toLocaleTimeString()}
                         </span>
                       )}
-                      <button 
-                        onClick={refreshLive} 
+                      <button
+                        onClick={refreshLive}
                         disabled={isPolling}
                         className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
                         title="Refresh live data"
@@ -356,6 +360,39 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                   </div>
               </div>
           )}
+
+          {/* RECENT FORM INDICATORS - Right below teams */}
+          <div className="px-6 mb-4">
+              <div className="flex justify-between items-center">
+                  {/* Home Team Form */}
+                  <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-bold text-gray-500 uppercase mb-1">Form</span>
+                      <div className="flex gap-0.5">
+                          {(match.homeTeam.form || ['W', 'D', 'W', 'L', 'W']).slice(0, 5).map((res, i) => (
+                              <div key={i} className={`w-2 h-2 rounded-full ${
+                                  res === 'W' ? 'bg-green-500' :
+                                  res === 'L' ? 'bg-red-500' :
+                                  'bg-gray-500'
+                              }`} />
+                          ))}
+                      </div>
+                  </div>
+
+                  {/* Away Team Form */}
+                  <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-bold text-gray-500 uppercase mb-1">Form</span>
+                      <div className="flex gap-0.5">
+                          {(match.awayTeam.form || ['L', 'W', 'W', 'D', 'W']).slice(0, 5).map((res, i) => (
+                              <div key={i} className={`w-2 h-2 rounded-full ${
+                                  res === 'W' ? 'bg-green-500' :
+                                  res === 'L' ? 'bg-red-500' :
+                                  'bg-gray-500'
+                              }`} />
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          </div>
 
           {/* Scoreboard */}
           <div className="pb-6 pt-2 px-6">
@@ -408,6 +445,9 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
           {/* Fan Pulse (Engagement) */}
           <div className="px-6 pb-6">
+              <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Fan Poll</span>
+              </div>
               {!userVote ? (
                   <div className="flex rounded-full overflow-hidden h-10 border border-[#333] relative bg-[#0A0A0A]">
                       <button onClick={() => setUserVote('HOME')} className="flex-1 hover:bg-white/5 transition-colors text-xs font-bold uppercase text-gray-400 flex items-center justify-center gap-2">
