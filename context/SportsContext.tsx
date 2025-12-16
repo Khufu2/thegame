@@ -44,8 +44,9 @@ const getMockMatches = (): Match[] => [
             form: ['W', 'D', 'W', 'W', 'L'],
             record: '15-4-3'
         },
-        status: MatchStatus.SCHEDULED,
+        status: MatchStatus.LIVE,
         time: '15:00',
+        momentum: { home: 65, away: 35 },
         prediction: {
             outcome: 'HOME',
             confidence: 75,
