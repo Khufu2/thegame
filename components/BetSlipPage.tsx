@@ -14,9 +14,10 @@ interface BetSlipPageProps {
   onAddRandomPick: () => void;
   onOpenPweza: () => void;
   onAddItem: (item: BetSlipItem) => void;
+  onSaveBetslip?: () => Promise<void>;
 }
 
-export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveItem, onClearSlip, matches, onAddRandomPick, onOpenPweza, onAddItem }) => {
+export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveItem, onClearSlip, matches, onAddRandomPick, onOpenPweza, onAddItem, onSaveBetslip }) => {
    const { generateMkeka, followedBetslips, followBetslip, unfollowBetslip, user, logout } = useSports();
   const [wager, setWager] = useState<number>(10);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
@@ -319,11 +320,28 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
                         </button>
                         <button
                             onClick={() => setShowExecution(true)}
-                            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-condensed font-black text-xl uppercase rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-transform active:scale-95"
+                            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-condensed font-black text-lg uppercase rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-transform active:scale-95"
                         >
-                            Compare Odds <TrendingUp size={20} />
+                            Compare Odds <TrendingUp size={18} />
                         </button>
                     </div>
+
+                    {/* SAVE BETSLIP BUTTON */}
+                    {user && (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await onSaveBetslip?.();
+                                    alert('Betslip saved successfully!');
+                                } catch (error) {
+                                    alert('Failed to save betslip. Please try again.');
+                                }
+                            }}
+                            className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-condensed font-black text-lg uppercase rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-green-600/20 transition-transform active:scale-95"
+                        >
+                            Save Betslip <Check size={20} />
+                        </button>
+                    )}
 
                 </div>
             </div>

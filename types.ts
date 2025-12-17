@@ -452,6 +452,8 @@ export interface SportsContextType {
     
     addToSlip: (match: Match) => void;
     addBetSlipItem: (item: BetSlipItem) => void;
+    saveBetslip: (name?: string, isPublic?: boolean) => Promise<void>;
+    loadUserBetslips: () => Promise<void>;
     removeFromSlip: (id: string) => void;
     clearSlip: () => void;
     addRandomPick: () => void;

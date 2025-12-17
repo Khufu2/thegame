@@ -556,6 +556,80 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setBetSlip(prev => [...prev, item]);
     };
 
+    const saveBetslip = async (name?: string, isPublic: boolean = false) => {
+        if (!user || betSlip.length === 0) return;
+
+        const totalOdds = betSlip.reduce((acc, item) => acc * item.odds, 1);
+
+        try {
+            // Save betslip
+            const { data: betslipData, error: betslipError } = await supabase
+                .from('betslips')
+                .insert({
+                    user_id: user.id,
+                    name: name || `${betSlip.length} Leg Parlay`,
+                    items: betSlip,
+                    total_odds: totalOdds,
+                    stake: 10, // Default stake
+                    potential_return: 10 * totalOdds,
+                    is_public: isPublic
+                })
+                .select()
+                .single();
+
+            if (betslipError) throw betslipError;
+
+            // Save individual betslip items
+            const betslipItems = betSlip.map(item => ({
+                betslip_id: betslipData.id,
+                match_id: item.matchId,
+                match_up: item.matchUp,
+                selection: item.selection,
+                market: item.market,
+                odds: item.odds,
+                outcome: item.outcome
+            }));
+
+            const { error: itemsError } = await supabase
+                .from('betslip_items')
+                .insert(betslipItems);
+
+            if (itemsError) throw itemsError;
+
+            // Clear current betslip after saving
+            setBetSlip([]);
+
+            console.log('Betslip saved successfully');
+        } catch (error) {
+            console.error('Error saving betslip:', error);
+            throw error;
+        }
+    };
+
+    const loadUserBetslips = async () => {
+        if (!user) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('betslips')
+                .select(`
+                    *,
+                    betslip_items (*)
+                `)
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (error) throw error;
+
+            // Transform data for leaderboard usage
+            // This would be used by the LeaderboardPage
+            console.log('Loaded user betslips:', data);
+        } catch (error) {
+            console.error('Error loading user betslips:', error);
+        }
+    };
+
     const removeFromSlip = (id: string) => {
         setBetSlip(prev => prev.filter(item => item.id !== id));
     };
@@ -841,7 +915,7 @@ export const SportsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         <SportsContext.Provider value={{
             user, authState, authToken, matches, news, feedItems, betSlip, isPwezaOpen, pwezaPrompt, flashAlert, alerts, leaderboard,
             login, loginAsGuest, logout, completeOnboarding, updatePreferences,
-            addToSlip, addBetSlipItem, removeFromSlip, clearSlip, addRandomPick, generateMkeka,
+            addToSlip, addBetSlipItem, saveBetslip, loadUserBetslips, removeFromSlip, clearSlip, addRandomPick, generateMkeka,
             setIsPwezaOpen: (open, prompt) => { setIsPwezaOpen(open); if(prompt) setPwezaPrompt(prompt); else setPwezaPrompt(null); },
             addComment, triggerFlashAlert,
             addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert,

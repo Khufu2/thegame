@@ -2,10 +2,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
-import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper } from 'lucide-react';
+import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper, Share2, Twitter, Facebook, Link } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { formatMatchTime } from './utils/formatTime';
+import { ShareModal } from './ShareModal';
 
 interface FeedProps {
   items: FeedItem[];
@@ -62,6 +63,8 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   const [activeLeague, setActiveLeague] = useState("All"); // Default to All for more content
   const navigate = useNavigate();
   const dataSaver = user?.preferences.dataSaver || false;
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedStory, setSelectedStory] = useState<NewsStory | null>(null);
 
 
   // 1. FILTERING LOGIC
@@ -380,7 +383,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                          const story = item as NewsStory;
                          if (story.type === 'HIGHLIGHT' && !dataSaver) return <HighlightCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />;
                          if (story.isHero) return <HeroNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} />;
-                         return <StandardNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} />;
+                         return <StandardNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} onShare={(story) => { setSelectedStory(story); setShareModalOpen(true); }} />;
                     }
                     // RENDER: SYSTEM ALERT (WAR ROOM)
                     else if ('alertType' in item) {
@@ -414,6 +417,15 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
         </section>
 
       </div>
+
+      {/* SHARE MODAL */}
+      {selectedStory && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => { setShareModalOpen(false); setSelectedStory(null); }}
+          story={selectedStory}
+        />
+      )}
     </div>
   );
 };
@@ -785,36 +797,47 @@ export const HeroNewsCard: React.FC<{ story: NewsStory, onClick: () => void, dat
     </div>
 );
 
-export const StandardNewsCard: React.FC<{ story: NewsStory, onClick: () => void, dataSaver?: boolean }> = ({ story, onClick, dataSaver }) => (
-    <div onClick={onClick} className="flex gap-4 p-3 bg-black/40 rounded-xl cursor-pointer hover:bg-black/60 transition-colors border border-transparent hover:border-[#333]">
-        <div className="w-[100px] h-[80px] rounded-lg overflow-hidden shrink-0 relative bg-[#1E1E1E] flex items-center justify-center">
-            {dataSaver ? (
-                <ImageOff size={24} className="text-gray-600" />
-            ) : (
-                <img src={story.imageUrl} className="w-full h-full object-cover" />
-            )}
-            {story.type === 'RUMOR' && (
-                <div className="absolute top-1 left-1 bg-yellow-500 text-black text-[8px] font-black uppercase px-1 rounded">Rumor</div>
-            )}
+export const StandardNewsCard: React.FC<{ story: NewsStory, onClick: () => void, dataSaver?: boolean, onShare?: (story: NewsStory) => void }> = ({ story, onClick, dataSaver, onShare }) => (
+    <div className="bg-black/40 rounded-xl border border-transparent hover:border-[#333] transition-colors">
+        <div onClick={onClick} className="flex gap-4 p-3 cursor-pointer hover:bg-black/60">
+            <div className="w-[100px] h-[80px] rounded-lg overflow-hidden shrink-0 relative bg-[#1E1E1E] flex items-center justify-center">
+                {dataSaver ? (
+                    <ImageOff size={24} className="text-gray-600" />
+                ) : (
+                    <img src={story.imageUrl} className="w-full h-full object-cover" />
+                )}
+                {story.type === 'RUMOR' && (
+                    <div className="absolute top-1 left-1 bg-yellow-500 text-black text-[8px] font-black uppercase px-1 rounded">Rumor</div>
+                )}
+            </div>
+            <div className="flex-1 flex flex-col justify-between py-1">
+                 <div>
+                     <div className="flex items-center gap-2 mb-1">
+                         <span className="text-[9px] font-bold text-gray-500 uppercase">{story.source}</span>
+                         <span className="text-[9px] text-gray-600">• {story.timestamp}</span>
+                     </div>
+                     <h3 className="font-condensed font-bold text-lg uppercase text-white leading-none line-clamp-2">
+                         {story.title}
+                     </h3>
+                 </div>
+                 <div className="flex items-center gap-3 mt-2">
+                     <div className="flex items-center gap-1 text-gray-500">
+                         <MessageSquare size={12} /> <span className="text-[10px] font-bold">{story.comments}</span>
+                     </div>
+                     <div className="flex items-center gap-1 text-gray-500">
+                         <Flame size={12} /> <span className="text-[10px] font-bold">{story.likes}</span>
+                     </div>
+                 </div>
+            </div>
         </div>
-        <div className="flex-1 flex flex-col justify-between py-1">
-             <div>
-                 <div className="flex items-center gap-2 mb-1">
-                     <span className="text-[9px] font-bold text-gray-500 uppercase">{story.source}</span>
-                     <span className="text-[9px] text-gray-600">• {story.timestamp}</span>
-                 </div>
-                 <h3 className="font-condensed font-bold text-lg uppercase text-white leading-none line-clamp-2">
-                     {story.title}
-                 </h3>
-             </div>
-             <div className="flex items-center gap-3 mt-2">
-                 <div className="flex items-center gap-1 text-gray-500">
-                     <MessageSquare size={12} /> <span className="text-[10px] font-bold">{story.comments}</span>
-                 </div>
-                 <div className="flex items-center gap-1 text-gray-500">
-                     <Flame size={12} /> <span className="text-[10px] font-bold">{story.likes}</span>
-                 </div>
-             </div>
+        <div className="px-3 pb-3 flex justify-end">
+            <button
+                onClick={(e) => { e.stopPropagation(); onShare?.(story); }}
+                className="flex items-center gap-1 text-gray-500 hover:text-indigo-400 transition-colors text-xs font-bold uppercase"
+            >
+                <Share2 size={12} />
+                Share
+            </button>
         </div>
     </div>
 );

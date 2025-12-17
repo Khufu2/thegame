@@ -61,6 +61,7 @@ const AppContent = () => {
       betSlip,
       addToSlip,
       addBetSlipItem,
+      saveBetslip,
       removeFromSlip,
       clearSlip,
       addRandomPick,
@@ -160,6 +161,7 @@ const AppContent = () => {
                     onAddRandomPick={addRandomPick}
                     onOpenPweza={() => handleOpenPweza()}
                     onAddItem={addBetSlipItem}
+                    onSaveBetslip={saveBetslip}
                 />
             </ProtectedRoute>
         } />
