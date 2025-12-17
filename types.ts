@@ -323,6 +323,8 @@ export interface BetSlipItem {
     status?: 'PENDING' | 'WON' | 'LOST'; // For history tracking
     wager?: number;
     payout?: number;
+    market?: string; // e.g. "Match Winner", "BTTS", "Over/Under"
+    type?: 'MATCH_WINNER' | 'BTTS' | 'OVER_UNDER' | 'HANDICAP'; // Market type
 }
 
 export type FeedItem = Match | NewsStory | SystemAlert;
