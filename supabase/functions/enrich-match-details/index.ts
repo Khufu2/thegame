@@ -35,30 +35,61 @@ async function fetchTheSportsDBEvent(eventId: string): Promise<any | null> {
   }
 }
 
-// Search for event by teams and date
+// Search for event by teams and date - improved matching
 async function searchTheSportsDBEvent(homeTeam: string, awayTeam: string, date: string): Promise<any | null> {
   try {
-    // Clean team names
-    const cleanName = (name: string) => name.replace(/ FC$/, '').replace(/ CF$/, '').replace(/^FC /, '').trim();
-    const home = cleanName(homeTeam);
+    // Clean team names - remove common suffixes/prefixes
+    const cleanName = (name: string) => 
+      name.replace(/ FC$/, '')
+          .replace(/ CF$/, '')
+          .replace(/^FC /, '')
+          .replace(/ SC$/, '')
+          .replace(/ United$/, '')
+          .replace(/ City$/, '')
+          .trim();
     
-    const url = `https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${encodeURIComponent(home)}&d=${date}`;
+    const home = cleanName(homeTeam);
+    const away = cleanName(awayTeam);
+    
+    // Try searching by home team first
+    const url1 = `https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${encodeURIComponent(home)}&d=${date}`;
     console.log(`[TheSportsDB] Searching: ${home} on ${date}`);
     
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const res1 = await fetch(url1);
+    if (res1.ok) {
+      const data1 = await res1.json();
+      const events1 = data1.event || [];
+      
+      // Find matching event with away team
+      const awayLower = away.toLowerCase();
+      const match1 = events1.find((e: any) => 
+        e.strAwayTeam?.toLowerCase().includes(awayLower) || 
+        awayLower.includes(e.strAwayTeam?.toLowerCase()?.replace(/ fc$/i, '')?.trim() || '')
+      );
+      
+      if (match1) return match1;
+    }
     
-    const data = await res.json();
-    const events = data.event || [];
+    // Try searching by away team as fallback
+    const url2 = `https://www.thesportsdb.com/api/v1/json/3/searchevents.php?e=${encodeURIComponent(away)}&d=${date}`;
+    console.log(`[TheSportsDB] Fallback search: ${away} on ${date}`);
     
-    // Find matching event
-    const away = cleanName(awayTeam).toLowerCase();
-    const match = events.find((e: any) => 
-      e.strAwayTeam?.toLowerCase().includes(away) || 
-      away.includes(e.strAwayTeam?.toLowerCase())
-    );
+    const res2 = await fetch(url2);
+    if (res2.ok) {
+      const data2 = await res2.json();
+      const events2 = data2.event || [];
+      
+      // Find matching event with home team
+      const homeLower = home.toLowerCase();
+      const match2 = events2.find((e: any) => 
+        e.strHomeTeam?.toLowerCase().includes(homeLower) || 
+        homeLower.includes(e.strHomeTeam?.toLowerCase()?.replace(/ fc$/i, '')?.trim() || '')
+      );
+      
+      if (match2) return match2;
+    }
     
-    return match || null;
+    return null;
   } catch (e) {
     console.error("[TheSportsDB] Search error:", e);
     return null;

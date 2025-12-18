@@ -134,6 +134,107 @@ export type Database = {
           },
         ]
       }
+      betslip_items: {
+        Row: {
+          betslip_id: string
+          created_at: string | null
+          id: string
+          market: string | null
+          match_id: string
+          match_up: string
+          odds: number
+          outcome: string
+          result: string | null
+          selection: string
+          status: string | null
+        }
+        Insert: {
+          betslip_id: string
+          created_at?: string | null
+          id?: string
+          market?: string | null
+          match_id: string
+          match_up: string
+          odds: number
+          outcome: string
+          result?: string | null
+          selection: string
+          status?: string | null
+        }
+        Update: {
+          betslip_id?: string
+          created_at?: string | null
+          id?: string
+          market?: string | null
+          match_id?: string
+          match_up?: string
+          odds?: number
+          outcome?: string
+          result?: string | null
+          selection?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "betslip_items_betslip_id_fkey"
+            columns: ["betslip_id"]
+            isOneToOne: false
+            referencedRelation: "betslips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      betslips: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_public: boolean | null
+          items: Json
+          name: string | null
+          payout: number | null
+          potential_return: number | null
+          result: string | null
+          settled_at: string | null
+          stake: number | null
+          status: string
+          total_odds: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          items: Json
+          name?: string | null
+          payout?: number | null
+          potential_return?: number | null
+          result?: string | null
+          settled_at?: string | null
+          stake?: number | null
+          status?: string
+          total_odds: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          items?: Json
+          name?: string | null
+          payout?: number | null
+          potential_return?: number | null
+          result?: string | null
+          settled_at?: string | null
+          stake?: number | null
+          status?: string
+          total_odds?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       channels: {
         Row: {
           created_at: string | null
@@ -236,6 +337,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      followed_betslips: {
+        Row: {
+          betslip_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          betslip_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          betslip_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      followed_matches: {
+        Row: {
+          created_at: string | null
+          id: string
+          match_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          match_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          match_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       leagues: {
         Row: {
@@ -539,6 +682,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          id: string
+          live_alerts: boolean | null
+          momentum_alerts: boolean | null
+          push_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+          war_room_alerts: boolean | null
+          whatsapp_enabled: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          live_alerts?: boolean | null
+          momentum_alerts?: boolean | null
+          push_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          war_room_alerts?: boolean | null
+          whatsapp_enabled?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          live_alerts?: boolean | null
+          momentum_alerts?: boolean | null
+          push_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          war_room_alerts?: boolean | null
+          whatsapp_enabled?: boolean | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          betslip_id: string | null
+          created_at: string | null
+          data: Json | null
+          id: string
+          match_id: string | null
+          message: string
+          read: boolean | null
+          sent_email: boolean | null
+          sent_push: boolean | null
+          sent_whatsapp: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          betslip_id?: string | null
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          match_id?: string | null
+          message: string
+          read?: boolean | null
+          sent_email?: boolean | null
+          sent_push?: boolean | null
+          sent_whatsapp?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          betslip_id?: string | null
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          match_id?: string | null
+          message?: string
+          read?: boolean | null
+          sent_email?: boolean | null
+          sent_push?: boolean | null
+          sent_whatsapp?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       player_stats: {
         Row: {
@@ -1031,6 +1261,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_betslip_result: {
+        Args: { betslip_uuid: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
