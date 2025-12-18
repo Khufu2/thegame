@@ -2,7 +2,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+// Use Lovable AI Gateway instead of direct Gemini API (better quota management)
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -20,48 +21,59 @@ interface GenerateNewsRequest {
   language?: "ENGLISH" | "SWAHILI";
 }
 
-async function generateWithGemini(prompt: string): Promise<any> {
-  console.log("Calling Gemini AI for news generation...");
+async function generateWithLovableAI(prompt: string): Promise<any> {
+  console.log("Calling Lovable AI Gateway for news generation...");
 
-  if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
+  if (!LOVABLE_API_KEY) {
+    throw new Error("LOVABLE_API_KEY is not configured");
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 2048,
-          responseMimeType: "application/json",
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: "You are a sports news writer. Always respond with valid JSON only, no markdown formatting."
         },
-      }),
-    }
-  );
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 2048,
+    }),
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Gemini API error:", response.status, errorText);
-    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+    console.error("Lovable AI error:", response.status, errorText);
+    
+    if (response.status === 429) {
+      throw new Error("Rate limit exceeded. Please try again in a moment.");
+    }
+    if (response.status === 402) {
+      throw new Error("AI credits exhausted. Please add credits to your Lovable workspace.");
+    }
+    
+    throw new Error(`AI Gateway error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = data.choices?.[0]?.message?.content;
 
   if (!text) {
-    console.error("Gemini response:", JSON.stringify(data, null, 2));
-    throw new Error("No content generated from Gemini");
+    console.error("AI response:", JSON.stringify(data, null, 2));
+    throw new Error("No content generated from AI");
   }
 
-  console.log("Gemini response received, parsing JSON...");
+  console.log("AI response received, parsing JSON...");
 
   // Clean up any markdown formatting
   let cleanedText = text.trim();
@@ -89,7 +101,7 @@ serve(async (req) => {
     if (url.pathname.endsWith("/test")) {
       return new Response(
         JSON.stringify({
-          gemini_key_available: !!GEMINI_API_KEY,
+          lovable_ai_available: !!LOVABLE_API_KEY,
           timestamp: new Date().toISOString(),
         }),
         {
@@ -109,10 +121,10 @@ serve(async (req) => {
       language = "ENGLISH",
     } = body;
 
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY not configured");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Gemini AI service not configured. Please add GEMINI_API_KEY to your environment." }),
+        JSON.stringify({ error: "AI service not configured. Please enable Lovable AI in your project." }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -145,7 +157,7 @@ TOPIC: ${searchQuery}
 
 TONE: ${tone}
 
-Respond with ONLY valid JSON in this exact format:
+Respond with ONLY valid JSON in this exact format (no markdown, no code blocks):
 {
   "title": "Catchy Headline",
   "summary": "1 sentence hook",
@@ -167,9 +179,9 @@ Respond with ONLY valid JSON in this exact format:
   "excerpt": "Short excerpt for previews..."
 }`;
 
-    // Generate with Gemini
-    console.log("🤖 Generating news with Gemini AI...");
-    const generated = await generateWithGemini(prompt);
+    // Generate with Lovable AI Gateway
+    console.log("🤖 Generating news with Lovable AI...");
+    const generated = await generateWithLovableAI(prompt);
     console.log(`✅ Generated article: ${generated.title}`);
 
     // Save to feeds table
