@@ -1058,12 +1058,28 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                            ]} />
 
                        </div>
-                   ) : (
-                       <div className="py-20 text-center text-gray-500">
-                           <BarChart2 size={40} className="mx-auto mb-3 opacity-20" />
-                           <p className="font-condensed font-bold uppercase">Stats Unavailable</p>
-                       </div>
-                   )}
+                    ) : (
+                        <div className="py-8">
+                            {/* Show basic score stats even without full stats data */}
+                            {(liveScore.home !== null || match.score?.home !== null) && (
+                                <div className="mb-6">
+                                    <StatGroup title="Goals" stats={[
+                                        { label: 'Goals', home: liveScore.home ?? match.score?.home ?? 0, away: liveScore.away ?? match.score?.away ?? 0 },
+                                    ]} />
+                                </div>
+                            )}
+                            
+                            <div className="text-center text-gray-500">
+                                <BarChart2 size={32} className="mx-auto mb-2 opacity-20" />
+                                <p className="font-condensed font-bold uppercase text-sm">Detailed Stats Unavailable</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                    {match.status === 'scheduled' 
+                                        ? 'Stats will be available during the match' 
+                                        : 'Full statistics not yet synced'}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                </div>
           )}
 

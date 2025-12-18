@@ -1,16 +1,65 @@
-// Edge Function for News Aggregation
-// Triggers comprehensive news collection from all sources
-
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-// Import our news aggregator (this will be bundled)
-import { newsAggregator } from "../../../services/newsAggregator/index.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const RSS_FEEDS = [
+  { url: 'https://www.espn.com/espn/rss/soccer/news', source: 'ESPN', type: 'soccer' },
+  { url: 'https://www.goal.com/feeds/en/news', source: 'Goal.com', type: 'soccer' },
+  { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', type: 'soccer' },
+];
+
+// Simple RSS parsing
+function parseRSSItem(item: string) {
+  const title = item.match(/<title>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?<\/title>/)?.[1]?.trim() || '';
+  const link = item.match(/<link>([^<]+)<\/link>/)?.[1]?.trim() || '';
+  const description = item.match(/<description>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?<\/description>/)?.[1]?.trim() || '';
+  const pubDate = item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]?.trim() || '';
+  const imageUrl = item.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image/)?.[1] || 
+                   item.match(/<media:content[^>]*url="([^"]+)"/)?.[1] || '';
+  
+  return { title, link, description, pubDate, imageUrl };
+}
+
+async function fetchRSSFeed(feedConfig: { url: string; source: string; type: string }) {
+  try {
+    const response = await fetch(feedConfig.url, {
+      headers: { 'User-Agent': 'Sheena Sports News Bot/1.0' }
+    });
+    
+    if (!response.ok) {
+      console.warn(`Failed to fetch ${feedConfig.source}: ${response.status}`);
+      return [];
+    }
+    
+    const xml = await response.text();
+    const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+    
+    return items.slice(0, 5).map(item => {
+      const parsed = parseRSSItem(item);
+      return {
+        type: 'NEWS',
+        title: parsed.title,
+        excerpt: parsed.description.substring(0, 200),
+        content: JSON.stringify([{ type: 'text', content: parsed.description }]),
+        image_url: parsed.imageUrl || null,
+        source: feedConfig.source,
+        tags: [feedConfig.type],
+        metadata: { 
+          originalUrl: parsed.link,
+          pubDate: parsed.pubDate 
+        }
+      };
+    });
+  } catch (error) {
+    console.error(`Error fetching ${feedConfig.source}:`, error);
+    return [];
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -18,43 +67,35 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Starting news aggregation via edge function...');
+    console.log('🚀 Starting news aggregation...');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Run the aggregation
-    const result = await newsAggregator.aggregateAllSources();
+    // Fetch from all RSS feeds in parallel
+    const feedPromises = RSS_FEEDS.map(feed => fetchRSSFeed(feed));
+    const feedResults = await Promise.all(feedPromises);
+    
+    // Flatten and deduplicate by title
+    const allNews = feedResults.flat();
+    const seenTitles = new Set<string>();
+    const uniqueNews = allNews.filter(item => {
+      if (seenTitles.has(item.title)) return false;
+      seenTitles.add(item.title);
+      return true;
+    });
 
-    console.log('📊 Aggregation results:', result.stats);
+    console.log(`📰 Collected ${uniqueNews.length} unique news items`);
 
-    // Store news in database
-    const newsInserts = result.news.map(story => ({
-      type: story.type,
-      title: story.title,
-      excerpt: story.summary,
-      content: JSON.stringify(story.contentBlocks || []),
-      image_url: story.imageUrl,
-      source: story.source,
-      author: story.author,
-      tags: story.tags || [],
-      metadata: {
-        likes: story.likes || 0,
-        comments: story.comments || 0,
-        isHero: story.isHero || false,
-        readingTimeMinutes: story.readingTimeMinutes || 1,
-        entities: story.entities || [],
-        contentTags: story.contentTags || []
-      }
-    }));
-
-    if (newsInserts.length > 0) {
-      console.log(`💾 Storing ${newsInserts.length} news stories...`);
-
+    if (uniqueNews.length > 0) {
+      // Upsert to avoid duplicates
       const { data, error } = await supabase
         .from('feeds')
-        .insert(newsInserts)
+        .upsert(uniqueNews, { 
+          onConflict: 'title',
+          ignoreDuplicates: true 
+        })
         .select();
 
       if (error) {
@@ -62,64 +103,24 @@ serve(async (req) => {
         throw error;
       }
 
-      console.log(`✅ Successfully stored ${data?.length || 0} news stories`);
+      console.log(`✅ Stored ${data?.length || 0} news stories`);
     }
 
-    // Store alerts in database
-    const alertInserts = result.alerts.map(alert => ({
-      type: 'ALERT',
-      title: alert.title,
-      excerpt: alert.description,
-      content: JSON.stringify({
-        dataPoint: alert.dataPoint,
-        signalStrength: alert.signalStrength,
-        actionableBet: alert.actionableBet
-      }),
-      tags: [alert.league],
-      metadata: {
-        alertType: alert.alertType
-      }
-    }));
-
-    if (alertInserts.length > 0) {
-      console.log(`🚨 Storing ${alertInserts.length} alerts...`);
-
-      const { data, error } = await supabase
-        .from('feeds')
-        .insert(alertInserts)
-        .select();
-
-      if (error) {
-        console.error('Error storing alerts:', error);
-        // Don't throw here, alerts are optional
-      } else {
-        console.log(`✅ Successfully stored ${data?.length || 0} alerts`);
-      }
-    }
-
-    // Return comprehensive results
     return new Response(
       JSON.stringify({
         success: true,
-        stats: result.stats,
-        newsStored: newsInserts.length,
-        alertsStored: alertInserts.length,
-        cacheStats: newsAggregator.getCacheStats(),
+        newsCollected: uniqueNews.length,
+        sources: RSS_FEEDS.map(f => f.source),
         timestamp: new Date().toISOString()
       }),
       {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
       }
     );
 
   } catch (error) {
     console.error('❌ News aggregation failed:', error);
-
     return new Response(
       JSON.stringify({
         success: false,
@@ -127,10 +128,7 @@ serve(async (req) => {
         timestamp: new Date().toISOString()
       }),
       {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
       }
     );

@@ -1513,15 +1513,19 @@ const LeagueSection: React.FC<{
                 </div>
             </div>
 
-            {/* WHAT'S BUZZING - 4-GRID CAROUSEL */}
+            {/* WHAT'S BUZZING - HORIZONTAL CAROUSEL (4 posts like Bleacher Report recap) */}
             <div className="border border-[#2C2C2C] rounded-lg">
-                <div className="px-4 py-3 border-b border-[#2C2C2C]">
-                    <h3 className="font-bold text-white text-sm uppercase tracking-wide">What's Buzzing</h3>
+                <div className="px-4 py-3 border-b border-[#2C2C2C] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Twitter size={14} className="text-[#1DA1F2]" />
+                        <h3 className="font-bold text-white text-sm uppercase tracking-wide">What's Buzzing</h3>
+                    </div>
+                    <span className="text-[10px] text-gray-500">from X</span>
                 </div>
 
-                <div className="p-4">
-                    <div className="grid grid-cols-4 gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
-                        <div className="snap-start">
+                <div className="p-3">
+                    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
+                        <div className="snap-start shrink-0 w-[200px]">
                             <MatchBuzzCard
                                 publisher={{
                                     name: `${league} Official`,
@@ -1537,7 +1541,7 @@ const LeagueSection: React.FC<{
                                 sourceUrl="#"
                             />
                         </div>
-                        <div className="snap-start">
+                        <div className="snap-start shrink-0 w-[200px]">
                             <MatchBuzzCard
                                 publisher={{
                                     name: "Bleacher Report",
@@ -1549,11 +1553,11 @@ const LeagueSection: React.FC<{
                                     type: "media",
                                     mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
                                 }}
-                                caption={`Key injury update: Star player returns for ${league} clash, could swing momentum.`}
+                                caption={`Key injury update: Star player returns for ${league} clash.`}
                                 sourceUrl="#"
                             />
                         </div>
-                        <div className="snap-start">
+                        <div className="snap-start shrink-0 w-[200px]">
                             <MatchBuzzCard
                                 publisher={{
                                     name: "ESPN",
@@ -1569,7 +1573,7 @@ const LeagueSection: React.FC<{
                                 sourceUrl="#"
                             />
                         </div>
-                        <div className="snap-start">
+                        <div className="snap-start shrink-0 w-[200px]">
                             <MatchBuzzCard
                                 publisher={{
                                     name: "Sky Sports",
@@ -1582,70 +1586,6 @@ const LeagueSection: React.FC<{
                                     text: `Transfer rumors heating up as ${league} window approaches deadline.`
                                 }}
                                 caption={`${league} transfer market activity reaches fever pitch.`}
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "The Athletic",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="5h"
-                                content={{
-                                    type: "media",
-                                    mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
-                                }}
-                                caption={`Deep analysis: ${league} tactical trends that will define the season.`}
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: `${league} Fan Page`,
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="6h"
-                                content={{
-                                    type: "text",
-                                    text: "Fan reactions pouring in as weekend fixtures approach. The excitement is building! ⚽️"
-                                }}
-                                caption={`Fan sentiment analysis shows high anticipation for ${league} weekend.`}
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Transfer News",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="7h"
-                                content={{
-                                    type: "text",
-                                    text: `Latest ${league} transfer updates and contract negotiations.`
-                                }}
-                                caption={`${league} summer transfer window activity intensifies.`}
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Match Previews",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="8h"
-                                content={{
-                                    type: "text",
-                                    text: `Expert analysis: ${league} weekend predictions and key matchups.`
-                                }}
-                                caption={`Comprehensive preview of all ${league} fixtures this weekend.`}
                                 sourceUrl="#"
                             />
                         </div>

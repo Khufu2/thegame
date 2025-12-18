@@ -1,0 +1,76 @@
+name: Multi-Sport Data Fetch
+
+on:
+  schedule:
+    # NBA: Run 4x daily during NBA season (Oct-Jun)
+    - cron: '0 6,12,18,0 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch-nba:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch NBA Games
+        run: |
+          echo "🏀 Fetching NBA games from TheSportsDB..."
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-nba-games" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+          
+          if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            echo "✅ NBA games fetched successfully"
+          else
+            echo "⚠️ NBA fetch returned $http_code (non-fatal, TheSportsDB may be rate limited)"
+          fi
+
+  fetch-f1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch F1 Races
+        run: |
+          echo "🏎️ Fetching F1 races from Ergast API..."
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-f1-races" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+          
+          if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            echo "✅ F1 races fetched successfully"
+          else
+            echo "⚠️ F1 fetch returned $http_code"
+          fi
+
+  update-finished-games:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Finished Games Results
+        run: |
+          echo "📊 Updating finished game results..."
+          # This will update scores for finished games
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-live-scores" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -d '{"updateFinished": true}')
+          
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
