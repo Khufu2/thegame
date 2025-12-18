@@ -495,107 +495,264 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
           {/* TAB: STREAM (Overview) */}
           {activeTab === 'STREAM' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  {/* PREDICTION CARD (Editorial Style) */}
-                  {match.prediction && (
-                      <div className="m-4 rounded-xl overflow-hidden border border-[#2C2C2C] bg-[#121212] relative">
-                          
-                          {/* GUEST LOCK OVERLAY */}
-                          {!user && (
-                              <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-                                  <div className="w-12 h-12 bg-[#2C2C2C] rounded-full flex items-center justify-center mb-3">
-                                      <Lock size={24} className="text-white" />
+                  {/* SHEENA'S EDGE - COMPACT DESIGN */}
+                  <div className="mx-4 mb-4 bg-gradient-to-br from-indigo-900/20 to-black border border-indigo-500/30 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                          <Brain size={18} className="text-indigo-400" />
+                          <h3 className="font-condensed font-black text-lg uppercase text-white tracking-wide">Sheena's Edge</h3>
+                          <div className="ml-auto flex items-center gap-2">
+                              <span className="text-xs font-bold text-indigo-400 uppercase">AI Confidence</span>
+                              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                          </div>
+                      </div>
+
+                      {/* PREDICTION SUMMARY */}
+                      {match.prediction && (
+                          <div className="bg-black/40 rounded-lg p-3 border border-indigo-500/20 mb-3">
+                              <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                      <span className="text-sm font-bold text-white uppercase">
+                                          {match.prediction.outcome === 'HOME' ? match.homeTeam.name : match.prediction.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
+                                      </span>
+                                      <span className="text-xs text-gray-400">to win</span>
                                   </div>
-                                  <h3 className="font-condensed font-black text-xl uppercase text-white mb-1">Unlock Sheena's Edge</h3>
-                                  <p className="text-sm text-gray-400 mb-4">Sign up to see the AI analysis, value rating, and odds.</p>
-                                  <button onClick={logout} className="px-6 py-2 bg-indigo-600 text-white font-bold uppercase text-xs rounded-lg">Sign In / Join</button>
+                                  <div className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                                      match.prediction.confidence > 80 ? 'bg-[#00FFB2]/20 text-[#00FFB2]' :
+                                      match.prediction.confidence > 60 ? 'bg-yellow-500/20 text-yellow-400' :
+                                      'bg-red-500/20 text-red-400'
+                                  }`}>
+                                      {match.prediction.confidence}%
+                                  </div>
                               </div>
-                          )}
-
-                          <div className="bg-indigo-900/20 p-3 border-b border-indigo-500/20 flex justify-between items-center">
-                              <div className="flex items-center gap-2">
-                                  <Brain size={16} className="text-indigo-400" />
-                                  <span className="font-condensed font-black text-sm uppercase text-indigo-100 tracking-wide">Sheena's Edge</span>
+                              <p className="text-xs text-gray-300 leading-relaxed mb-2">
+                                  {match.prediction.aiReasoning}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                  <span className="text-xs font-mono font-bold text-[#00FFB2]">
+                                      {match.prediction.outcome === 'HOME' ? match.prediction.odds.home :
+                                       match.prediction.outcome === 'AWAY' ? match.prediction.odds.away :
+                                       match.prediction.odds.draw} odds
+                                  </span>
+                                  <span className="text-xs text-gray-500 uppercase">Best Value</span>
                               </div>
-                              <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded">
-                                  {match.prediction.confidence}% Confidence
-                              </span>
                           </div>
-                          
-                          <div className="p-5">
-                               <h3 className="font-condensed font-black text-2xl uppercase italic text-white mb-2 leading-none">
-                                   {match.prediction.keyInsight}
-                               </h3>
-                               <p className="text-sm text-gray-400 leading-relaxed mb-4 border-l-2 border-indigo-500 pl-3">
-                                   {match.prediction.aiReasoning}
-                               </p>
+                      )}
 
-                               {/* FACTORS BREAKDOWN */}
-                               {match.prediction.factors && (
-                                   <div className="grid gap-2 mb-4">
-                                       {match.prediction.factors.map((factor, idx) => (
-                                           <div key={idx} className="flex items-center justify-between text-xs bg-black/40 p-2 rounded">
-                                               <span className="text-gray-300 font-medium">{factor.label}</span>
-                                               <span className={`font-black ${factor.type === 'POSITIVE' ? 'text-green-400' : factor.type === 'NEGATIVE' ? 'text-red-500' : 'text-gray-500'}`}>
-                                                   {factor.type === 'POSITIVE' ? '+' : ''}{factor.weight}
-                                               </span>
-                                           </div>
-                                       ))}
-                                   </div>
-                               )}
-
-                               {/* ADDITIONAL BETTING MARKETS */}
-                               <div className="grid grid-cols-2 gap-3 mb-4">
-                                   {/* BTTS */}
-                                   <div className="bg-black/40 p-3 rounded-lg border border-[#333]">
-                                       <div className="flex items-center justify-between mb-1">
-                                           <span className="text-[10px] font-bold text-gray-400 uppercase">BTTS</span>
-                                           <span className="text-xs font-bold text-[#00FFB2]">Yes 2.45</span>
-                                       </div>
-                                       <div className="text-xs text-gray-300">Both teams score</div>
-                                   </div>
-
-                                   {/* Over/Under */}
-                                   <div className="bg-black/40 p-3 rounded-lg border border-[#333]">
-                                       <div className="flex items-center justify-between mb-1">
-                                           <span className="text-[10px] font-bold text-gray-400 uppercase">O/U 2.5</span>
-                                           <span className="text-xs font-bold text-[#00FFB2]">Over 1.85</span>
-                                       </div>
-                                       <div className="text-xs text-gray-300">Goals: Over 2.5</div>
-                                   </div>
-                               </div>
-                               
-                               <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#2C2C2C]">
-                                   <div>
-                                       <span className="block text-[10px] font-bold text-gray-500 uppercase">The Pick</span>
-                                       <span className="font-condensed font-black text-xl text-white uppercase">
-                                           {match.prediction.outcome === 'HOME' ? match.homeTeam.name : match.prediction.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
-                                       </span>
-                                   </div>
-                                   {match.prediction.odds && (
-                                       <div className="text-right">
-                                           <span className="block text-[10px] font-bold text-gray-500 uppercase">Implied Odds</span>
-                                           <div className="flex gap-4 font-mono font-bold text-lg text-indigo-400">
-                                               <span className={match.prediction.outcome === 'HOME' ? 'text-[#00FFB2]' : 'opacity-40'}>H: {match.prediction.odds.home}</span>
-                                               <span className={match.prediction.outcome === 'DRAW' ? 'text-[#00FFB2]' : 'opacity-40'}>D: {match.prediction.odds.draw}</span>
-                                               <span className={match.prediction.outcome === 'AWAY' ? 'text-[#00FFB2]' : 'opacity-40'}>A: {match.prediction.odds.away}</span>
-                                           </div>
-                                       </div>
-                                   )}
-                               </div>
+                      {/* LIVE ODDS BAR */}
+                      <div className="bg-black/40 rounded-lg p-3 border border-gray-600/30">
+                          <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-white uppercase tracking-wide">Live Odds</span>
+                              <span className="text-[10px] text-gray-500 uppercase">Updated Live</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                              <div className="text-center">
+                                  <span className="block text-[10px] text-gray-400 uppercase mb-0.5">Home</span>
+                                  <span className="block text-sm font-mono font-bold text-white">
+                                      {match.prediction?.odds.home || '2.10'}
+                                  </span>
+                              </div>
+                              <div className="text-center">
+                                  <span className="block text-[10px] text-gray-400 uppercase mb-0.5">Draw</span>
+                                  <span className="block text-sm font-mono font-bold text-white">
+                                      {match.prediction?.odds.draw || '3.20'}
+                                  </span>
+                              </div>
+                              <div className="text-center">
+                                  <span className="block text-[10px] text-gray-400 uppercase mb-0.5">Away</span>
+                                  <span className="block text-sm font-mono font-bold text-white">
+                                      {match.prediction?.odds.away || '3.50'}
+                                  </span>
+                              </div>
                           </div>
                       </div>
-                  )}
+                  </div>
 
-                  {/* INJURY REPORT */}
+                  {/* INJURY REPORT - COMPACT */}
                   {match.context?.injuryReport && (
-                      <div className="mx-4 mb-4 bg-red-900/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-3">
-                          <Activity size={18} className="text-red-500 mt-0.5 shrink-0" />
+                      <div className="mx-4 mb-4 bg-red-900/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-2">
+                          <Activity size={16} className="text-red-500 mt-0.5 shrink-0" />
                           <div>
-                              <h4 className="font-bold text-red-500 text-xs uppercase mb-1">Injury Report</h4>
-                              <p className="text-sm text-gray-300">{match.context.injuryReport}</p>
+                              <h4 className="font-bold text-red-500 text-xs uppercase mb-0.5">Injury Report</h4>
+                              <p className="text-xs text-gray-300">{match.context.injuryReport}</p>
                           </div>
                       </div>
                   )}
+
+                  {/* LEAGUE NEWS & BUZZING - INTEGRATED DESIGN */}
+                  <div className="mx-4 mb-6">
+                      <div className="flex items-center gap-2 mb-3">
+                          <Newspaper size={16} className="text-blue-400" />
+                          <h3 className="font-condensed font-bold text-sm uppercase text-gray-400 tracking-wide">{match.league} News & Buzz</h3>
+                      </div>
+
+                      {/* League News Cards - Compact Grid */}
+                      {relatedNews.length > 0 && (
+                          <div className="grid grid-cols-1 gap-2 mb-4">
+                              {relatedNews.slice(0, 3).map((story) => (
+                                  <div
+                                      key={story.id}
+                                      onClick={() => navigate(`/article/${story.id}`)}
+                                      className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-indigo-500/50 transition-colors"
+                                  >
+                                      <div className="flex gap-3">
+                                          {story.imageUrl && (
+                                              <div className="w-12 h-10 rounded overflow-hidden shrink-0 bg-[#121212]">
+                                                  <img src={story.imageUrl} className="w-full h-full object-cover" alt={story.title} />
+                                              </div>
+                                          )}
+                                          <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                  <span className="text-[9px] font-bold text-indigo-400 uppercase">{story.source}</span>
+                                                  <span className="text-[9px] text-gray-600">• {story.timestamp}</span>
+                                              </div>
+                                              <h4 className="font-condensed font-bold text-sm text-white leading-tight line-clamp-2">
+                                                  {story.title}
+                                              </h4>
+                                          </div>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+
+                      {/* What's Buzzing - Simple 2x2 Grid */}
+                      <div className="border border-[#2C2C2C] rounded-lg">
+                          <div className="px-4 py-2 border-b border-[#2C2C2C]">
+                              <h3 className="font-bold text-white text-sm uppercase tracking-wide">What's Buzzing</h3>
+                          </div>
+
+                          <div className="p-4">
+                              <div className="grid grid-cols-4 gap-3">
+                                  {/* Post 1 */}
+                                  <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md cursor-pointer flex flex-col">
+                                      {/* Header: Avatar + Name + Badge */}
+                                      <div className="px-3 py-2 flex items-center gap-2">
+                                          <img src="https://pbs.twimg.com/profile_images/default.jpg" alt="Official" className="w-5 h-5 rounded-full object-cover" />
+                                          <span className="font-medium text-white text-sm truncate">{match.league} Official</span>
+                                          <div className="w-1 h-1 bg-[#00FFB2] rounded-full ml-auto"></div>
+                                      </div>
+                                      {/* Timestamp */}
+                                      <div className="px-3 pb-2">
+                                          <span className="text-[10px] text-gray-400">2h</span>
+                                      </div>
+                                      {/* Content Preview */}
+                                      <div className="px-3 pb-2 flex-1 flex items-center justify-center min-h-[60px]">
+                                          <p className="text-xs text-gray-300 text-center line-clamp-3 leading-tight">
+                                              🔥 Big game coming up! Who are you backing in this {match.league} clash?
+                                          </p>
+                                      </div>
+                                      {/* Caption */}
+                                      <div className="px-3 py-2 border-t border-gray-600">
+                                          <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
+                                              {match.league} title race intensifies with crucial weekend matchups.
+                                          </p>
+                                      </div>
+                                      {/* CTA Button */}
+                                      <div className="px-3 py-2 border-t border-gray-600">
+                                          <button className="w-full bg-black text-white text-xs font-bold py-2 px-3 rounded border border-gray-600 hover:bg-gray-900 transition-colors">
+                                              View on X
+                                          </button>
+                                      </div>
+                                  </div>
+
+                                  {/* Post 2 */}
+                                  <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md cursor-pointer flex flex-col">
+                                      {/* Header: Avatar + Name + Badge */}
+                                      <div className="px-3 py-2 flex items-center gap-2">
+                                          <img src="https://pbs.twimg.com/profile_images/default.jpg" alt="Bleacher Report" className="w-5 h-5 rounded-full object-cover" />
+                                          <span className="font-medium text-white text-sm truncate">Bleacher Report</span>
+                                          <div className="w-1 h-1 bg-[#00FFB2] rounded-full ml-auto"></div>
+                                      </div>
+                                      {/* Timestamp */}
+                                      <div className="px-3 pb-2">
+                                          <span className="text-[10px] text-gray-400">3h</span>
+                                      </div>
+                                      {/* Content Preview */}
+                                      <div className="px-3 pb-2 flex-1 flex items-center justify-center min-h-[60px]">
+                                          <div className="w-full h-full rounded overflow-hidden">
+                                              <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop" alt="Content preview" className="w-full h-full object-cover" />
+                                          </div>
+                                      </div>
+                                      {/* Caption */}
+                                      <div className="px-3 py-2 border-t border-gray-600">
+                                          <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
+                                              Key injury update: Star player returns for {match.league} clash.
+                                          </p>
+                                      </div>
+                                      {/* CTA Button */}
+                                      <div className="px-3 py-2 border-t border-gray-600">
+                                          <button className="w-full bg-black text-white text-xs font-bold py-2 px-3 rounded border border-gray-600 hover:bg-gray-900 transition-colors">
+                                              View on X
+                                          </button>
+                                      </div>
+                                  </div>
+
+                                  {/* Post 3 */}
+                                  <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md cursor-pointer flex flex-col">
+                                      {/* Header: Avatar + Name + Badge */}
+                                      <div className="px-3 py-2 flex items-center gap-2">
+                                          <img src="https://pbs.twimg.com/profile_images/default.jpg" alt="ESPN" className="w-5 h-5 rounded-full object-cover" />
+                                          <span className="font-medium text-white text-sm truncate">ESPN FC</span>
+                                          <div className="w-1 h-1 bg-[#00FFB2] rounded-full ml-auto"></div>
+                                      </div>
+                                      {/* Timestamp */}
+                                      <div className="px-3 pb-2">
+                                          <span className="text-[10px] text-gray-400">4h</span>
+                                      </div>
+                                      {/* Content Preview */}
+                                      <div className="px-3 pb-2 flex-1 flex items-center justify-center min-h-[60px]">
+                                          <p className="text-xs text-gray-300 text-center line-clamp-3 leading-tight">
+                                              Statistical breakdown shows defensive records could decide this matchup.
+                                          </p>
+                                      </div>
+                                      {/* Caption */}
+                                      <div className="px-3 py-2 border-t border-gray-600">
+                                          <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
+                                              Advanced stats reveal {match.homeTeam.name} has strong upset potential.
+                                          </p>
+                                      </div>
+                                      {/* CTA Button */}
+                                      <div className="px-3 py-2 border-t border-gray-600">
+                                          <button className="w-full bg-black text-white text-xs font-bold py-2 px-3 rounded border border-gray-600 hover:bg-gray-900 transition-colors">
+                                              View on X
+                                          </button>
+                                      </div>
+                                  </div>
+
+                                  {/* Post 4 */}
+                                  <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md cursor-pointer flex flex-col">
+                                      {/* Header: Avatar + Name + Badge */}
+                                      <div className="px-3 py-2 flex items-center gap-2">
+                                          <img src="https://pbs.twimg.com/profile_images/default.jpg" alt="Fan Account" className="w-5 h-5 rounded-full object-cover" />
+                                          <span className="font-medium text-white text-sm truncate">{match.league} Fan Page</span>
+                                      </div>
+                                      {/* Timestamp */}
+                                      <div className="px-3 pb-2">
+                                          <span className="text-[10px] text-gray-400">5h</span>
+                                      </div>
+                                      {/* Content Preview */}
+                                      <div className="px-3 pb-2 flex-1 flex items-center justify-center min-h-[60px]">
+                                          <p className="text-xs text-gray-300 text-center line-clamp-3 leading-tight">
+                                              Fan reactions pouring in as weekend fixtures approach. The excitement is building!
+                                          </p>
+                                      </div>
+                                      {/* Caption */}
+                                      <div className="px-3 py-2 border-t border-gray-600">
+                                          <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
+                                              Fan sentiment analysis shows high anticipation for {match.league} weekend.
+                                          </p>
+                                      </div>
+                                      {/* CTA Button */}
+                                      <div className="px-3 py-2 border-t border-gray-600">
+                                          <button className="w-full bg-black text-white text-xs font-bold py-2 px-3 rounded border border-gray-600 hover:bg-gray-900 transition-colors">
+                                              View on X
+                                          </button>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
 
                   {/* VENUE INTEL (Lite Mode Compatible) */}
                   {matchDetails?.venueDetails && (
@@ -644,7 +801,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                            <Flame size={14} className="text-orange-500" />
                            Match Preview
                        </h3>
-                       
+
                        {/* Editorial Match Preview Card */}
                        <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] rounded-xl border border-[#2C2C2C] overflow-hidden mb-4">
                            <div className="p-5">
@@ -654,7 +811,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                <p className="text-gray-400 text-sm leading-relaxed mb-4">
                                    {match.prediction?.aiReasoning || `An exciting ${match.league} clash awaits as ${match.homeTeam.name} welcome ${match.awayTeam.name}. Both sides will be looking to make a statement in what promises to be an entertaining encounter.`}
                                </p>
-                               
+
                                {/* Key Stat Callout */}
                                <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-lg p-4 mb-4">
                                    <div className="flex items-start gap-3">
@@ -669,7 +826,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                        </div>
                                    </div>
                                </div>
-                               
+
                                {/* Betting Angle */}
                                {match.prediction?.bettingAngle && (
                                    <div className="bg-[#00FFB2]/5 border border-[#00FFB2]/20 rounded-lg p-4">
@@ -692,8 +849,8 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                    <div className="flex gap-1">
                                        {(match.homeTeam.form || ['W', 'D', 'W', 'L', 'W']).map((res, i) => (
                                            <div key={i} className={`w-7 h-7 rounded flex items-center justify-center text-xs font-black ${
-                                               res === 'W' ? 'bg-green-600/20 text-green-400' : 
-                                               res === 'L' ? 'bg-red-600/20 text-red-400' : 
+                                               res === 'W' ? 'bg-green-600/20 text-green-400' :
+                                               res === 'L' ? 'bg-red-600/20 text-red-400' :
                                                'bg-gray-600/20 text-gray-400'
                                            }`}>
                                                {res}
@@ -706,8 +863,8 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                                    <div className="flex gap-1">
                                        {(match.awayTeam.form || ['L', 'W', 'W', 'D', 'W']).map((res, i) => (
                                            <div key={i} className={`w-7 h-7 rounded flex items-center justify-center text-xs font-black ${
-                                               res === 'W' ? 'bg-green-600/20 text-green-400' : 
-                                               res === 'L' ? 'bg-red-600/20 text-red-400' : 
+                                               res === 'W' ? 'bg-green-600/20 text-green-400' :
+                                               res === 'L' ? 'bg-red-600/20 text-red-400' :
                                                'bg-gray-600/20 text-gray-400'
                                            }`}>
                                                {res}
@@ -740,7 +897,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                        )}
 
                        {/* Quick Action */}
-                       <button 
+                       <button
                            onClick={handleOpenPwezaContext}
                            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold uppercase text-sm py-4 rounded-xl flex items-center justify-center gap-3 active:scale-[0.98] transition-transform"
                        >

@@ -1,8 +1,8 @@
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
-import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper, Share2, Twitter, Facebook, Link } from 'lucide-react';
+import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper, Share2, Twitter, Facebook, Link, Youtube, Calendar, Users, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { formatMatchTime } from './utils/formatTime';
@@ -65,6 +65,58 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   const dataSaver = user?.preferences.dataSaver || false;
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedStory, setSelectedStory] = useState<NewsStory | null>(null);
+
+  // NEW BLEACHER REPORT STYLE STATE
+  const [featuredVideo, setFeaturedVideo] = useState({
+    id: 'featured_1',
+    title: 'Incredible Last-Minute Winner! ⚽️',
+    thumbnail: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop',
+    duration: '2:34',
+    views: '125K',
+    source: 'Premier League',
+    url: '#'
+  });
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [showYesterday, setShowYesterday] = useState(false);
+
+  // LEAGUE PRIORITIZATION ALGORITHM
+  const getPrioritizedLeagues = useMemo(() => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const leagues = ['EPL', 'LaLiga', 'NBA', 'Serie A', 'Bundesliga', 'Ligue 1', 'NHL', 'UFC', 'F1', 'MLB'];
+    const safeMatches = Array.isArray(matches) ? matches : [];
+
+    // Count matches today for each league
+    const leagueMatchCounts = leagues.map(league => {
+      const todayMatches = safeMatches.filter(m =>
+        m.league === league &&
+        new Date(m.time).toDateString() === today.toDateString()
+      ).length;
+
+      const yesterdayMatches = safeMatches.filter(m =>
+        m.league === league &&
+        new Date(m.time).toDateString() === yesterday.toDateString()
+      ).length;
+
+      // Count news content for league
+      const newsCount = items.filter(item =>
+        'tags' in item && (item as NewsStory).tags?.includes(league)
+      ).length;
+
+      return {
+        league,
+        todayMatches,
+        yesterdayMatches,
+        newsCount,
+        totalScore: (todayMatches * 3) + (yesterdayMatches * 2) + newsCount
+      };
+    });
+
+    // Sort by total score (matches today > matches yesterday > news content)
+    return leagueMatchCounts.sort((a, b) => b.totalScore - a.totalScore);
+  }, [matches, items]);
 
 
   // 1. FILTERING LOGIC
@@ -176,11 +228,11 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   };
 
   return (
-    <div className="min-h-screen bg-[#F2F2F2] md:bg-br-bg md:max-w-[1000px] md:mx-auto pb-24 overflow-x-hidden">
+    <div className="min-h-screen bg-black md:bg-br-bg md:max-w-[1000px] md:mx-auto pb-24 overflow-x-hidden">
       
       {/* 1. TOP SECTION: HAPPENING NOW (LIVE RAIL) */}
       {demoTickerMatches.length > 0 && (
-          <section className="pt-2 pb-1 bg-[#F2F2F2] md:bg-br-bg">
+          <section className="pt-2 pb-1 bg-black md:bg-br-bg">
             <div className="flex items-center gap-2 px-4 mb-2">
                  <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
                  <h2 className="font-condensed font-bold text-sm uppercase tracking-wider text-gray-500 md:text-gray-400">Happening Now</h2>
@@ -194,7 +246,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
       )}
 
       {/* 2. LEAGUE FILTER STRIP */}
-      <div className="sticky top-[44px] md:top-0 z-40 bg-[#F2F2F2]/95 backdrop-blur-xl md:bg-br-bg/95 border-b border-gray-200/50 md:border-white/10 py-3 shadow-sm transition-all">
+      <div className="sticky top-[44px] md:top-0 z-40 bg-black/95 backdrop-blur-xl md:bg-br-bg/95 border-b border-white/10 py-3 shadow-sm transition-all">
           <div className="flex items-center gap-2 px-4 overflow-x-auto no-scrollbar w-full">
             <FilterChip 
                 label="For You" 
@@ -220,7 +272,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                 <div className="w-full rounded-[20px] bg-gradient-to-br from-[#0F172A] to-[#1E293B] border border-white/5 text-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden transition-all duration-300 active:scale-[0.98]">
                     {/* Subtle graphic patterns */}
                     <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-sheena-primary/10 blur-[80px] rounded-full pointer-events-none"></div>
-                    
+
                     <div className="flex justify-between items-start p-5 pb-2 relative z-10">
                         <div className="flex items-center gap-2">
                             <span className="font-condensed font-black text-lg italic tracking-tighter uppercase text-white/90">
@@ -241,7 +293,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
 
                         <div className="flex flex-col items-center justify-center w-[40%]">
                             <span className="font-condensed font-black text-[48px] tracking-tighter drop-shadow-2xl leading-none whitespace-nowrap">
-                                {featuredMatch.status === MatchStatus.LIVE 
+                                {featuredMatch.status === MatchStatus.LIVE
                                     ? `${featuredMatch.score?.home || 0}-${featuredMatch.score?.away || 0}`
                                     : 'VS'
                                 }
@@ -258,9 +310,9 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                             <span className="font-condensed font-bold text-xl uppercase tracking-tight text-center leading-none">{featuredMatch.awayTeam.name}</span>
                         </div>
                     </div>
-                    
+
                     <div className="flex justify-center pb-5 mt-2 relative z-10">
-                        <button 
+                        <button
                             onClick={(e) => { e.stopPropagation(); openPwezaForMatch(featuredMatch); }}
                             className="group relative flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-full transition-all active:scale-95"
                         >
@@ -294,11 +346,11 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
             </div>
              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-4">
                 {topPicks.map(match => (
-                    match && <PremiumPredictionCard 
-                        key={match.id} 
-                        match={match} 
-                        onClick={() => handleMatchClick(match.id)} 
-                        onOpenPweza={() => openPwezaForMatch(match)} 
+                    match && <PremiumPredictionCard
+                        key={match.id}
+                        match={match}
+                        onClick={() => handleMatchClick(match.id)}
+                        onOpenPweza={() => openPwezaForMatch(match)}
                         isLocked={!user}
                     />
                 ))}
@@ -316,16 +368,16 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                          Value Radar
                      </h2>
                  </div>
-                 <button 
+                 <button
                     onClick={() => navigate('/scores')}
                     className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 hover:text-[#00FFB2] transition-colors"
                 >
                     View All <ArrowRight size={12} />
                 </button>
              </div>
-             
-             {/* 
-                 HORIZONTAL SCROLL CONTAINER WITH GRID 
+
+             {/*
+                 HORIZONTAL SCROLL CONTAINER WITH GRID
                  Rows: 4 (Denser)
                  Flow: Column
                  Auto Columns: 240px (Compact Cards)
@@ -333,9 +385,9 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
              <div className="grid grid-rows-4 grid-flow-col gap-2 px-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4 auto-cols-[240px]">
                  {valuePicks.map(match => (
                      match && <div className="snap-start h-[60px]" key={match.id}>
-                        <CompactPredictionCard 
-                            match={match} 
-                            onClick={() => handleMatchClick(match.id)} 
+                        <CompactPredictionCard
+                            match={match}
+                            onClick={() => handleMatchClick(match.id)}
                             isLocked={!user}
                         />
                      </div>
@@ -344,76 +396,278 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
         </section>
         )}
 
-        {/* 6. THE STREAM (Latest Wire & Mixed Content) */}
+        {/* 6. THE WIRE - BLEACHER REPORT STYLE */}
         <section className="px-4 py-2 pb-20">
-             {/* UPDATED HEADER: Actionable Link */}
-             <div 
-                className="flex items-center justify-between mb-4 mt-4 cursor-pointer group"
-                onClick={() => navigate('/explore')}
-             >
+            {/* HEADER */}
+            <div className="flex items-center justify-between mb-6 mt-4">
                 <div className="flex items-center gap-2">
-                    <Zap size={16} className="text-yellow-400 fill-yellow-400" />
-                    <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic group-hover:text-indigo-500 transition-colors">
-                        Latest Wire
+                    <Terminal size={18} className="text-[#00FFB2]" />
+                    <h2 className="font-condensed font-black text-2xl text-white uppercase tracking-tighter italic">
+                        The Wire
                     </h2>
                 </div>
-                <div className="flex items-center gap-1 text-xs font-bold text-gray-400 group-hover:text-white transition-colors">
-                    View News <ChevronRight size={14} />
-                </div>
-             </div>
-             
-             <div className="space-y-4">
-                {filteredStreamItems.map((item, index) => {
-                    if (!item) return null;
+                <button
+                   onClick={() => navigate('/explore')}
+                   className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 hover:text-[#00FFB2] transition-colors"
+               >
+                   Explore All <ArrowRight size={12} />
+               </button>
+            </div>
 
-                    // RENDER: MATCH
-                    if ('homeTeam' in item) {
-                        return (
-                            <SmartPredictionCard
-                                key={(item as Match).id}
-                                match={item as Match}
-                                onClick={() => handleMatchClick((item as Match).id)}
-                                onOpenPweza={() => openPwezaForMatch(item as Match)}
-                                isLocked={!user}
-                            />
-                        );
-                    }
-                    // RENDER: NEWS
-                    else if ('source' in item) {
-                         const story = item as NewsStory;
-                         if (story.type === 'HIGHLIGHT' && !dataSaver) return <HighlightCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />;
-                         if (story.isHero) return <HeroNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} />;
-                         return <StandardNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} onShare={(story) => { setSelectedStory(story); setShareModalOpen(true); }} />;
-                    }
-                    // RENDER: SYSTEM ALERT (WAR ROOM)
-                    else if ('alertType' in item) {
-                        const alert = item as SystemAlert;
-                        // HIDE ALERTS FOR GUEST USERS
-                        if (!user) {
-                             return (
-                                 <div key={alert.id} className="bg-[#121212] border border-[#2C2C2C] rounded-lg p-4 flex items-center justify-between opacity-50 relative overflow-hidden">
-                                     <div className="flex items-center gap-2">
-                                         <Siren size={16} className="text-red-500" />
-                                         <span className="font-bold text-sm text-gray-400 uppercase">War Room Alert</span>
-                                     </div>
-                                     <Lock size={14} className="text-gray-500" />
-                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                         <span className="text-[10px] font-black uppercase text-gray-300">Locked</span>
-                                     </div>
-                                 </div>
-                             );
-                        }
-                        return <WarRoomIntelCard key={alert.id} alert={alert} onTail={() => onTailBet?.(alert.relatedMatchId || '')} />;
-                    }
-                    return null;
+            {/* FEATURED VIDEO - STICKY ON SCROLL */}
+            <div className="sticky top-[120px] z-20 mb-6">
+              <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] shadow-2xl">
+                <div className="flex items-center gap-2 mb-4">
+                  <Youtube size={20} className="text-red-500" />
+                  <h3 className="font-condensed font-black text-xl text-white uppercase tracking-tighter">
+                    Featured Video
+                  </h3>
+                </div>
+                <VideoCard
+                  title={featuredVideo.title}
+                  thumbnail={featuredVideo.thumbnail}
+                  duration={featuredVideo.duration}
+                  views={featuredVideo.views}
+                  source={featuredVideo.source}
+                />
+              </div>
+            </div>
+
+            {/* TRENDING HEADLINES */}
+            <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp size={16} className="text-red-500" />
+                    <span className="font-bold text-white text-sm uppercase tracking-wide">Trending Headlines</span>
+                </div>
+                <div className="flex gap-3 overflow-x-auto no-scrollbar">
+                    {filteredStreamItems.filter(item => 'source' in item).slice(0, 8).map((item) => (
+                        <TrendingNewsCard key={item.id} story={item as NewsStory} onClick={() => onArticleClick?.((item as NewsStory).id)} />
+                    ))}
+                </div>
+            </div>
+
+            {/* TOMORROW'S GAMES / THIS WEEKEND */}
+            <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                    <Calendar size={16} className="text-blue-400" />
+                    <span className="font-bold text-white text-sm uppercase tracking-wide">Tomorrow's Games</span>
+                </div>
+                <div className="flex gap-3 overflow-x-auto no-scrollbar">
+                    {topPicks.slice(0, 6).map(match => (
+                        match && <PremiumPredictionCard
+                            key={match.id}
+                            match={match}
+                            onClick={() => handleMatchClick(match.id)}
+                            onOpenPweza={() => openPwezaForMatch(match)}
+                            isLocked={!user}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* AROUND THE LEAGUES - DYNAMIC PRIORITIZATION */}
+            {getPrioritizedLeagues.slice(0, 4).map((leagueData) => {
+              const leagueMatches = Array.isArray(matches) ? matches.filter(m => m.league === leagueData.league) : [];
+              const leagueNews = items.filter(item => 'tags' in item && (item as NewsStory).tags?.includes(leagueData.league)).slice(0, 3) as NewsStory[];
+
+              return (
+                <LeagueSection
+                  key={leagueData.league}
+                  league={leagueData.league}
+                  matches={leagueMatches}
+                  news={leagueNews}
+                  onMatchClick={handleMatchClick}
+                  onNewsClick={onArticleClick}
+                  onOpenPweza={openPwezaForMatch}
+                  user={user}
+                />
+              );
+            })}
+
+            {/* MAIN NEWS GRID - Focus on content */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredStreamItems.filter(item => 'source' in item).slice(2, 14).map((item, index) => {
+                    const story = item as NewsStory;
+                    // Alternate between different card styles
+                    if (index % 4 === 0) return <HeroNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} />;
+                    if (index % 3 === 0 && story.type === 'HIGHLIGHT') return <HighlightCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />;
+                    return <StandardNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} onShare={(story) => { setSelectedStory(story); setShareModalOpen(true); }} />;
                 })}
-             </div>
-             
-             {/* End of Stream Indicator */}
-             <div className="flex flex-col items-center justify-center py-10 gap-3 text-gray-400 opacity-50">
-                 <div className="w-1 h-12 bg-gradient-to-b from-transparent via-gray-400 to-transparent"></div>
-                 <span className="font-condensed font-bold uppercase tracking-widest text-xs">End of Stream</span>
-             </div>
+            </div>
+
+            {/* WHAT'S BUZZING - MATCH BUZZ CAROUSEL */}
+            <div className="bg-black rounded-lg border border-[#2C2C2C] mt-6">
+                <div className="px-4 py-3 border-b border-[#2C2C2C]">
+                    <h3 className="font-bold text-white text-lg uppercase tracking-wide">What's Buzzing</h3>
+                </div>
+
+                <div className="p-4">
+                    <div className="grid grid-cols-4 gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Cristiano Ronaldo",
+                                    avatar: "https://pbs.twimg.com/profile_images/1594465820858509312/6p3Zx8QX_400x400.jpg",
+                                    type: "official"
+                                }}
+                                timestamp="2h"
+                                content={{
+                                    type: "media",
+                                    mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
+                                }}
+                                caption="Al-Nassr star continues impressive preseason with intense training sessions."
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Sky Sports",
+                                    avatar: "https://pbs.twimg.com/profile_images/1602271499060938752/3p1H4xKo_400x400.png",
+                                    type: "media"
+                                }}
+                                timestamp="45m"
+                                content={{
+                                    type: "text",
+                                    text: "🚨 BREAKING: Major transfer news incoming! Arsenal agree deal for £50m striker. Details to follow..."
+                                }}
+                                caption="Transfer deadline day drama unfolds with major Premier League moves."
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Luka Modrić",
+                                    avatar: "https://pbs.twimg.com/profile_images/1588688236898953216/9p3Zx8QX_400x400.jpg",
+                                    type: "official"
+                                }}
+                                timestamp="1h"
+                                content={{
+                                    type: "text",
+                                    text: "What a season it's been! Grateful for every moment with Real Madrid. See you next year! 🌟 #HalaMadrid"
+                                }}
+                                caption="Real Madrid legend reflects on championship-winning campaign."
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Bleacher Report",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="3h"
+                                content={{
+                                    type: "text",
+                                    text: "The Premier League title race is heating up! Who do you think will win it all this season? 🏆"
+                                }}
+                                caption="Premier League contenders emerge as season reaches critical phase."
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "ESPN FC",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="4h"
+                                content={{
+                                    type: "media",
+                                    mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
+                                }}
+                                caption="Champions League knockout rounds promise spectacular football ahead."
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Manchester City",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "official"
+                                }}
+                                timestamp="5h"
+                                content={{
+                                    type: "text",
+                                    text: "Training intensity at maximum as we prepare for the title defense. 💪"
+                                }}
+                                caption="City's preparation for Premier League defense reaches peak intensity."
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "The Athletic",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="6h"
+                                content={{
+                                    type: "text",
+                                    text: "Deep dive: How Liverpool's transfer strategy is reshaping their squad."
+                                }}
+                                caption="Liverpool's summer transfer activity analyzed in detail."
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Premier League",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "official"
+                                }}
+                                timestamp="7h"
+                                content={{
+                                    type: "text",
+                                    text: "VAR controversies and referee decisions spark debate across the league."
+                                }}
+                                caption="VAR decisions continue to be a hot topic in Premier League discussions."
+                                sourceUrl="#"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* VIDEO HIGHLIGHTS SECTION */}
+            <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                    <PlayCircle size={16} className="text-red-500" />
+                    <span className="font-bold text-white text-sm uppercase tracking-wide">Latest Highlights</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <VideoCard
+                        title="Incredible Last-Minute Winner!"
+                        thumbnail="https://example.com/thumb1.jpg"
+                        duration="2:34"
+                        views="125K"
+                        source="Premier League"
+                    />
+                    <VideoCard
+                        title="Top 10 Goals of the Season"
+                        thumbnail="https://example.com/thumb2.jpg"
+                        duration="8:12"
+                        views="89K"
+                        source="Champions League"
+                    />
+                </div>
+            </div>
+
+            {/* LOAD MORE */}
+            <div className="text-center py-8">
+                <button
+                    onClick={() => navigate('/explore')}
+                    className="bg-[#1E1E1E] hover:bg-[#252525] text-white font-bold uppercase text-sm px-8 py-3 rounded-lg border border-[#2C2C2C] hover:border-[#00FFB2]/50 transition-colors"
+                >
+                    Load More Stories
+                </button>
+            </div>
         </section>
 
       </div>
@@ -868,7 +1122,7 @@ const WarRoomIntelCard: React.FC<{ alert: SystemAlert, onTail: () => void }> = (
         <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 uppercase">
             War Room Alert
         </div>
-        
+
         {/* Terminal Effect Lines */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none"></div>
 
@@ -892,9 +1146,9 @@ const WarRoomIntelCard: React.FC<{ alert: SystemAlert, onTail: () => void }> = (
                     </div>
                 </div>
             </div>
-            
+
             <div className="mt-3 pt-3 border-t border-[#2C2C2C] flex justify-end">
-                <button 
+                <button
                     onClick={onTail}
                     className="flex items-center gap-1.5 text-xs font-bold text-white hover:text-red-500 transition-colors uppercase"
                 >
@@ -903,4 +1157,501 @@ const WarRoomIntelCard: React.FC<{ alert: SystemAlert, onTail: () => void }> = (
             </div>
         </div>
     </div>
+);
+
+// NEW BLEACHER REPORT STYLE CARDS
+const HeroMatchCard: React.FC<{ match: Match, onClick: () => void, onOpenPweza: () => void }> = ({ match, onClick, onOpenPweza }) => (
+    <div onClick={onClick} className="relative aspect-[16/9] w-full rounded-xl overflow-hidden cursor-pointer group shadow-2xl bg-gradient-to-br from-indigo-900/40 to-black">
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+
+        <div className="absolute bottom-0 left-0 p-6 w-full">
+            <div className="flex items-center gap-2 mb-3">
+                <span className="bg-[#00FFB2] text-black text-[9px] font-black uppercase px-2 py-1 rounded tracking-wide">Featured Match</span>
+                <span className="text-[10px] font-bold text-gray-300 uppercase">{match.league}</span>
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <img src={match.homeTeam.logo} className="w-8 h-8 object-contain" />
+                    <span className="font-condensed font-black text-2xl uppercase text-white">{match.homeTeam.name}</span>
+                </div>
+                <span className="font-serif italic text-gray-300 text-lg">VS</span>
+                <div className="flex items-center gap-3">
+                    <span className="font-condensed font-black text-2xl uppercase text-white">{match.awayTeam.name}</span>
+                    <img src={match.awayTeam.logo} className="w-8 h-8 object-contain" />
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-300">{formatMatchTime(match.time)}</span>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onOpenPweza(); }}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold uppercase text-xs px-4 py-2 rounded-lg transition-colors"
+                >
+                    Ask Pweza
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
+const TrendingCard: React.FC<{ item: FeedItem, onClick: () => void }> = ({ item, onClick }) => {
+    if ('homeTeam' in item) {
+        const match = item as Match;
+        return (
+            <div onClick={onClick} className="min-w-[200px] bg-[#121212] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-[#00FFB2]/50 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                    <img src={match.homeTeam.logo} className="w-4 h-4 object-contain" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">{match.league}</span>
+                </div>
+                <div className="text-xs text-white font-bold truncate">
+                    {match.homeTeam.name} vs {match.awayTeam.name}
+                </div>
+                <div className="text-[10px] text-gray-500 mt-1">{formatMatchTime(match.time)}</div>
+            </div>
+        );
+    } else {
+        const story = item as NewsStory;
+        return (
+            <div onClick={onClick} className="min-w-[200px] bg-[#121212] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-[#00FFB2]/50 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">{story.source}</span>
+                </div>
+                <div className="text-xs text-white font-bold line-clamp-2 leading-tight">
+                    {story.title}
+                </div>
+                <div className="text-[10px] text-gray-500 mt-1">{story.timestamp}</div>
+            </div>
+        );
+    }
+};
+
+const SocialBuzzCard: React.FC<{ item: FeedItem, onClick: () => void }> = ({ item, onClick }) => {
+    if ('homeTeam' in item) {
+        const match = item as Match;
+        return (
+            <div onClick={onClick} className="bg-[#121212] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-indigo-500/50 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                    <MessageSquare size={14} className="text-indigo-400" />
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase">Match Discussion</span>
+                </div>
+                <div className="text-sm text-white font-bold">
+                    {match.homeTeam.name} vs {match.awayTeam.name}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">Live fan reactions & predictions</div>
+            </div>
+        );
+    } else {
+        const story = item as NewsStory;
+        return (
+            <div onClick={onClick} className="bg-[#121212] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-indigo-500/50 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                    <Twitter size={14} className="text-indigo-400" />
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase">Social Buzz</span>
+                </div>
+                <div className="text-sm text-white font-bold line-clamp-2">
+                    {story.title}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">{story.likes} reactions</div>
+            </div>
+        );
+    }
+};
+
+// NEW BLEACHER REPORT STYLE COMPONENTS
+const TrendingNewsCard: React.FC<{ story: NewsStory, onClick: () => void }> = ({ story, onClick }) => (
+    <div onClick={onClick} className="min-w-[280px] bg-[#121212] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-[#00FFB2]/50 transition-colors">
+        <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-bold text-gray-400 uppercase">{story.source}</span>
+            <span className="text-[10px] text-gray-600">• {story.timestamp}</span>
+        </div>
+        <div className="text-sm text-white font-bold line-clamp-2 leading-tight">
+            {story.title}
+        </div>
+        <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-1 text-gray-500">
+                <MessageSquare size={12} /> <span className="text-[10px] font-bold">{story.comments}</span>
+            </div>
+            <div className="flex items-center gap-1 text-gray-500">
+                <Flame size={12} /> <span className="text-[10px] font-bold">{story.likes}</span>
+            </div>
+        </div>
+    </div>
+);
+
+const PollOption: React.FC<{ label: string, percentage: number, votes: number }> = ({ label, percentage, votes }) => (
+    <div className="flex items-center justify-between py-2">
+        <span className="text-sm text-white font-medium">{label}</span>
+        <div className="flex items-center gap-2">
+            <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div className="h-full bg-[#00FFB2] rounded-full transition-all duration-1000" style={{ width: `${percentage}%` }}></div>
+            </div>
+            <span className="text-xs text-gray-400 font-mono">{percentage}%</span>
+        </div>
+    </div>
+);
+
+const TweetCard: React.FC<{
+    author: string;
+    handle: string;
+    avatar: string;
+    content: string;
+    timestamp: string;
+    likes: number;
+    retweets: number;
+    image?: string;
+}> = ({ author, handle, avatar, content, timestamp, likes, retweets, image }) => (
+    <div className="bg-[#121212] border border-[#2C2C2C] rounded-lg p-3">
+        <div className="flex items-start gap-3">
+            <img src={avatar} className="w-8 h-8 rounded-full" alt={author} />
+            <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-bold text-white">{author}</span>
+                    <span className="text-xs text-gray-400">{handle}</span>
+                    <span className="text-xs text-gray-600">• {timestamp}</span>
+                </div>
+                <p className="text-sm text-white leading-relaxed mb-2">{content}</p>
+                {image && (
+                    <img src={image} className="w-full rounded-lg mb-2" alt="Tweet image" />
+                )}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1 text-gray-500">
+                        <MessageSquare size={14} />
+                        <span className="text-xs">{retweets}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-gray-500">
+                        <Flame size={14} />
+                        <span className="text-xs">{likes.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+// MATCH BUZZ CARD COMPONENT - 4-GRID CAROUSEL STYLE
+const MatchBuzzCard: React.FC<{
+    publisher: {
+        name: string;
+        avatar: string;
+        type: 'official' | 'media' | 'team';
+    };
+    timestamp: string;
+    content: {
+        type: 'media' | 'text';
+        mediaUrl?: string;
+        text?: string;
+    };
+    caption: string;
+    sourceUrl: string;
+}> = ({ publisher, timestamp, content, caption, sourceUrl }) => (
+    <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer w-full aspect-square flex flex-col">
+        {/* HEADER: Publisher info */}
+        <div className="px-2 py-1.5 border-b border-gray-600">
+            <div className="flex items-center gap-1.5 mb-0.5">
+                <img
+                    src={publisher.avatar}
+                    alt={publisher.name}
+                    className="w-4 h-4 rounded-full object-cover"
+                />
+                <span className="font-medium text-white text-xs truncate">
+                    {publisher.name}
+                </span>
+                {publisher.type === 'official' && (
+                    <div className="w-0.5 h-0.5 bg-[#00FFB2] rounded-full"></div>
+                )}
+            </div>
+            <span className="text-[9px] text-gray-400">{timestamp}</span>
+        </div>
+
+        {/* CONTENT PREVIEW */}
+        <div className="flex-1 px-2 py-1.5 flex items-center justify-center bg-black">
+            {content.type === 'media' && content.mediaUrl ? (
+                <div className="w-full h-full max-h-[80px] rounded overflow-hidden bg-[#121212]">
+                    <img
+                        src={content.mediaUrl}
+                        alt="Content preview"
+                        className="w-full h-full object-cover"
+                    />
+                </div>
+            ) : (
+                <div className="w-full h-full max-h-[80px] bg-[#121212] rounded p-1.5 flex items-center justify-center">
+                    <p className="text-xs text-gray-300 text-center line-clamp-3 leading-tight">
+                        {content.text}
+                    </p>
+                </div>
+            )}
+        </div>
+
+        {/* CAPTION */}
+        <div className="px-2 py-1.5 border-t border-gray-600 bg-black">
+            <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
+                {caption}
+            </p>
+        </div>
+
+        {/* CTA BUTTON - BLACK BACKGROUND */}
+        <div className="px-2 py-1.5 border-t border-gray-600 mt-auto bg-black">
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(sourceUrl, '_blank');
+                }}
+                className="w-full bg-black text-white text-[10px] font-bold py-1.5 px-2 rounded border border-gray-600 hover:bg-gray-900 transition-colors"
+            >
+                View on X
+            </button>
+        </div>
+    </div>
+);
+
+const VideoCard: React.FC<{
+    title: string;
+    thumbnail: string;
+    duration: string;
+    views: string;
+    source: string;
+}> = ({ title, thumbnail, duration, views, source }) => (
+    <div className="relative rounded-lg overflow-hidden cursor-pointer group">
+        <div className="aspect-video bg-gray-800 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/50 group-hover:scale-110 transition-transform">
+                    <PlayCircle size={24} className="text-white fill-white ml-1" />
+                </div>
+            </div>
+            <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
+                {duration}
+            </div>
+        </div>
+        <div className="p-3 bg-[#121212]">
+            <h4 className="text-sm font-bold text-white line-clamp-2 leading-tight mb-1">{title}</h4>
+            <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-400">{source}</span>
+                <span className="text-xs text-gray-500">{views} views</span>
+            </div>
+        </div>
+    </div>
+);
+
+// CLEAN LEAGUE SECTION - NO DECORATIVE BACKGROUNDS
+const LeagueSection: React.FC<{
+    league: string;
+    matches: Match[];
+    news: NewsStory[];
+    onMatchClick: (id: string) => void;
+    onNewsClick?: (id: string) => void;
+    onOpenPweza: (match: Match) => void;
+    user: any;
+}> = ({ league, matches, news, onMatchClick, onNewsClick, onOpenPweza, user }) => (
+    <section className="px-4 pb-8">
+        <div className="flex items-center gap-2 mb-4">
+            <h2 className="font-condensed font-black text-xl text-white uppercase tracking-tighter">
+                Around the {league}
+            </h2>
+        </div>
+
+        <div className="space-y-4">
+            {/* NEWS SECTION */}
+            {news.length > 0 && (
+                <div className="border border-[#2C2C2C] rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="font-bold text-white text-sm uppercase tracking-wide">{league} News</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {news.map(story => (
+                            <StandardNewsCard
+                                key={story.id}
+                                story={story}
+                                onClick={() => onNewsClick?.(story.id)}
+                                dataSaver={false}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* MATCHES SECTION */}
+            {matches.length > 0 && (
+                <div className="border border-[#2C2C2C] rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="font-bold text-white text-sm uppercase tracking-wide">{league} Matches</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {matches.slice(0, 4).map(match => (
+                            <PremiumPredictionCard
+                                key={match.id}
+                                match={match}
+                                onClick={() => onMatchClick(match.id)}
+                                onOpenPweza={() => onOpenPweza(match)}
+                                isLocked={!user}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* TOP HIGHLIGHTS */}
+            <div className="border border-[#2C2C2C] rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                    <span className="font-bold text-white text-sm uppercase tracking-wide">Top {league} Highlights</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <VideoCard
+                        title={`${league} Goal of the Week! ⚽️`}
+                        thumbnail="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
+                        duration="1:45"
+                        views="89K"
+                        source={league}
+                    />
+                    <VideoCard
+                        title={`Best Saves in ${league} This Week`}
+                        thumbnail="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
+                        duration="3:20"
+                        views="156K"
+                        source={league}
+                    />
+                </div>
+            </div>
+
+            {/* WHAT'S BUZZING - 4-GRID CAROUSEL */}
+            <div className="border border-[#2C2C2C] rounded-lg">
+                <div className="px-4 py-3 border-b border-[#2C2C2C]">
+                    <h3 className="font-bold text-white text-sm uppercase tracking-wide">What's Buzzing</h3>
+                </div>
+
+                <div className="p-4">
+                    <div className="grid grid-cols-4 gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: `${league} Official`,
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "official"
+                                }}
+                                timestamp="1h"
+                                content={{
+                                    type: "text",
+                                    text: `🔥 Big game coming up! Who are you backing this weekend? #${league.replace(/\s+/g, '')}`
+                                }}
+                                caption={`${league} title race intensifies with crucial weekend matchups ahead.`}
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Bleacher Report",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="2h"
+                                content={{
+                                    type: "media",
+                                    mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
+                                }}
+                                caption={`Key injury update: Star player returns for ${league} clash, could swing momentum.`}
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "ESPN",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="3h"
+                                content={{
+                                    type: "text",
+                                    text: "Statistical breakdown shows defensive records could decide this matchup."
+                                }}
+                                caption={`Advanced stats reveal ${league} underdog has strong upset potential.`}
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Sky Sports",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="4h"
+                                content={{
+                                    type: "text",
+                                    text: `Transfer rumors heating up as ${league} window approaches deadline.`
+                                }}
+                                caption={`${league} transfer market activity reaches fever pitch.`}
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "The Athletic",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="5h"
+                                content={{
+                                    type: "media",
+                                    mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
+                                }}
+                                caption={`Deep analysis: ${league} tactical trends that will define the season.`}
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: `${league} Fan Page`,
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="6h"
+                                content={{
+                                    type: "text",
+                                    text: "Fan reactions pouring in as weekend fixtures approach. The excitement is building! ⚽️"
+                                }}
+                                caption={`Fan sentiment analysis shows high anticipation for ${league} weekend.`}
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Transfer News",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="7h"
+                                content={{
+                                    type: "text",
+                                    text: `Latest ${league} transfer updates and contract negotiations.`
+                                }}
+                                caption={`${league} summer transfer window activity intensifies.`}
+                                sourceUrl="#"
+                            />
+                        </div>
+                        <div className="snap-start">
+                            <MatchBuzzCard
+                                publisher={{
+                                    name: "Match Previews",
+                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
+                                    type: "media"
+                                }}
+                                timestamp="8h"
+                                content={{
+                                    type: "text",
+                                    text: `Expert analysis: ${league} weekend predictions and key matchups.`
+                                }}
+                                caption={`Comprehensive preview of all ${league} fixtures this weekend.`}
+                                sourceUrl="#"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 );

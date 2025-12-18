@@ -25,6 +25,7 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
   const [shared, setShared] = useState(false);
   const [showExecution, setShowExecution] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
+  const [isPublicSlip, setIsPublicSlip] = useState(false);
   const [showManualBuilder, setShowManualBuilder] = useState(false);
   const [pwezaTargetOdds, setPwezaTargetOdds] = useState<number>(5.0);
   const [pwezaRiskLevel, setPwezaRiskLevel] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
@@ -326,12 +327,23 @@ export const BetSlipPage: React.FC<BetSlipPageProps> = ({ slipItems, onRemoveIte
                         </button>
                     </div>
 
+                    {/* BETSLIP VISIBILITY TOGGLE */}
+                    <div className="flex items-center justify-between py-2 border-t border-[#2C2C2C]">
+                        <span className="text-xs font-bold text-gray-400 uppercase">Make Public</span>
+                        <button
+                            onClick={() => setIsPublicSlip(!isPublicSlip)}
+                            className={`w-12 h-6 rounded-full transition-colors ${isPublicSlip ? 'bg-green-600' : 'bg-gray-600'}`}
+                        >
+                            <div className={`w-5 h-5 bg-white rounded-full transition-transform ${isPublicSlip ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                        </button>
+                    </div>
+
                     {/* SAVE BETSLIP BUTTON */}
                     {user && (
                         <button
                             onClick={async () => {
                                 try {
-                                    await onSaveBetslip?.();
+                                    await onSaveBetslip?.(undefined, isPublicSlip);
                                     alert('Betslip saved successfully!');
                                 } catch (error) {
                                     alert('Failed to save betslip. Please try again.');

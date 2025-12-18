@@ -164,3 +164,246 @@ Server-side admin client:
 
 
 If you want me to also scaffold server-side examples (Edge Functions or a small Express server) for admin operations and cron jobs, tell me and I'll add them next.
+
+---
+
+# 📰 **News Aggregation Plan (Bleacher Report Style)**
+
+**Goal:** Transform Sheena Sports into the ultimate sports media platform with automated content aggregation from 50+ sources, rivaling Bleacher Report's dynamic news feed.
+
+## 🎯 **Vision**
+Create a comprehensive news ecosystem that automatically aggregates, processes, and publishes sports content from ESPN, SkySports, Twitter, and 50+ other sources - exactly like Bleacher Report's homepage with mixed content types (news, social, videos, highlights).
+
+## 📊 **Current State**
+- ✅ Manual news entry via CMS
+- ✅ Basic news cards in feed
+- ✅ Share functionality implemented
+- ❌ No automated content aggregation
+- ❌ Limited content variety (text only)
+
+## 🚀 **Implementation Roadmap**
+
+### **Phase 1: Foundation (1-2 weeks)**
+#### **1.1 RSS Feed Integration**
+- **Sources:** ESPN, SkySports, BBC Sport, The Athletic, Goal.com, Transfermarkt
+- **Implementation:**
+  ```typescript
+  // services/newsAggregator/rssService.ts
+  class RSSAggregator {
+    async fetchFromESPN() { /* ESPN RSS parsing */ }
+    async fetchFromSkySports() { /* SkySports RSS */ }
+    async processFeed(feed: RSSFeed): NewsStory[] { /* Convert to our format */ }
+  }
+  ```
+- **Frequency:** Every 5 minutes
+- **Content Types:** News articles, transfer updates, injury reports
+
+#### **1.2 Social Media Integration**
+- **Twitter/X API:** Player accounts, team accounts, journalists
+- **Instagram:** Highlights, stories (via scraping/API)
+- **TikTok:** Viral sports content
+- **Implementation:**
+  ```typescript
+  // services/newsAggregator/socialService.ts
+  class SocialAggregator {
+    async fetchTwitterTimeline(username: string) { /* Player/team tweets */ }
+    async processTweet(tweet: Tweet): SocialPost { /* Convert to news format */ }
+  }
+  ```
+
+#### **1.3 Basic Web Scraping**
+- **Puppeteer Setup:** For sites without APIs
+- **Targets:** BleacherReport, SportsIllustrated, local sports sites
+- **Ethical Scraping:** Respect robots.txt, rate limiting, user-agent rotation
+
+#### **1.4 Content Processing Pipeline**
+- **AI Summarization:** Gemini API for content condensation
+- **Deduplication:** Remove duplicate stories across sources
+- **Categorization:** Auto-tag by sport, league, player, team
+- **Sentiment Analysis:** Positive/negative story classification
+
+### **Phase 2: Advanced Features (2-4 weeks)**
+#### **2.1 Video Integration**
+- **YouTube API:** Official highlights, press conferences
+- **Twitch:** Live streams, esports content
+- **Auto-embedding:** Video cards in feed with thumbnails
+
+#### **2.2 Real-time Breaking News**
+- **WebSocket Connections:** Live updates from major sources
+- **Push Notifications:** Breaking news alerts
+- **Live Blogging:** Real-time match commentary
+
+#### **2.3 Content Enrichment**
+- **Image Optimization:** Auto-resize, compress, alt-text generation
+- **Player/Team Tagging:** Automatic entity recognition
+- **Cross-linking:** Related stories, player profiles
+
+#### **2.4 Interactive Content**
+- **Polls:** "Who wins tonight?" style engagement
+- **Live Reactions:** Real-time sentiment tracking
+- **User-Generated Content:** Fan reactions, predictions
+
+### **Phase 3: Intelligence Layer (4-6 weeks)**
+#### **3.1 Trend Detection**
+- **Viral Story Identification:** ML model for trending content
+- **Engagement Prediction:** Which stories will perform well
+- **Content Scoring:** Quality and relevance ranking
+
+#### **3.2 Cross-platform Correlation**
+- **Story Linking:** Connect related content across sources
+- **Timeline Building:** Chronological event reconstruction
+- **Context Enrichment:** Add background to breaking news
+
+#### **3.3 Automated Publishing**
+- **Smart Scheduling:** Optimal posting times
+- **A/B Testing:** Content format optimization
+- **Performance Analytics:** Engagement tracking
+
+### **Phase 4: Monetization & Scale (6-8 weeks)**
+#### **4.1 Premium Content**
+- **Sponsored Stories:** Branded content integration
+- **Exclusive Sources:** Paywalled content access
+- **Early Access:** Breaking news for premium users
+
+#### **4.2 Affiliate Integration**
+- **Betting Links:** Relevant odds for stories
+- **Merchandise:** Player/team store links
+- **Ticket Sales:** Event ticket integration
+
+## 🏗️ **Technical Architecture**
+
+### **Core Components**
+```typescript
+// Main aggregator service
+class NewsAggregator {
+  private rssService: RSSService;
+  private socialService: SocialService;
+  private videoService: VideoService;
+  private processingService: ContentProcessor;
+
+  async aggregateAllSources(): Promise<NewsItem[]> {
+    const [rssContent, socialContent, videos] = await Promise.all([
+      this.rssService.fetchAll(),
+      this.socialService.fetchAll(),
+      this.videoService.fetchHighlights()
+    ]);
+
+    return this.processingService.processAndMerge([
+      ...rssContent,
+      ...socialContent,
+      ...videos
+    ]);
+  }
+}
+
+// Content types
+interface NewsItem {
+  id: string;
+  type: 'article' | 'social' | 'video' | 'highlight';
+  title: string;
+  content: string;
+  source: string;
+  author?: string;
+  publishedAt: Date;
+  tags: string[];
+  entities: Entity[];
+  sentiment: 'positive' | 'negative' | 'neutral';
+  engagement: {
+    likes: number;
+    shares: number;
+    comments: number;
+  };
+}
+```
+
+### **Database Schema Extensions**
+```sql
+-- Enhanced news table
+ALTER TABLE feeds ADD COLUMN (
+  content_type VARCHAR(50) DEFAULT 'article',
+  source_url TEXT,
+  author_name VARCHAR(255),
+  author_avatar TEXT,
+  engagement_score INTEGER DEFAULT 0,
+  sentiment VARCHAR(20) DEFAULT 'neutral',
+  entities JSONB DEFAULT '[]',
+  processed_at TIMESTAMP,
+  auto_generated BOOLEAN DEFAULT false
+);
+
+-- Content relationships
+CREATE TABLE content_relationships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_content_id UUID REFERENCES feeds(id),
+  related_content_id UUID REFERENCES feeds(id),
+  relationship_type VARCHAR(50), -- 'followup', 'correction', 'related'
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### **API Endpoints Needed**
+```typescript
+// Aggregation endpoints
+POST /api/news/aggregate - Trigger manual aggregation
+GET /api/news/sources - List all configured sources
+POST /api/news/sources - Add new source
+DELETE /api/news/sources/:id - Remove source
+
+// Content management
+POST /api/news/process - Process raw content
+GET /api/news/trending - Get trending stories
+POST /api/news/boost - Manually boost story
+```
+
+## 📈 **Content Strategy**
+
+### **Source Categories**
+1. **Major Sports Networks:** ESPN, Fox Sports, NBC Sports
+2. **League Official:** NFL.com, NBA.com, Premier League
+3. **News Agencies:** AP, Reuters, AFP
+4. **Social Influencers:** Player accounts, analyst accounts
+5. **Fan Communities:** Reddit, Discord, forums
+6. **Local Sources:** Regional sports coverage
+
+### **Content Types Priority**
+1. **Breaking News:** Scores, injuries, trades (Highest priority)
+2. **Analysis:** Game previews, player profiles
+3. **Highlights:** Video content, photo galleries
+4. **Social Content:** Fan reactions, player posts
+5. **Long-form:** In-depth features, investigations
+
+### **Quality Control**
+- **Automated Filtering:** Remove low-quality/spam content
+- **Source Credibility Scoring:** Weight by source reputation
+- **Fact Checking:** Cross-reference major stories
+- **Duplicate Detection:** Advanced deduplication algorithms
+
+## 🎯 **Success Metrics**
+- **Content Volume:** 500+ stories per day
+- **Engagement Rate:** 15%+ click-through rate
+- **Freshness:** 95% of content < 30 minutes old
+- **Source Diversity:** Content from 50+ sources
+- **User Retention:** 40%+ daily active users
+
+## 🚀 **Go-Live Plan**
+1. **Week 1:** RSS feeds from 10 major sources
+2. **Week 2:** Social media integration (Twitter)
+3. **Week 3:** Video content and image optimization
+4. **Week 4:** Real-time updates and push notifications
+5. **Week 5:** Advanced processing and trend detection
+6. **Week 6:** Full automation and monitoring
+
+## 💰 **Cost Analysis**
+- **APIs:** $50-200/month (RSS free, social media APIs)
+- **Infrastructure:** $20-50/month (additional server capacity)
+- **Storage:** $5-15/month (images, videos)
+- **Total:** $75-265/month for full automation
+
+## 🔧 **Implementation Priority**
+1. **Start with RSS feeds** (easiest, highest impact)
+2. **Add social media** (viral content potential)
+3. **Implement video** (engagement boost)
+4. **Build intelligence layer** (content quality)
+5. **Add monetization** (revenue generation)
+
+**Ready to implement Phase 1? Let's start with RSS aggregation from ESPN and SkySports!** 🚀

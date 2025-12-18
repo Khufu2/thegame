@@ -18,7 +18,7 @@ const NEWS_SOURCES = [
 export const AdminPage: React.FC = () => {
     const { addNewsStory, addSystemAlert, deleteNewsStory, deleteSystemAlert, user, matches, news, alerts } = useSports();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'SHARE_NEWS' | 'MANAGE' | 'BACKTEST'>('NEWS');
+    const [activeTab, setActiveTab] = useState<'NEWS' | 'WAR_ROOM' | 'AI_AGENT' | 'SHARE_NEWS' | 'MANAGE' | 'BACKTEST' | 'AGGREGATION'>('NEWS');
     const [publishedNews, setPublishedNews] = useState<any[]>([]);
     const [editingNews, setEditingNews] = useState<any>(null);
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -157,6 +157,10 @@ export const AdminPage: React.FC = () => {
     const [backtestLeague, setBacktestLeague] = useState('');
     const [backtestResults, setBacktestResults] = useState<any>(null);
     const [isRunningBacktest, setIsRunningBacktest] = useState(false);
+
+    // NEWS AGGREGATION STATE
+    const [isAggregatingNews, setIsAggregatingNews] = useState(false);
+    const [aggregationResults, setAggregationResults] = useState<any>(null);
 
     if (isCheckingAdmin) {
         return (
@@ -403,6 +407,35 @@ export const AdminPage: React.FC = () => {
         setIsRunningBacktest(false);
     };
 
+    const handleAggregateNews = async () => {
+        setIsAggregatingNews(true);
+        try {
+            const response = await fetch(
+                `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/aggregate-news`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                setAggregationResults(data);
+                alert(`News aggregation complete! Fetched ${data.stats?.totalFetched || 0} items, processed ${data.stats?.processed || 0} stories.`);
+            } else {
+                const errorData = await response.json();
+                alert(`News aggregation failed: ${errorData.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('News aggregation error:', error);
+            alert('Error running news aggregation');
+        }
+        setIsAggregatingNews(false);
+    };
+
     const fetchPublishedNews = async () => {
         try {
             const response = await fetch(
@@ -591,6 +624,7 @@ export const AdminPage: React.FC = () => {
                     <button onClick={() => setActiveTab('SHARE_NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'SHARE_NEWS' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-white'}`}><ExternalLink size={12}/> Share News</button>
                     <button onClick={() => { setActiveTab('MANAGE'); fetchPublishedNews(); }} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'MANAGE' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:text-white'}`}>📝 Manage</button>
                     <button onClick={() => setActiveTab('BACKTEST')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'BACKTEST' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-white'}`}>📊 Backtest</button>
+                    <button onClick={() => setActiveTab('AGGREGATION')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'AGGREGATION' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-white'}`}>📰 Aggregation</button>
                     <button onClick={() => setActiveTab('WAR_ROOM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded whitespace-nowrap ${activeTab === 'WAR_ROOM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>War Room</button>
                 </div>
             </div>
@@ -1346,9 +1380,119 @@ export const AdminPage: React.FC = () => {
                             </div>
                         )}
                     </div>
-                )}
+                 )}
 
-                {/* --- WAR ROOM ALERT SYSTEM --- */}
+                 {/* --- NEWS AGGREGATION --- */}
+                 {activeTab === 'AGGREGATION' && (
+                     <div className="col-span-2 max-w-[800px] mx-auto w-full space-y-6">
+
+                         {/* AGGREGATION CONTROLS */}
+                         <div className="bg-[#121212] border border-green-500/50 rounded-xl p-6 shadow-2xl">
+                             <div className="flex items-center gap-3 mb-6">
+                                 <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
+                                     <Globe size={20} className="text-white" />
+                                 </div>
+                                 <div>
+                                     <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">News Aggregation</h3>
+                                     <p className="text-xs text-green-400">Automated content collection from RSS feeds</p>
+                                 </div>
+                             </div>
+
+                             <div className="mb-6">
+                                 <h4 className="font-bold text-white mb-3">Phase 1: RSS Feed Integration</h4>
+                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                                     <div className="bg-black/40 p-3 rounded-lg border border-[#333]">
+                                         <div className="text-lg font-bold text-green-400">8</div>
+                                         <div className="text-xs text-gray-400 uppercase">Sources</div>
+                                     </div>
+                                     <div className="bg-black/40 p-3 rounded-lg border border-[#333]">
+                                         <div className="text-lg font-bold text-blue-400">NFL</div>
+                                         <div className="text-xs text-gray-400 uppercase">NBA</div>
+                                     </div>
+                                     <div className="bg-black/40 p-3 rounded-lg border border-[#333]">
+                                         <div className="text-lg font-bold text-purple-400">Soccer</div>
+                                         <div className="text-xs text-gray-400 uppercase">UFC</div>
+                                     </div>
+                                     <div className="bg-black/40 p-3 rounded-lg border border-[#333]">
+                                         <div className="text-lg font-bold text-yellow-400">F1</div>
+                                         <div className="text-xs text-gray-400 uppercase">MLB</div>
+                                     </div>
+                                 </div>
+                             </div>
+
+                             <button
+                                 onClick={handleAggregateNews}
+                                 disabled={isAggregatingNews}
+                                 className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                             >
+                                 {isAggregatingNews ? (
+                                     <><RefreshCw size={16} className="animate-spin" /> Aggregating News...</>
+                                 ) : (
+                                     <><Globe size={16} /> Start News Aggregation</>
+                                 )}
+                             </button>
+                         </div>
+
+                         {/* AGGREGATION RESULTS */}
+                         {aggregationResults && (
+                             <div className="bg-[#121212] border border-green-500/50 rounded-xl p-6 shadow-2xl">
+                                 <h3 className="font-condensed font-black text-xl uppercase text-white mb-6">Aggregation Results</h3>
+
+                                 {/* STATS OVERVIEW */}
+                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                     <div className="bg-black/40 p-4 rounded-lg border border-[#333]">
+                                         <div className="text-2xl font-bold text-green-400">{aggregationResults.stats?.totalFetched || 0}</div>
+                                         <div className="text-xs text-gray-400 uppercase">Fetched</div>
+                                     </div>
+                                     <div className="bg-black/40 p-4 rounded-lg border border-[#333]">
+                                         <div className="text-2xl font-bold text-blue-400">{aggregationResults.stats?.processed || 0}</div>
+                                         <div className="text-xs text-gray-400 uppercase">Processed</div>
+                                     </div>
+                                     <div className="bg-black/40 p-4 rounded-lg border border-[#333]">
+                                         <div className="text-2xl font-bold text-yellow-400">{aggregationResults.stats?.duplicates || 0}</div>
+                                         <div className="text-xs text-gray-400 uppercase">Duplicates</div>
+                                     </div>
+                                     <div className="bg-black/40 p-4 rounded-lg border border-[#333]">
+                                         <div className="text-2xl font-bold text-red-400">{aggregationResults.stats?.errors || 0}</div>
+                                         <div className="text-xs text-gray-400 uppercase">Errors</div>
+                                     </div>
+                                 </div>
+
+                                 {/* CACHE STATS */}
+                                 {aggregationResults.cacheStats && (
+                                     <div className="mb-6">
+                                         <h4 className="font-bold text-white mb-3">Cache Performance</h4>
+                                         <div className="grid grid-cols-2 gap-4">
+                                             <div className="bg-black/20 p-3 rounded">
+                                                 <div className="text-sm text-gray-300">RSS Cache Size: {aggregationResults.cacheStats.rssCache?.size || 0}</div>
+                                             </div>
+                                             <div className="bg-black/20 p-3 rounded">
+                                                 <div className="text-sm text-gray-300">Processed URLs: {aggregationResults.cacheStats.processedUrls || 0}</div>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 )}
+
+                                 {/* STATUS */}
+                                 <div className="bg-green-900/20 border border-green-500/50 rounded-lg p-4">
+                                     <div className="flex items-center gap-3">
+                                         <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
+                                             <Check size={16} className="text-white" />
+                                         </div>
+                                         <div>
+                                             <h4 className="font-bold text-green-400">Aggregation Complete</h4>
+                                             <p className="text-sm text-gray-300">
+                                                 Successfully stored {aggregationResults.newsStored || 0} news stories and {aggregationResults.alertsStored || 0} alerts.
+                                             </p>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                         )}
+                     </div>
+                 )}
+
+                 {/* --- WAR ROOM ALERT SYSTEM --- */}
                 {activeTab === 'WAR_ROOM' && (
                     <div className="col-span-2 max-w-[600px] mx-auto w-full space-y-6">
 

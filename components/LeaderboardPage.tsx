@@ -61,6 +61,18 @@ export const LeaderboardPage: React.FC = () => {
     setUserBetslips(mockBetslips.filter(slip => slip.userId === userEntry.userId));
   };
 
+  const handleFollowUser = (userId: string) => {
+    // TODO: Implement user following - would call followUser API
+    console.log('Follow user:', userId);
+    alert('User following feature coming soon!');
+  };
+
+  const handleFollowBetslip = (betslipId: string) => {
+    // TODO: Implement betslip following - would call followBetslip API
+    console.log('Follow betslip:', betslipId);
+    alert('Betslip following feature coming soon!');
+  };
+
   const getBetslipStatusColor = (status: string) => {
     switch (status) {
       case 'WON': return 'text-green-500';
@@ -186,6 +198,14 @@ export const LeaderboardPage: React.FC = () => {
                                       <div className="flex items-center gap-1">
                                           <span className={`font-bold text-sm ${entry.userId === user?.id ? 'text-indigo-400' : 'text-white'}`}>{entry.userName}</span>
                                           {entry.isPro && <Crown size={12} className="text-yellow-400 fill-yellow-400" />}
+                                          {entry.userId !== user?.id && (
+                                              <button
+                                                  onClick={(e) => { e.stopPropagation(); handleFollowUser(entry.userId); }}
+                                                  className="ml-2 text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-0.5 rounded uppercase font-bold"
+                                              >
+                                                  Follow
+                                              </button>
+                                          )}
                                       </div>
                                       {entry.streak && entry.streak > 2 && (
                                           <span className="text-[10px] text-orange-500 flex items-center gap-0.5 font-bold">
@@ -257,7 +277,17 @@ export const LeaderboardPage: React.FC = () => {
 
                               <div className="flex justify-between items-center pt-3 border-t border-[#2C2C2C]">
                                   <span className="text-sm text-gray-400">Potential Return</span>
-                                  <span className="font-mono font-bold text-lg text-[#00FFB2]">${betslip.potentialReturn}</span>
+                                  <div className="flex items-center gap-2">
+                                      <span className="font-mono font-bold text-lg text-[#00FFB2]">${betslip.potentialReturn}</span>
+                                      {selectedUser && selectedUser.userId !== user?.id && (
+                                          <button
+                                              onClick={(e) => { e.stopPropagation(); handleFollowBetslip(betslip.id); }}
+                                              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded uppercase font-bold"
+                                          >
+                                              Follow
+                                          </button>
+                                      )}
+                                  </div>
                               </div>
                           </div>
                       ))}

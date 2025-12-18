@@ -14,7 +14,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
   const { flashAlert } = useSports();
 
   return (
-    <div className="min-h-screen bg-[#F2F2F2] md:bg-black text-black md:text-white font-sans flex flex-col md:flex-row">
+    <div className="min-h-screen bg-black text-white font-sans flex flex-col md:flex-row">
       
       {/* FLASH ALERT TOAST */}
       {flashAlert && (
@@ -73,12 +73,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
       <main className="flex-1 md:ml-[260px] min-h-screen relative pb-[70px] md:pb-0">
         
         {/* MOBILE HEADER - Compact (44px standard iOS) */}
-        <header className="md:hidden sticky top-0 z-50 bg-[#F2F2F2]/95 backdrop-blur-xl h-[44px] flex items-center justify-between px-4 border-b border-gray-200/50 shadow-sm">
+        <header className="md:hidden sticky top-0 z-50 bg-black/95 backdrop-blur-xl h-[44px] flex items-center justify-between px-4 border-b border-white/10 shadow-sm">
             <div className="flex items-center gap-2">
-                <span className="font-condensed font-black text-xl tracking-tighter text-black uppercase italic leading-none pt-1">Sheena</span>
+                <span className="font-condensed font-black text-xl tracking-tighter text-white uppercase italic leading-none pt-1">Sheena</span>
             </div>
             <div className="flex items-center gap-3">
-                <button onClick={() => onNavigate('notifications')} className="text-black/60 hover:text-black transition-colors">
+                <button onClick={() => onNavigate('notifications')} className="text-white/60 hover:text-white transition-colors">
                     <Bell size={20} />
                 </button>
                 <button onClick={onOpenPweza} className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-transform">
@@ -91,7 +91,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
       </main>
 
       {/* MOBILE BOTTOM NAV - 5 Items */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[60px] bg-white/90 backdrop-blur-2xl border-t border-gray-200/50 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-5px_30px_rgba(0,0,0,0.02)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[60px] bg-black/90 backdrop-blur-2xl border-t border-white/10 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-5px_30px_rgba(0,0,0,0.1)]">
          <NavTab icon={<Home />} label="Home" active={currentPage === 'home'} onClick={() => onNavigate('home')} />
          <NavTab icon={<Search />} label="Explore" active={currentPage === 'explore'} onClick={() => onNavigate('explore')} />
          <NavTab icon={<Zap />} label="Matches" active={currentPage === 'scores'} onClick={() => onNavigate('scores')} />
@@ -130,9 +130,9 @@ const TeamRow = ({ name }: { name: string }) => (
 
 const NavTab = ({ icon, label, active, onClick }: any) => (
     <div onClick={onClick} className="flex flex-col items-center justify-center gap-1 cursor-pointer w-14 pt-1">
-        <div className={`${active ? 'text-indigo-600 transform scale-110' : 'text-gray-400'} transition-all duration-200`}>
+        <div className={`${active ? 'text-[#00FFB2] transform scale-110' : 'text-gray-400'} transition-all duration-200`}>
             {React.cloneElement(icon, { size: 22, strokeWidth: active ? 2.5 : 2, fill: active ? "currentColor" : "none", fillOpacity: 0.1 })}
         </div>
-        <span className={`text-[9px] font-bold tracking-tight uppercase ${active ? 'text-indigo-600' : 'text-gray-400'}`}>{label}</span>
+        <span className={`text-[9px] font-bold tracking-tight uppercase ${active ? 'text-[#00FFB2]' : 'text-gray-400'}`}>{label}</span>
     </div>
 );
