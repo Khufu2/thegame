@@ -89,21 +89,30 @@ serve(async (req) => {
     console.log(`📰 Collected ${uniqueNews.length} unique news items`);
 
     if (uniqueNews.length > 0) {
-      // Upsert to avoid duplicates
-      const { data, error } = await supabase
+      // Get existing titles to avoid duplicates
+      const { data: existingFeeds } = await supabase
         .from('feeds')
-        .upsert(uniqueNews, { 
-          onConflict: 'title',
-          ignoreDuplicates: true 
-        })
-        .select();
+        .select('title')
+        .in('title', uniqueNews.map(n => n.title));
+      
+      const existingTitles = new Set(existingFeeds?.map(f => f.title) || []);
+      const newItems = uniqueNews.filter(item => !existingTitles.has(item.title));
+      
+      if (newItems.length > 0) {
+        const { data, error } = await supabase
+          .from('feeds')
+          .insert(newItems)
+          .select();
 
-      if (error) {
-        console.error('Error storing news:', error);
-        throw error;
+        if (error) {
+          console.error('Error storing news:', error);
+          throw error;
+        }
+
+        console.log(`✅ Stored ${data?.length || 0} news stories`);
+      } else {
+        console.log('ℹ️ No new stories to store (all duplicates)');
       }
-
-      console.log(`✅ Stored ${data?.length || 0} news stories`);
     }
 
     return new Response(
