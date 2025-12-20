@@ -8,62 +8,90 @@ const corsHeaders = {
 };
 
 const RSS_FEEDS = [
-  { url: 'https://www.espn.com/espn/rss/soccer/news', source: 'ESPN Soccer', type: 'soccer' },
-  { url: 'https://www.espn.com/espn/rss/nba/news', source: 'ESPN NBA', type: 'NBA' },
-  { url: 'https://www.espn.com/espn/rss/nfl/news', source: 'ESPN NFL', type: 'NFL' },
-  { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml', source: 'NY Times Sports', type: 'general' },
+  // ESPN feeds
+  { url: 'https://www.espn.com/espn/rss/soccer/news', source: 'ESPN Soccer', type: 'soccer', tags: ['EPL', 'LaLiga', 'soccer'] },
+  { url: 'https://www.espn.com/espn/rss/nba/news', source: 'ESPN NBA', type: 'NBA', tags: ['NBA', 'basketball'] },
+  { url: 'https://www.espn.com/espn/rss/nfl/news', source: 'ESPN NFL', type: 'NFL', tags: ['NFL', 'football'] },
+  // BBC Sport
+  { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport', type: 'soccer', tags: ['EPL', 'soccer'] },
+  // Sky Sports
+  { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports Football', type: 'soccer', tags: ['EPL', 'soccer'] },
+  // Goal.com
+  { url: 'https://www.goal.com/feeds/en/news', source: 'Goal.com', type: 'soccer', tags: ['soccer', 'transfers'] },
 ];
 
-// Simple RSS parsing with better CDATA handling
+// Simple RSS parsing with robust CDATA handling
 function parseRSSItem(item: string) {
-  // Extract title with CDATA handling
+  // Extract title
   let title = '';
-  const titleMatch = item.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+  const titleMatch = item.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   if (titleMatch) {
-    title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+    title = titleMatch[1]
+      .replace(/<!\[CDATA\[/g, '')
+      .replace(/\]\]>/g, '')
+      .replace(/<[^>]+>/g, '')
+      .trim();
   }
 
   // Extract link
   let link = '';
-  const linkMatch = item.match(/<link[^>]*>([^<]+)<\/link>/i);
+  const linkMatch = item.match(/<link[^>]*>([\s\S]*?)<\/link>/i);
   if (linkMatch) {
-    link = linkMatch[1].trim();
+    link = linkMatch[1].replace(/<!\[CDATA\[/g, '').replace(/\]\]>/g, '').trim();
+  }
+  // Also try guid as fallback
+  if (!link) {
+    const guidMatch = item.match(/<guid[^>]*>([\s\S]*?)<\/guid>/i);
+    if (guidMatch) {
+      link = guidMatch[1].replace(/<!\[CDATA\[/g, '').replace(/\]\]>/g, '').trim();
+    }
   }
 
-  // Extract description with CDATA handling
+  // Extract description
   let description = '';
-  const descMatch = item.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
+  const descMatch = item.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
   if (descMatch) {
-    description = descMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, '').trim();
+    description = descMatch[1]
+      .replace(/<!\[CDATA\[/g, '')
+      .replace(/\]\]>/g, '')
+      .replace(/<[^>]+>/g, '')
+      .trim()
+      .substring(0, 500);
   }
 
   // Extract pubDate
   let pubDate = '';
-  const dateMatch = item.match(/<pubDate>([^<]+)<\/pubDate>/i);
+  const dateMatch = item.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i);
   if (dateMatch) {
     pubDate = dateMatch[1].trim();
   }
 
   // Extract image URL from various sources
   let imageUrl = '';
-  const enclosureMatch = item.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image/i);
-  const mediaMatch = item.match(/<media:content[^>]*url="([^"]+)"/i);
-  const imgMatch = item.match(/<img[^>]*src="([^"]+)"/i);
-  imageUrl = enclosureMatch?.[1] || mediaMatch?.[1] || imgMatch?.[1] || '';
+  const mediaMatch = item.match(/<media:content[^>]*url=["']([^"']+)["']/i);
+  const enclosureMatch = item.match(/<enclosure[^>]*url=["']([^"']+)["'][^>]*type=["']image/i);
+  const thumbnailMatch = item.match(/<media:thumbnail[^>]*url=["']([^"']+)["']/i);
+  imageUrl = mediaMatch?.[1] || enclosureMatch?.[1] || thumbnailMatch?.[1] || '';
 
   return { title, link, description, pubDate, imageUrl };
 }
 
-async function fetchRSSFeed(feedConfig: { url: string; source: string; type: string }) {
+async function fetchRSSFeed(feedConfig: { url: string; source: string; type: string; tags: string[] }) {
   try {
-    console.log(`📡 Fetching ${feedConfig.source}...`);
+    console.log(`📡 Fetching ${feedConfig.source} from ${feedConfig.url}...`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
     
     const response = await fetch(feedConfig.url, {
       headers: { 
-        'User-Agent': 'Mozilla/5.0 (compatible; SheenaSportsBot/1.0)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/rss+xml, application/xml, text/xml, */*'
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       console.warn(`⚠️ Failed to fetch ${feedConfig.source}: ${response.status}`);
@@ -75,26 +103,34 @@ async function fetchRSSFeed(feedConfig: { url: string; source: string; type: str
     
     console.log(`📰 Found ${items.length} items from ${feedConfig.source}`);
     
-    return items.slice(0, 5).map(item => {
-      const parsed = parseRSSItem(item);
-      if (!parsed.title) return null;
+    // Take up to 10 items per feed
+    const parsed = items.slice(0, 10).map(item => {
+      const data = parseRSSItem(item);
+      if (!data.title || data.title.length < 10) return null;
+      
+      // Create a unique hash based on title + source to avoid cross-source duplicates
+      const uniqueTitle = `${data.title}`;
       
       return {
         type: 'news',
-        title: parsed.title,
-        excerpt: parsed.description.substring(0, 300) || parsed.title,
-        content: parsed.description,
-        image_url: parsed.imageUrl || 'https://images.unsplash.com/photo-1461896836934- voices-of-black?q=80&w=800&auto=format&fit=crop',
+        title: uniqueTitle,
+        excerpt: data.description || data.title,
+        content: data.description,
+        image_url: data.imageUrl || `https://images.unsplash.com/photo-1579952363873-27f3bde9be51?q=80&w=800&auto=format&fit=crop`,
         source: feedConfig.source,
-        tags: [feedConfig.type],
+        tags: feedConfig.tags,
         metadata: { 
-          originalUrl: parsed.link,
-          pubDate: parsed.pubDate 
+          originalUrl: data.link,
+          pubDate: data.pubDate,
+          fetchedAt: new Date().toISOString()
         }
       };
     }).filter(Boolean);
+    
+    console.log(`✅ Parsed ${parsed.length} valid items from ${feedConfig.source}`);
+    return parsed;
   } catch (error) {
-    console.error(`❌ Error fetching ${feedConfig.source}:`, error);
+    console.error(`❌ Error fetching ${feedConfig.source}:`, error.message || error);
     return [];
   }
 }
@@ -115,8 +151,11 @@ serve(async (req) => {
     const feedPromises = RSS_FEEDS.map(feed => fetchRSSFeed(feed));
     const feedResults = await Promise.all(feedPromises);
     
-    // Flatten and deduplicate by title
+    // Flatten results
     const allNews = feedResults.flat().filter(Boolean);
+    console.log(`📰 Total items collected: ${allNews.length}`);
+    
+    // Deduplicate by title within this batch
     const seenTitles = new Set<string>();
     const uniqueNews = allNews.filter(item => {
       if (!item || seenTitles.has(item.title)) return false;
@@ -124,37 +163,54 @@ serve(async (req) => {
       return true;
     });
 
-    console.log(`📰 Collected ${uniqueNews.length} unique news items from ${RSS_FEEDS.length} sources`);
+    console.log(`📰 Unique items after dedup: ${uniqueNews.length}`);
 
     let storedCount = 0;
     let duplicateCount = 0;
 
     if (uniqueNews.length > 0) {
-      // Get existing titles to avoid duplicates
-      const { data: existingFeeds } = await supabase
+      // Get existing titles from the last 7 days only (allow re-fetch of older news)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data: existingFeeds, error: fetchError } = await supabase
         .from('feeds')
         .select('title')
-        .in('title', uniqueNews.map(n => n.title));
+        .gte('created_at', sevenDaysAgo.toISOString());
       
-      const existingTitles = new Set(existingFeeds?.map(f => f.title) || []);
+      if (fetchError) {
+        console.error('Error fetching existing feeds:', fetchError);
+      }
+      
+      const existingTitles = new Set((existingFeeds || []).map(f => f.title));
+      console.log(`📊 Existing titles in last 7 days: ${existingTitles.size}`);
+      
       const newItems = uniqueNews.filter(item => !existingTitles.has(item.title));
       duplicateCount = uniqueNews.length - newItems.length;
       
+      console.log(`📊 New items to store: ${newItems.length}, Duplicates: ${duplicateCount}`);
+      
       if (newItems.length > 0) {
-        const { data, error } = await supabase
-          .from('feeds')
-          .insert(newItems)
-          .select();
+        // Insert in smaller batches to avoid issues
+        const batchSize = 10;
+        for (let i = 0; i < newItems.length; i += batchSize) {
+          const batch = newItems.slice(i, i + batchSize);
+          const { data, error } = await supabase
+            .from('feeds')
+            .insert(batch)
+            .select();
 
-        if (error) {
-          console.error('Error storing news:', error);
-          throw error;
+          if (error) {
+            console.error(`Error storing batch ${i / batchSize + 1}:`, error);
+          } else {
+            storedCount += data?.length || 0;
+            console.log(`✅ Stored batch ${i / batchSize + 1}: ${data?.length || 0} items`);
+          }
         }
-
-        storedCount = data?.length || 0;
-        console.log(`✅ Stored ${storedCount} news stories`);
+        
+        console.log(`✅ Total stored: ${storedCount} news stories`);
       } else {
-        console.log('ℹ️ No new stories to store (all duplicates)');
+        console.log('ℹ️ No new stories to store - all are recent duplicates');
       }
     }
 
@@ -163,11 +219,12 @@ serve(async (req) => {
         success: true,
         stats: {
           totalFetched: allNews.length,
-          processed: uniqueNews.length,
+          unique: uniqueNews.length,
           stored: storedCount,
           duplicates: duplicateCount
         },
         sources: RSS_FEEDS.map(f => f.source),
+        newsStored: storedCount,
         timestamp: new Date().toISOString()
       }),
       {
