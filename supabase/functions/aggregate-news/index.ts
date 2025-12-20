@@ -153,7 +153,27 @@ function parseRSSItem(item: string) {
   const imgSrcMatch = item.match(/<img[^>]*src=["']([^"']+)["']/i);
   imageUrl = mediaMatch?.[1] || enclosureMatch?.[1] || thumbnailMatch?.[1] || imgSrcMatch?.[1] || '';
 
-  return { title, link, description, pubDate, imageUrl };
+  // Extract video URL (YouTube, etc.)
+  let videoUrl = '';
+  const youtubeMatch = item.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+  if (youtubeMatch) {
+    videoUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+  } else {
+    // Check for other video links in the content
+    const videoLinkMatch = item.match(/https?:\/\/(?:www\.)?(?:youtube\.com|vimeo\.com|dailymotion\.com|twitch\.tv)\/[^\s<>"']+/i);
+    if (videoLinkMatch) {
+      videoUrl = videoLinkMatch[0];
+      // Convert YouTube watch URLs to embed
+      if (videoUrl.includes('youtube.com/watch?v=')) {
+        const videoId = videoUrl.match(/v=([a-zA-Z0-9_-]{11})/)?.[1];
+        if (videoId) {
+          videoUrl = `https://www.youtube.com/embed/${videoId}`;
+        }
+      }
+    }
+  }
+
+  return { title, link, description, pubDate, imageUrl, videoUrl };
 }
 
 async function fetchRSSFeed(feedConfig: { url: string; source: string; type: string; tags: string[] }) {
@@ -197,9 +217,10 @@ async function fetchRSSFeed(feedConfig: { url: string; source: string; type: str
         excerpt: data.description || data.title,
         content: data.description,
         image_url: data.imageUrl || getSportFallbackImage(feedConfig.tags),
+        video_url: data.videoUrl || null,
         source: feedConfig.source,
         tags: feedConfig.tags,
-        metadata: { 
+        metadata: {
           originalUrl: data.link,
           pubDate: data.pubDate,
           fetchedAt: new Date().toISOString()
