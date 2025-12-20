@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
-import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper, Share2, Twitter, Facebook, Link, Youtube, Calendar, Users, Star } from 'lucide-react';
+import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, ChevronLeft, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper, Share2, Twitter, Facebook, Link, Youtube, Calendar, Users, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { formatMatchTime } from './utils/formatTime';
@@ -495,145 +495,8 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                 })}
             </div>
 
-            {/* WHAT'S BUZZING - MATCH BUZZ CAROUSEL */}
-            <div className="bg-black rounded-lg border border-[#2C2C2C] mt-6">
-                <div className="px-4 py-3 border-b border-[#2C2C2C]">
-                    <h3 className="font-bold text-white text-lg uppercase tracking-wide">What's Buzzing</h3>
-                </div>
-
-                <div className="p-4">
-                    <div className="grid grid-cols-4 gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Cristiano Ronaldo",
-                                    avatar: "https://pbs.twimg.com/profile_images/1594465820858509312/6p3Zx8QX_400x400.jpg",
-                                    type: "official"
-                                }}
-                                timestamp="2h"
-                                content={{
-                                    type: "media",
-                                    mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
-                                }}
-                                caption="Al-Nassr star continues impressive preseason with intense training sessions."
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Sky Sports",
-                                    avatar: "https://pbs.twimg.com/profile_images/1602271499060938752/3p1H4xKo_400x400.png",
-                                    type: "media"
-                                }}
-                                timestamp="45m"
-                                content={{
-                                    type: "text",
-                                    text: "🚨 BREAKING: Major transfer news incoming! Arsenal agree deal for £50m striker. Details to follow..."
-                                }}
-                                caption="Transfer deadline day drama unfolds with major Premier League moves."
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Luka Modrić",
-                                    avatar: "https://pbs.twimg.com/profile_images/1588688236898953216/9p3Zx8QX_400x400.jpg",
-                                    type: "official"
-                                }}
-                                timestamp="1h"
-                                content={{
-                                    type: "text",
-                                    text: "What a season it's been! Grateful for every moment with Real Madrid. See you next year! 🌟 #HalaMadrid"
-                                }}
-                                caption="Real Madrid legend reflects on championship-winning campaign."
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Bleacher Report",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="3h"
-                                content={{
-                                    type: "text",
-                                    text: "The Premier League title race is heating up! Who do you think will win it all this season? 🏆"
-                                }}
-                                caption="Premier League contenders emerge as season reaches critical phase."
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "ESPN FC",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="4h"
-                                content={{
-                                    type: "media",
-                                    mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
-                                }}
-                                caption="Champions League knockout rounds promise spectacular football ahead."
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Manchester City",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "official"
-                                }}
-                                timestamp="5h"
-                                content={{
-                                    type: "text",
-                                    text: "Training intensity at maximum as we prepare for the title defense. 💪"
-                                }}
-                                caption="City's preparation for Premier League defense reaches peak intensity."
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "The Athletic",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="6h"
-                                content={{
-                                    type: "text",
-                                    text: "Deep dive: How Liverpool's transfer strategy is reshaping their squad."
-                                }}
-                                caption="Liverpool's summer transfer activity analyzed in detail."
-                                sourceUrl="#"
-                            />
-                        </div>
-                        <div className="snap-start">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Premier League",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "official"
-                                }}
-                                timestamp="7h"
-                                content={{
-                                    type: "text",
-                                    text: "VAR controversies and referee decisions spark debate across the league."
-                                }}
-                                caption="VAR decisions continue to be a hot topic in Premier League discussions."
-                                sourceUrl="#"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* WHAT'S BUZZING - BLEACHER REPORT STYLE */}
+            <WhatsBuzzingSection />
 
             {/* VIDEO HIGHLIGHTS SECTION */}
             <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] mt-6">
@@ -1329,78 +1192,150 @@ const TweetCard: React.FC<{
     </div>
 );
 
-// MATCH BUZZ CARD COMPONENT - 4-GRID CAROUSEL STYLE
-const MatchBuzzCard: React.FC<{
-    publisher: {
-        name: string;
-        avatar: string;
-        type: 'official' | 'media' | 'team';
+// BLEACHER REPORT STYLE - WHAT'S BUZZING SECTION
+const WhatsBuzzingSection: React.FC = () => {
+    const [scrollPosition, setScrollPosition] = useState(0);
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+
+    const buzzCards = [
+        {
+            source: { name: "Grind City Media", verified: true, logo: "B·R" },
+            time: "3h",
+            image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=400&auto=format&fit=crop",
+            isVideo: true,
+            caption: "",
+        },
+        {
+            source: { name: "NBA", verified: true, logo: "B·R" },
+            time: "3h",
+            image: "https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=400&auto=format&fit=crop",
+            isVideo: false,
+            caption: "NBA STANDINGS UPDATE ‼️ MEM (#9 in West) improves to 8-3 in its last 11 📈 CHI",
+        },
+        {
+            source: { name: "NBA", verified: true, logo: "B·R" },
+            time: "3h",
+            image: "https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=400&auto=format&fit=crop",
+            isVideo: false,
+            caption: "NBA STANDINGS UPDATE ‼️ MEM (#9 in West) wins 2nd straight, 8-3 in last 11 📈 CHI",
+        },
+        {
+            source: { name: "NBA", verified: true, logo: "B·R" },
+            time: "3h",
+            image: "https://images.unsplash.com/photo-1519861531473-9200262188bf?q=80&w=400&auto=format&fit=crop",
+            isVideo: false,
+            caption: "🏀 WEDNESDAY'S FINAL SCORES 🏀 Jaren Jackson Jr. and the @memgrizz win on the road and",
+        },
+    ];
+
+    const scroll = (direction: 'left' | 'right') => {
+        if (scrollRef.current) {
+            const scrollAmount = 280;
+            scrollRef.current.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        }
     };
-    timestamp: string;
-    content: {
-        type: 'media' | 'text';
-        mediaUrl?: string;
-        text?: string;
+
+    return (
+        <div className="bg-[#1a1a1a] rounded-xl mt-6 overflow-hidden">
+            {/* HEADER */}
+            <div className="flex items-center justify-between px-4 py-3">
+                <h3 className="font-bold text-[#FFD700] text-sm uppercase tracking-widest">
+                    What's Buzzing
+                </h3>
+                <div className="flex items-center gap-3">
+                    <a href="#" className="text-gray-400 hover:text-white text-xs font-medium transition-colors">
+                        Go to Social
+                    </a>
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => scroll('left')}
+                            className="w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center text-gray-400 hover:text-white hover:border-white transition-colors"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <button
+                            onClick={() => scroll('right')}
+                            className="w-8 h-8 rounded-full border border-gray-600 bg-white text-black flex items-center justify-center hover:bg-gray-200 transition-colors"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* CARDS CAROUSEL */}
+            <div
+                ref={scrollRef}
+                className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-4 snap-x snap-mandatory"
+            >
+                {buzzCards.map((card, index) => (
+                    <BRBuzzCard key={index} card={card} />
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// Bleacher Report Style Buzz Card
+const BRBuzzCard: React.FC<{
+    card: {
+        source: { name: string; verified: boolean; logo: string };
+        time: string;
+        image: string;
+        isVideo: boolean;
+        caption: string;
     };
-    caption: string;
-    sourceUrl: string;
-}> = ({ publisher, timestamp, content, caption, sourceUrl }) => (
-    <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer w-full aspect-square flex flex-col">
-        {/* HEADER: Publisher info */}
-        <div className="px-2 py-1.5 border-b border-gray-600">
-            <div className="flex items-center gap-1.5 mb-0.5">
-                <img
-                    src={publisher.avatar}
-                    alt={publisher.name}
-                    className="w-4 h-4 rounded-full object-cover"
-                />
-                <span className="font-medium text-white text-xs truncate">
-                    {publisher.name}
-                </span>
-                {publisher.type === 'official' && (
-                    <div className="w-0.5 h-0.5 bg-[#00FFB2] rounded-full"></div>
+}> = ({ card }) => (
+    <div className="snap-start shrink-0 w-[220px] bg-[#252525] rounded-lg overflow-hidden cursor-pointer hover:bg-[#2a2a2a] transition-colors">
+        {/* HEADER */}
+        <div className="flex items-center gap-2 px-3 py-2">
+            <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                <span className="text-white text-[8px] font-black">{card.source.logo}</span>
+            </div>
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+                <span className="text-white text-xs font-medium truncate">{card.source.name}</span>
+                {card.source.verified && (
+                    <svg className="w-3 h-3 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                    </svg>
                 )}
             </div>
-            <span className="text-[9px] text-gray-400">{timestamp}</span>
+            <span className="text-gray-500 text-[10px] shrink-0">{card.time}</span>
         </div>
 
-        {/* CONTENT PREVIEW */}
-        <div className="flex-1 px-2 py-1.5 flex items-center justify-center bg-black">
-            {content.type === 'media' && content.mediaUrl ? (
-                <div className="w-full h-full max-h-[80px] rounded overflow-hidden bg-[#121212]">
-                    <img
-                        src={content.mediaUrl}
-                        alt="Content preview"
-                        className="w-full h-full object-cover"
-                    />
-                </div>
-            ) : (
-                <div className="w-full h-full max-h-[80px] bg-[#121212] rounded p-1.5 flex items-center justify-center">
-                    <p className="text-xs text-gray-300 text-center line-clamp-3 leading-tight">
-                        {content.text}
-                    </p>
+        {/* IMAGE/VIDEO */}
+        <div className="relative aspect-[4/3] bg-black">
+            <img
+                src={card.image}
+                alt="Buzz content"
+                className="w-full h-full object-cover"
+            />
+            {card.isVideo && (
+                <div className="absolute bottom-2 left-2 flex items-center gap-1 text-white text-[10px]">
+                    <PlayCircle size={12} className="fill-white" />
+                    <span>Video thumbnail</span>
                 </div>
             )}
         </div>
 
         {/* CAPTION */}
-        <div className="px-2 py-1.5 border-t border-gray-600 bg-black">
-            <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
-                {caption}
-            </p>
-        </div>
+        {card.caption && (
+            <div className="px-3 py-2">
+                <p className="text-white text-xs leading-relaxed line-clamp-3">
+                    {card.caption}
+                </p>
+            </div>
+        )}
 
-        {/* CTA BUTTON - BLACK BACKGROUND */}
-        <div className="px-2 py-1.5 border-t border-gray-600 mt-auto bg-black">
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(sourceUrl, '_blank');
-                }}
-                className="w-full bg-black text-white text-[10px] font-bold py-1.5 px-2 rounded border border-gray-600 hover:bg-gray-900 transition-colors"
-            >
-                View on X
-            </button>
+        {/* FOOTER */}
+        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-700">
+            <span className="text-gray-400 text-[10px]">View on X</span>
+            <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
         </div>
     </div>
 );
@@ -1433,7 +1368,7 @@ const VideoCard: React.FC<{
     </div>
 );
 
-// CLEAN LEAGUE SECTION - NO DECORATIVE BACKGROUNDS
+// CLEAN LEAGUE SECTION - PRIORITIZE NEWS OVER MATCHES
 const LeagueSection: React.FC<{
     league: string;
     matches: Match[];
@@ -1443,155 +1378,107 @@ const LeagueSection: React.FC<{
     onOpenPweza: (match: Match) => void;
     user: any;
 }> = ({ league, matches, news, onMatchClick, onNewsClick, onOpenPweza, user }) => (
-    <section className="px-4 pb-8">
-        <div className="flex items-center gap-2 mb-4">
+    <section className="px-4 pb-6">
+        <div className="flex items-center justify-between mb-4">
             <h2 className="font-condensed font-black text-xl text-white uppercase tracking-tighter">
                 Around the {league}
             </h2>
+            <button className="text-xs text-gray-400 hover:text-white transition-colors">
+                See All
+            </button>
         </div>
 
-        <div className="space-y-4">
-            {/* NEWS SECTION */}
-            {news.length > 0 && (
-                <div className="border border-[#2C2C2C] rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                        <span className="font-bold text-white text-sm uppercase tracking-wide">{league} News</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {news.map(story => (
-                            <StandardNewsCard
-                                key={story.id}
-                                story={story}
-                                onClick={() => onNewsClick?.(story.id)}
-                                dataSaver={false}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* MATCHES SECTION */}
-            {matches.length > 0 && (
-                <div className="border border-[#2C2C2C] rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                        <span className="font-bold text-white text-sm uppercase tracking-wide">{league} Matches</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {matches.slice(0, 4).map(match => (
-                            <PremiumPredictionCard
-                                key={match.id}
-                                match={match}
-                                onClick={() => onMatchClick(match.id)}
-                                onOpenPweza={() => onOpenPweza(match)}
-                                isLocked={!user}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* TOP HIGHLIGHTS */}
-            <div className="border border-[#2C2C2C] rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                    <span className="font-bold text-white text-sm uppercase tracking-wide">Top {league} Highlights</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <VideoCard
-                        title={`${league} Goal of the Week! ⚽️`}
-                        thumbnail="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
-                        duration="1:45"
-                        views="89K"
-                        source={league}
+        {/* NEWS CARDS - MAIN FOCUS (Always show news first) */}
+        {news.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                {news.slice(0, 3).map(story => (
+                    <LeagueNewsCard
+                        key={story.id}
+                        story={story}
+                        onClick={() => onNewsClick?.(story.id)}
                     />
-                    <VideoCard
-                        title={`Best Saves in ${league} This Week`}
-                        thumbnail="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
-                        duration="3:20"
-                        views="156K"
-                        source={league}
-                    />
-                </div>
+                ))}
             </div>
+        ) : (
+            <div className="bg-[#1a1a1a] rounded-lg p-6 text-center mb-4">
+                <Newspaper size={24} className="text-gray-600 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">No {league} news available</p>
+            </div>
+        )}
 
-            {/* WHAT'S BUZZING - HORIZONTAL CAROUSEL (4 posts like Bleacher Report recap) */}
-            <div className="border border-[#2C2C2C] rounded-lg">
-                <div className="px-4 py-3 border-b border-[#2C2C2C] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Twitter size={14} className="text-[#1DA1F2]" />
-                        <h3 className="font-bold text-white text-sm uppercase tracking-wide">What's Buzzing</h3>
-                    </div>
-                    <span className="text-[10px] text-gray-500">from X</span>
+        {/* WHAT'S BUZZING FOR THIS LEAGUE */}
+        <div className="bg-[#1a1a1a] rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800">
+                <div className="flex items-center gap-2">
+                    <span className="text-[#FFD700] text-xs font-bold uppercase tracking-wider">What's Buzzing</span>
+                    <span className="text-gray-600 text-[10px]">in {league}</span>
                 </div>
-
-                <div className="p-3">
-                    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
-                        <div className="snap-start shrink-0 w-[200px]">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: `${league} Official`,
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "official"
-                                }}
-                                timestamp="1h"
-                                content={{
-                                    type: "text",
-                                    text: `🔥 Big game coming up! Who are you backing this weekend? #${league.replace(/\s+/g, '')}`
-                                }}
-                                caption={`${league} title race intensifies with crucial weekend matchups ahead.`}
-                                sourceUrl="#"
-                            />
+                <a href="#" className="text-gray-500 hover:text-white text-[10px] transition-colors flex items-center gap-1">
+                    View all <ChevronRight size={12} />
+                </a>
+            </div>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar p-3">
+                {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="snap-start shrink-0 w-[180px] bg-[#252525] rounded-lg overflow-hidden">
+                        <div className="flex items-center gap-2 px-2 py-1.5">
+                            <div className="w-5 h-5 bg-black rounded flex items-center justify-center">
+                                <span className="text-white text-[7px] font-black">B·R</span>
+                            </div>
+                            <span className="text-white text-[10px] font-medium truncate">{league}</span>
+                            <span className="text-blue-400 text-[8px]">✓</span>
+                            <span className="text-gray-500 text-[9px] ml-auto">{i}h</span>
                         </div>
-                        <div className="snap-start shrink-0 w-[200px]">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Bleacher Report",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="2h"
-                                content={{
-                                    type: "media",
-                                    mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop"
-                                }}
-                                caption={`Key injury update: Star player returns for ${league} clash.`}
-                                sourceUrl="#"
-                            />
+                        <div className="aspect-[4/3] bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                            <span className="text-white text-3xl font-black opacity-20">B·R</span>
                         </div>
-                        <div className="snap-start shrink-0 w-[200px]">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "ESPN",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="3h"
-                                content={{
-                                    type: "text",
-                                    text: "Statistical breakdown shows defensive records could decide this matchup."
-                                }}
-                                caption={`Advanced stats reveal ${league} underdog has strong upset potential.`}
-                                sourceUrl="#"
-                            />
+                        <div className="px-2 py-1.5">
+                            <p className="text-white text-[10px] leading-tight line-clamp-2">
+                                {league} update: Key match developments and player news...
+                            </p>
                         </div>
-                        <div className="snap-start shrink-0 w-[200px]">
-                            <MatchBuzzCard
-                                publisher={{
-                                    name: "Sky Sports",
-                                    avatar: "https://pbs.twimg.com/profile_images/default.jpg",
-                                    type: "media"
-                                }}
-                                timestamp="4h"
-                                content={{
-                                    type: "text",
-                                    text: `Transfer rumors heating up as ${league} window approaches deadline.`
-                                }}
-                                caption={`${league} transfer market activity reaches fever pitch.`}
-                                sourceUrl="#"
-                            />
+                        <div className="flex items-center justify-between px-2 py-1.5 border-t border-gray-700">
+                            <span className="text-gray-500 text-[9px]">View on X</span>
+                            <svg className="w-3 h-3 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
                         </div>
                     </div>
-                </div>
+                ))}
             </div>
         </div>
     </section>
+);
+
+// League News Card - Clean modern design
+const LeagueNewsCard: React.FC<{
+    story: NewsStory;
+    onClick: () => void;
+}> = ({ story, onClick }) => (
+    <div
+        onClick={onClick}
+        className="bg-[#1a1a1a] rounded-lg overflow-hidden cursor-pointer hover:bg-[#222] transition-colors group"
+    >
+        {story.imageUrl && (
+            <div className="aspect-video relative overflow-hidden">
+                <img
+                    src={story.imageUrl}
+                    alt={story.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+            </div>
+        )}
+        <div className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-bold text-gray-500 uppercase">{story.source}</span>
+                <span className="text-gray-600 text-[10px]">•</span>
+                <span className="text-[10px] text-gray-600">{story.timestamp}</span>
+            </div>
+            <h4 className="text-white text-sm font-bold leading-tight line-clamp-2 group-hover:text-[#00FFB2] transition-colors">
+                {story.title}
+            </h4>
+            {story.excerpt && (
+                <p className="text-gray-400 text-xs mt-1 line-clamp-2">{story.excerpt}</p>
+            )}
+        </div>
+    </div>
 );
