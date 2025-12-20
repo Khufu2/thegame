@@ -160,7 +160,8 @@ function parseRSSItem(item: string) {
     videoUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
   } else {
     // Check for other video links in the content
-    const videoLinkMatch = item.match(/https?:\/\/(?:www\.)?(?:youtube\.com|vimeo\.com|dailymotion\.com|twitch\.tv)\/[^\s<>"']+/i);
+    const videoLinkRegex = /https?:\/\/(?:www\.)?(?:youtube\.com|vimeo\.com|dailymotion\.com|twitch\.tv)\/[^\s<>"']+/i;
+    const videoLinkMatch = item.match(videoLinkRegex);
     if (videoLinkMatch) {
       videoUrl = videoLinkMatch[0];
       // Convert YouTube watch URLs to embed
