@@ -8,45 +8,83 @@ const corsHeaders = {
 };
 
 const RSS_FEEDS = [
-  { url: 'https://www.espn.com/espn/rss/soccer/news', source: 'ESPN', type: 'soccer' },
-  { url: 'https://www.goal.com/feeds/en/news', source: 'Goal.com', type: 'soccer' },
-  { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', type: 'soccer' },
+  { url: 'https://www.espn.com/espn/rss/soccer/news', source: 'ESPN Soccer', type: 'soccer' },
+  { url: 'https://www.espn.com/espn/rss/nba/news', source: 'ESPN NBA', type: 'NBA' },
+  { url: 'https://www.espn.com/espn/rss/nfl/news', source: 'ESPN NFL', type: 'NFL' },
+  { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml', source: 'NY Times Sports', type: 'general' },
 ];
 
-// Simple RSS parsing
+// Simple RSS parsing with better CDATA handling
 function parseRSSItem(item: string) {
-  const title = item.match(/<title>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?<\/title>/)?.[1]?.trim() || '';
-  const link = item.match(/<link>([^<]+)<\/link>/)?.[1]?.trim() || '';
-  const description = item.match(/<description>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?<\/description>/)?.[1]?.trim() || '';
-  const pubDate = item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]?.trim() || '';
-  const imageUrl = item.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image/)?.[1] || 
-                   item.match(/<media:content[^>]*url="([^"]+)"/)?.[1] || '';
-  
+  // Extract title with CDATA handling
+  let title = '';
+  const titleMatch = item.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+  if (titleMatch) {
+    title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+  }
+
+  // Extract link
+  let link = '';
+  const linkMatch = item.match(/<link[^>]*>([^<]+)<\/link>/i);
+  if (linkMatch) {
+    link = linkMatch[1].trim();
+  }
+
+  // Extract description with CDATA handling
+  let description = '';
+  const descMatch = item.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
+  if (descMatch) {
+    description = descMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, '').trim();
+  }
+
+  // Extract pubDate
+  let pubDate = '';
+  const dateMatch = item.match(/<pubDate>([^<]+)<\/pubDate>/i);
+  if (dateMatch) {
+    pubDate = dateMatch[1].trim();
+  }
+
+  // Extract image URL from various sources
+  let imageUrl = '';
+  const enclosureMatch = item.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image/i);
+  const mediaMatch = item.match(/<media:content[^>]*url="([^"]+)"/i);
+  const imgMatch = item.match(/<img[^>]*src="([^"]+)"/i);
+  imageUrl = enclosureMatch?.[1] || mediaMatch?.[1] || imgMatch?.[1] || '';
+
   return { title, link, description, pubDate, imageUrl };
 }
 
 async function fetchRSSFeed(feedConfig: { url: string; source: string; type: string }) {
   try {
+    console.log(`📡 Fetching ${feedConfig.source}...`);
+    
     const response = await fetch(feedConfig.url, {
-      headers: { 'User-Agent': 'Sheena Sports News Bot/1.0' }
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (compatible; SheenaSportsBot/1.0)',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+      }
     });
     
     if (!response.ok) {
-      console.warn(`Failed to fetch ${feedConfig.source}: ${response.status}`);
+      console.warn(`⚠️ Failed to fetch ${feedConfig.source}: ${response.status}`);
       return [];
     }
     
     const xml = await response.text();
-    const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+    const items = xml.match(/<item>[\s\S]*?<\/item>/gi) || [];
+    
+    console.log(`📰 Found ${items.length} items from ${feedConfig.source}`);
     
     return items.slice(0, 5).map(item => {
       const parsed = parseRSSItem(item);
+      if (!parsed.title) return null;
+      
       return {
-        type: 'NEWS',
+        type: 'news',
         title: parsed.title,
-        excerpt: parsed.description.substring(0, 200),
-        content: JSON.stringify([{ type: 'text', content: parsed.description }]),
-        image_url: parsed.imageUrl || null,
+        excerpt: parsed.description.substring(0, 300) || parsed.title,
+        content: parsed.description,
+        image_url: parsed.imageUrl || 'https://images.unsplash.com/photo-1461896836934- voices-of-black?q=80&w=800&auto=format&fit=crop',
         source: feedConfig.source,
         tags: [feedConfig.type],
         metadata: { 
@@ -54,9 +92,9 @@ async function fetchRSSFeed(feedConfig: { url: string; source: string; type: str
           pubDate: parsed.pubDate 
         }
       };
-    });
+    }).filter(Boolean);
   } catch (error) {
-    console.error(`Error fetching ${feedConfig.source}:`, error);
+    console.error(`❌ Error fetching ${feedConfig.source}:`, error);
     return [];
   }
 }
@@ -78,15 +116,18 @@ serve(async (req) => {
     const feedResults = await Promise.all(feedPromises);
     
     // Flatten and deduplicate by title
-    const allNews = feedResults.flat();
+    const allNews = feedResults.flat().filter(Boolean);
     const seenTitles = new Set<string>();
     const uniqueNews = allNews.filter(item => {
-      if (seenTitles.has(item.title)) return false;
+      if (!item || seenTitles.has(item.title)) return false;
       seenTitles.add(item.title);
       return true;
     });
 
-    console.log(`📰 Collected ${uniqueNews.length} unique news items`);
+    console.log(`📰 Collected ${uniqueNews.length} unique news items from ${RSS_FEEDS.length} sources`);
+
+    let storedCount = 0;
+    let duplicateCount = 0;
 
     if (uniqueNews.length > 0) {
       // Get existing titles to avoid duplicates
@@ -97,6 +138,7 @@ serve(async (req) => {
       
       const existingTitles = new Set(existingFeeds?.map(f => f.title) || []);
       const newItems = uniqueNews.filter(item => !existingTitles.has(item.title));
+      duplicateCount = uniqueNews.length - newItems.length;
       
       if (newItems.length > 0) {
         const { data, error } = await supabase
@@ -109,7 +151,8 @@ serve(async (req) => {
           throw error;
         }
 
-        console.log(`✅ Stored ${data?.length || 0} news stories`);
+        storedCount = data?.length || 0;
+        console.log(`✅ Stored ${storedCount} news stories`);
       } else {
         console.log('ℹ️ No new stories to store (all duplicates)');
       }
@@ -118,7 +161,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        newsCollected: uniqueNews.length,
+        stats: {
+          totalFetched: allNews.length,
+          processed: uniqueNews.length,
+          stored: storedCount,
+          duplicates: duplicateCount
+        },
         sources: RSS_FEEDS.map(f => f.source),
         timestamp: new Date().toISOString()
       }),
