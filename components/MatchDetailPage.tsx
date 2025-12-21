@@ -30,10 +30,22 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
    const [loadingStandings, setLoadingStandings] = useState(false);
    const [relatedNews, setRelatedNews] = useState<NewsStory[]>([]);
    const [loadingNews, setLoadingNews] = useState(false);
-   const [liveScore, setLiveScore] = useState<{ home: number | null; away: number | null }>({
-     home: match.score?.home ?? null,
-     away: match.score?.away ?? null
-   });
+    // Get score from various possible formats (supports both direct and fullTime formats)
+    const getScoreFromMatch = (m: Match) => {
+      const score = m.score as any;
+      if (score?.fullTime?.home !== undefined) {
+        return { home: score.fullTime.home, away: score.fullTime.away };
+      }
+      return { home: score?.home ?? null, away: score?.away ?? null };
+    };
+    
+    const [liveScore, setLiveScore] = useState<{ home: number | null; away: number | null }>(getScoreFromMatch(match));
+    
+    // Update score when match prop changes
+    useEffect(() => {
+      const newScore = getScoreFromMatch(match);
+      setLiveScore(newScore);
+    }, [match.score]);
 
    const isFollowed = followedMatches.some(f => f.matchId === match.id);
 
@@ -417,10 +429,10 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                   {/* Score/Time - Use live score if available */}
                   <div className="flex flex-col items-center w-1/3">
                        <span className="font-condensed font-black text-5xl tracking-tighter tabular-nums leading-none mb-1">
-                           {match.status === MatchStatus.SCHEDULED ? 'VS' : `${liveScore.home ?? match.score?.home ?? 0}-${liveScore.away ?? match.score?.away ?? 0}`}
+                           {match.status === MatchStatus.SCHEDULED ? 'VS' : `${liveScore.home ?? 0} - ${liveScore.away ?? 0}`}
                        </span>
-                       <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${match.status === MatchStatus.LIVE ? 'bg-red-600 text-white animate-pulse' : 'bg-[#2C2C2C] text-gray-400'}`}>
-                           {formatMatchTime(match.time)}
+                       <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${match.status === MatchStatus.LIVE ? 'bg-red-600 text-white animate-pulse' : match.status === MatchStatus.FINISHED ? 'bg-gray-700 text-gray-300' : 'bg-[#2C2C2C] text-gray-400'}`}>
+                           {match.status === MatchStatus.FINISHED ? 'Full Time' : formatMatchTime(match.time)}
                        </div>
                   </div>
 
@@ -615,139 +627,150 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
                           </div>
                       )}
 
-                      {/* What's Buzzing - Simple 2x2 Grid */}
-                      <div className="border border-[#2C2C2C] rounded-lg">
-                          <div className="px-4 py-2 border-b border-[#2C2C2C]">
-                              <h3 className="font-bold text-white text-sm uppercase tracking-wide">What's Buzzing</h3>
+                      {/* What's Buzzing - BR Style Carousel */}
+                      <div className="bg-[#1a1a1a] rounded-xl overflow-hidden">
+                          {/* HEADER */}
+                          <div className="flex items-center justify-between px-4 py-3">
+                              <h3 className="font-bold text-[#FFD700] text-sm uppercase tracking-widest">
+                                  What's Buzzing
+                              </h3>
+                              <a href="#" className="text-gray-400 hover:text-white text-xs font-medium transition-colors">
+                                  Go to Social
+                              </a>
                           </div>
 
-                          <div className="p-4">
-                              <div className="grid grid-cols-4 gap-3">
-                                  {/* Post 1 */}
-                                  <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md cursor-pointer flex flex-col">
-                                      {/* Header: Avatar + Name + Badge */}
-                                      <div className="px-3 py-2 flex items-center gap-2">
-                                          <img src="https://pbs.twimg.com/profile_images/default.jpg" alt="Official" className="w-5 h-5 rounded-full object-cover" />
-                                          <span className="font-medium text-white text-sm truncate">{match.league} Official</span>
-                                          <div className="w-1 h-1 bg-[#00FFB2] rounded-full ml-auto"></div>
+                          {/* CARDS CAROUSEL */}
+                          <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-4 snap-x snap-mandatory">
+                              {/* Card 1 */}
+                              <div className="snap-start shrink-0 w-[200px] bg-[#252525] rounded-lg overflow-hidden cursor-pointer hover:bg-[#2a2a2a] transition-colors">
+                                  <div className="flex items-center gap-2 px-3 py-2">
+                                      <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                                          <span className="text-white text-[8px] font-black">B·R</span>
                                       </div>
-                                      {/* Timestamp */}
-                                      <div className="px-3 pb-2">
-                                          <span className="text-[10px] text-gray-400">2h</span>
+                                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                                          <span className="text-white text-xs font-medium truncate">{match.league}</span>
+                                          <svg className="w-3 h-3 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                                          </svg>
                                       </div>
-                                      {/* Content Preview */}
-                                      <div className="px-3 pb-2 flex-1 flex items-center justify-center min-h-[60px]">
-                                          <p className="text-xs text-gray-300 text-center line-clamp-3 leading-tight">
-                                              🔥 Big game coming up! Who are you backing in this {match.league} clash?
-                                          </p>
-                                      </div>
-                                      {/* Caption */}
-                                      <div className="px-3 py-2 border-t border-gray-600">
-                                          <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
-                                              {match.league} title race intensifies with crucial weekend matchups.
-                                          </p>
-                                      </div>
-                                      {/* CTA Button */}
-                                      <div className="px-3 py-2 border-t border-gray-600">
-                                          <button className="w-full bg-black text-white text-xs font-bold py-2 px-3 rounded border border-gray-600 hover:bg-gray-900 transition-colors">
-                                              View on X
-                                          </button>
-                                      </div>
+                                      <span className="text-gray-500 text-[10px] shrink-0">2h</span>
                                   </div>
-
-                                  {/* Post 2 */}
-                                  <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md cursor-pointer flex flex-col">
-                                      {/* Header: Avatar + Name + Badge */}
-                                      <div className="px-3 py-2 flex items-center gap-2">
-                                          <img src="https://pbs.twimg.com/profile_images/default.jpg" alt="Bleacher Report" className="w-5 h-5 rounded-full object-cover" />
-                                          <span className="font-medium text-white text-sm truncate">Bleacher Report</span>
-                                          <div className="w-1 h-1 bg-[#00FFB2] rounded-full ml-auto"></div>
-                                      </div>
-                                      {/* Timestamp */}
-                                      <div className="px-3 pb-2">
-                                          <span className="text-[10px] text-gray-400">3h</span>
-                                      </div>
-                                      {/* Content Preview */}
-                                      <div className="px-3 pb-2 flex-1 flex items-center justify-center min-h-[60px]">
-                                          <div className="w-full h-full rounded overflow-hidden">
-                                              <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop" alt="Content preview" className="w-full h-full object-cover" />
-                                          </div>
-                                      </div>
-                                      {/* Caption */}
-                                      <div className="px-3 py-2 border-t border-gray-600">
-                                          <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
-                                              Key injury update: Star player returns for {match.league} clash.
-                                          </p>
-                                      </div>
-                                      {/* CTA Button */}
-                                      <div className="px-3 py-2 border-t border-gray-600">
-                                          <button className="w-full bg-black text-white text-xs font-bold py-2 px-3 rounded border border-gray-600 hover:bg-gray-900 transition-colors">
-                                              View on X
-                                          </button>
-                                      </div>
+                                  <div className="relative aspect-[4/3] bg-gradient-to-br from-indigo-900/50 to-black">
+                                      <img
+                                          src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=400&auto=format&fit=crop"
+                                          alt="Buzz content"
+                                          className="w-full h-full object-cover"
+                                      />
                                   </div>
-
-                                  {/* Post 3 */}
-                                  <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md cursor-pointer flex flex-col">
-                                      {/* Header: Avatar + Name + Badge */}
-                                      <div className="px-3 py-2 flex items-center gap-2">
-                                          <img src="https://pbs.twimg.com/profile_images/default.jpg" alt="ESPN" className="w-5 h-5 rounded-full object-cover" />
-                                          <span className="font-medium text-white text-sm truncate">ESPN FC</span>
-                                          <div className="w-1 h-1 bg-[#00FFB2] rounded-full ml-auto"></div>
-                                      </div>
-                                      {/* Timestamp */}
-                                      <div className="px-3 pb-2">
-                                          <span className="text-[10px] text-gray-400">4h</span>
-                                      </div>
-                                      {/* Content Preview */}
-                                      <div className="px-3 pb-2 flex-1 flex items-center justify-center min-h-[60px]">
-                                          <p className="text-xs text-gray-300 text-center line-clamp-3 leading-tight">
-                                              Statistical breakdown shows defensive records could decide this matchup.
-                                          </p>
-                                      </div>
-                                      {/* Caption */}
-                                      <div className="px-3 py-2 border-t border-gray-600">
-                                          <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
-                                              Advanced stats reveal {match.homeTeam.name} has strong upset potential.
-                                          </p>
-                                      </div>
-                                      {/* CTA Button */}
-                                      <div className="px-3 py-2 border-t border-gray-600">
-                                          <button className="w-full bg-black text-white text-xs font-bold py-2 px-3 rounded border border-gray-600 hover:bg-gray-900 transition-colors">
-                                              View on X
-                                          </button>
-                                      </div>
+                                  <div className="px-3 py-2">
+                                      <p className="text-white text-xs leading-relaxed line-clamp-2">
+                                          🔥 {match.homeTeam.name} vs {match.awayTeam.name} - Who wins?
+                                      </p>
                                   </div>
+                                  <div className="flex items-center justify-between px-3 py-2 border-t border-gray-700">
+                                      <span className="text-gray-400 text-[10px]">View on X</span>
+                                      <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                      </svg>
+                                  </div>
+                              </div>
 
-                                  {/* Post 4 */}
-                                  <div className="bg-black border border-gray-600 rounded-lg overflow-hidden shadow-md cursor-pointer flex flex-col">
-                                      {/* Header: Avatar + Name + Badge */}
-                                      <div className="px-3 py-2 flex items-center gap-2">
-                                          <img src="https://pbs.twimg.com/profile_images/default.jpg" alt="Fan Account" className="w-5 h-5 rounded-full object-cover" />
-                                          <span className="font-medium text-white text-sm truncate">{match.league} Fan Page</span>
+                              {/* Card 2 */}
+                              <div className="snap-start shrink-0 w-[200px] bg-[#252525] rounded-lg overflow-hidden cursor-pointer hover:bg-[#2a2a2a] transition-colors">
+                                  <div className="flex items-center gap-2 px-3 py-2">
+                                      <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                                          <span className="text-white text-[8px] font-black">B·R</span>
                                       </div>
-                                      {/* Timestamp */}
-                                      <div className="px-3 pb-2">
-                                          <span className="text-[10px] text-gray-400">5h</span>
+                                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                                          <span className="text-white text-xs font-medium truncate">ESPN FC</span>
+                                          <svg className="w-3 h-3 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                                          </svg>
                                       </div>
-                                      {/* Content Preview */}
-                                      <div className="px-3 pb-2 flex-1 flex items-center justify-center min-h-[60px]">
-                                          <p className="text-xs text-gray-300 text-center line-clamp-3 leading-tight">
-                                              Fan reactions pouring in as weekend fixtures approach. The excitement is building!
-                                          </p>
+                                      <span className="text-gray-500 text-[10px] shrink-0">3h</span>
+                                  </div>
+                                  <div className="relative aspect-[4/3] bg-gradient-to-br from-purple-900/50 to-black">
+                                      <img
+                                          src="https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=400&auto=format&fit=crop"
+                                          alt="Buzz content"
+                                          className="w-full h-full object-cover"
+                                      />
+                                  </div>
+                                  <div className="px-3 py-2">
+                                      <p className="text-white text-xs leading-relaxed line-clamp-2">
+                                          Key stats heading into this {match.league} matchup 📊
+                                      </p>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2 border-t border-gray-700">
+                                      <span className="text-gray-400 text-[10px]">View on X</span>
+                                      <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                      </svg>
+                                  </div>
+                              </div>
+
+                              {/* Card 3 */}
+                              <div className="snap-start shrink-0 w-[200px] bg-[#252525] rounded-lg overflow-hidden cursor-pointer hover:bg-[#2a2a2a] transition-colors">
+                                  <div className="flex items-center gap-2 px-3 py-2">
+                                      <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                                          <span className="text-white text-[8px] font-black">B·R</span>
                                       </div>
-                                      {/* Caption */}
-                                      <div className="px-3 py-2 border-t border-gray-600">
-                                          <p className="text-xs text-white font-medium line-clamp-2 leading-tight">
-                                              Fan sentiment analysis shows high anticipation for {match.league} weekend.
-                                          </p>
+                                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                                          <span className="text-white text-xs font-medium truncate">Bleacher Report</span>
+                                          <svg className="w-3 h-3 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                                          </svg>
                                       </div>
-                                      {/* CTA Button */}
-                                      <div className="px-3 py-2 border-t border-gray-600">
-                                          <button className="w-full bg-black text-white text-xs font-bold py-2 px-3 rounded border border-gray-600 hover:bg-gray-900 transition-colors">
-                                              View on X
-                                          </button>
+                                      <span className="text-gray-500 text-[10px] shrink-0">4h</span>
+                                  </div>
+                                  <div className="relative aspect-[4/3] bg-gradient-to-br from-green-900/50 to-black">
+                                      <img
+                                          src="https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=400&auto=format&fit=crop"
+                                          alt="Buzz content"
+                                          className="w-full h-full object-cover"
+                                      />
+                                  </div>
+                                  <div className="px-3 py-2">
+                                      <p className="text-white text-xs leading-relaxed line-clamp-2">
+                                          Injury update: {match.homeTeam.name} squad news 🏥
+                                      </p>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2 border-t border-gray-700">
+                                      <span className="text-gray-400 text-[10px]">View on X</span>
+                                      <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                      </svg>
+                                  </div>
+                              </div>
+
+                              {/* Card 4 */}
+                              <div className="snap-start shrink-0 w-[200px] bg-[#252525] rounded-lg overflow-hidden cursor-pointer hover:bg-[#2a2a2a] transition-colors">
+                                  <div className="flex items-center gap-2 px-3 py-2">
+                                      <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                                          <span className="text-white text-[8px] font-black">B·R</span>
                                       </div>
+                                      <div className="flex items-center gap-1 flex-1 min-w-0">
+                                          <span className="text-white text-xs font-medium truncate">{match.league} Fans</span>
+                                      </div>
+                                      <span className="text-gray-500 text-[10px] shrink-0">5h</span>
+                                  </div>
+                                  <div className="relative aspect-[4/3] bg-gradient-to-br from-red-900/50 to-black">
+                                      <img
+                                          src="https://images.unsplash.com/photo-1519861531473-9200262188bf?q=80&w=400&auto=format&fit=crop"
+                                          alt="Buzz content"
+                                          className="w-full h-full object-cover"
+                                      />
+                                  </div>
+                                  <div className="px-3 py-2">
+                                      <p className="text-white text-xs leading-relaxed line-clamp-2">
+                                          Fan predictions are in! 🗳️ Who do you back?
+                                      </p>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2 border-t border-gray-700">
+                                      <span className="text-gray-400 text-[10px]">View on X</span>
+                                      <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                      </svg>
                                   </div>
                               </div>
                           </div>
