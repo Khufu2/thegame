@@ -213,10 +213,27 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
     };
   }, [activeLeague, items, matches, user]);
 
-  // LIVE TICKER MATCHES
+  // LIVE TICKER MATCHES - Always show live games first, then soonest upcoming
   const safeMatchesForTicker = Array.isArray(matches) ? matches : [];
   const liveTickerMatches = safeMatchesForTicker.filter(m => m.status === MatchStatus.LIVE);
-  const demoTickerMatches = liveTickerMatches.length > 0 ? liveTickerMatches : safeMatchesForTicker.slice(0, 3);
+  
+  // Get upcoming matches sorted by time (soonest first)
+  const upcomingMatches = safeMatchesForTicker
+    .filter(m => m.status === MatchStatus.SCHEDULED || m.status === 'SCHEDULED')
+    .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+  
+  // Combine: Live games first, then fill with soonest upcoming (always show at least 3)
+  const happeningNowMatches = useMemo(() => {
+    if (liveTickerMatches.length > 0) {
+      // If we have live games, show them + fill remaining slots with upcoming
+      const remainingSlots = Math.max(0, 5 - liveTickerMatches.length);
+      return [...liveTickerMatches, ...upcomingMatches.slice(0, remainingSlots)];
+    }
+    // No live games - show soonest upcoming (at least 3)
+    return upcomingMatches.slice(0, 5);
+  }, [liveTickerMatches, upcomingMatches]);
+
+  const hasLiveGames = liveTickerMatches.length > 0;
   
   const handleMatchClick = (id: string) => {
       navigate(`/match/${id}`);
@@ -230,20 +247,33 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   return (
     <div className="min-h-screen bg-black md:bg-br-bg md:max-w-[1000px] md:mx-auto pb-24 overflow-x-hidden">
       
-      {/* 1. TOP SECTION: HAPPENING NOW (LIVE RAIL) */}
-      {demoTickerMatches.length > 0 && (
-          <section className="pt-2 pb-1 bg-black md:bg-br-bg">
-            <div className="flex items-center gap-2 px-4 mb-2">
-                 <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
-                 <h2 className="font-condensed font-bold text-sm uppercase tracking-wider text-gray-500 md:text-gray-400">Happening Now</h2>
-            </div>
-            <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 snap-x snap-mandatory">
-                {demoTickerMatches.map((match) => (
-                    match && <LivePulseCard key={match.id} match={match} onClick={() => handleMatchClick(match.id)} />
-                ))}
-            </div>
-          </section>
-      )}
+      {/* 1. TOP SECTION: HAPPENING NOW (ALWAYS VISIBLE) */}
+      <section className="pt-2 pb-1 bg-black md:bg-br-bg">
+        <div className="flex items-center gap-2 px-4 mb-2">
+             {hasLiveGames ? (
+               <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+             ) : (
+               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+             )}
+             <h2 className="font-condensed font-bold text-sm uppercase tracking-wider text-gray-500 md:text-gray-400">
+               {hasLiveGames ? 'Happening Now' : 'Coming Up'}
+             </h2>
+             {hasLiveGames && (
+               <span className="text-[10px] font-bold text-red-500 uppercase ml-2">{liveTickerMatches.length} Live</span>
+             )}
+        </div>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 snap-x snap-mandatory">
+            {happeningNowMatches.length > 0 ? (
+              happeningNowMatches.map((match) => (
+                  match && <LivePulseCard key={match.id} match={match} onClick={() => handleMatchClick(match.id)} />
+              ))
+            ) : (
+              <div className="w-full py-6 text-center text-gray-500">
+                <span className="text-sm">No matches scheduled</span>
+              </div>
+            )}
+        </div>
+      </section>
 
       {/* 2. LEAGUE FILTER STRIP */}
       <div className="sticky top-[44px] md:top-0 z-40 bg-black/95 backdrop-blur-xl md:bg-br-bg/95 border-b border-white/10 py-3 shadow-sm transition-all">

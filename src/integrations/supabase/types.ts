@@ -288,6 +288,7 @@ export type Database = {
           tags: string[] | null
           title: string | null
           type: string
+          video_url: string | null
           word_count: number | null
         }
         Insert: {
@@ -307,6 +308,7 @@ export type Database = {
           tags?: string[] | null
           title?: string | null
           type: string
+          video_url?: string | null
           word_count?: number | null
         }
         Update: {
@@ -326,6 +328,7 @@ export type Database = {
           tags?: string[] | null
           title?: string | null
           type?: string
+          video_url?: string | null
           word_count?: number | null
         }
         Relationships: [
