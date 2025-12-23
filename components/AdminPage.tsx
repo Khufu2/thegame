@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSports } from '../context/SportsContext';
 import { NewsStory, SystemAlert, ArticleBlock, MatchStatus } from '../types';
 import { generateMatchNews, shareExternalNews } from '../services/newsAgentService';
-import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin, ExternalLink, Newspaper, Loader2, BarChart2 } from 'lucide-react';
+import { PenTool, Siren, Plus, Trash2, Layout, Image, MessageSquare, Twitter, Eye, Check, AlertTriangle, Wand2, RefreshCw, List, Globe, Send, Radio, UserPlus, Users, BadgeCheck, Link as LinkIcon, Copy, MapPin, ExternalLink, Newspaper, Loader2, BarChart2, Youtube } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import supabase from '../services/supabaseClient';
 
@@ -624,6 +624,8 @@ export const AdminPage: React.FC = () => {
                     <button onClick={() => setActiveTab('SHARE_NEWS')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'SHARE_NEWS' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-white'}`}><ExternalLink size={12}/> Share News</button>
                     <button onClick={() => { setActiveTab('MANAGE'); fetchPublishedNews(); }} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'MANAGE' ? 'bg-orange-600 text-white' : 'text-gray-500 hover:text-white'}`}>📝 Manage</button>
                     <button onClick={() => setActiveTab('BACKTEST')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'BACKTEST' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-white'}`}>📊 Backtest</button>
+                    <button onClick={() => setActiveTab('GROQ_CONTENT')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'GROQ_CONTENT' ? 'bg-cyan-600 text-white' : 'text-gray-500 hover:text-white'}`}>🤖 Groq Content</button>
+                    <button onClick={() => setActiveTab('FEATURED_VIDEO')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'FEATURED_VIDEO' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-white'}`}>📺 Featured Video</button>
                     <button onClick={() => setActiveTab('AGGREGATION')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded flex items-center gap-1 whitespace-nowrap ${activeTab === 'AGGREGATION' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-white'}`}>📰 Aggregation</button>
                     <button onClick={() => setActiveTab('WAR_ROOM')} className={`px-4 py-1.5 text-xs font-bold uppercase rounded whitespace-nowrap ${activeTab === 'WAR_ROOM' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>War Room</button>
                 </div>
@@ -1420,17 +1422,53 @@ export const AdminPage: React.FC = () => {
                                  </div>
                              </div>
 
-                             <button
-                                 onClick={handleAggregateNews}
-                                 disabled={isAggregatingNews}
-                                 className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
-                             >
-                                 {isAggregatingNews ? (
-                                     <><RefreshCw size={16} className="animate-spin" /> Aggregating News...</>
-                                 ) : (
-                                     <><Globe size={16} /> Start News Aggregation</>
-                                 )}
-                             </button>
+                             <div className="grid grid-cols-2 gap-4">
+                                 <button
+                                     onClick={handleAggregateNews}
+                                     disabled={isAggregatingNews}
+                                     className="bg-green-600 hover:bg-green-500 disabled:bg-gray-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                 >
+                                     {isAggregatingNews ? (
+                                         <><RefreshCw size={16} className="animate-spin" /> Aggregating...</>
+                                     ) : (
+                                         <><Globe size={16} /> RSS Feeds</>
+                                     )}
+                                 </button>
+
+                                 <button
+                                     onClick={async () => {
+                                         setIsAggregatingNews(true);
+                                         try {
+                                             const response = await fetch(
+                                                 `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/fetch-old-news?days=30&limit=20&league=football`,
+                                                 {
+                                                     method: 'GET',
+                                                     headers: {
+                                                         'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                                                         'Content-Type': 'application/json',
+                                                     },
+                                                 }
+                                             );
+
+                                             if (response.ok) {
+                                                 const data = await response.json();
+                                                 alert(`Old news fetched! Stored ${data.stored} articles from NewsAPI.`);
+                                             } else {
+                                                 const errorData = await response.json();
+                                                 alert(`Failed to fetch old news: ${errorData.error || 'Unknown error'}`);
+                                             }
+                                         } catch (error) {
+                                             console.error('Old news fetch error:', error);
+                                             alert('Error fetching old news - check NEWS_API_KEY is set');
+                                         }
+                                         setIsAggregatingNews(false);
+                                     }}
+                                     disabled={isAggregatingNews}
+                                     className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                 >
+                                     <Newspaper size={16} /> Fetch NewsAPI Articles
+                                 </button>
+                             </div>
                          </div>
 
                          {/* AGGREGATION RESULTS */}
@@ -1489,6 +1527,319 @@ export const AdminPage: React.FC = () => {
                                  </div>
                              </div>
                          )}
+                     </div>
+                 )}
+
+                 {/* --- GROQ CONTENT GENERATION --- */}
+                 {activeTab === 'GROQ_CONTENT' && (
+                     <div className="col-span-2 max-w-[600px] mx-auto w-full">
+                         <div className="bg-[#121212] border border-cyan-500/50 rounded-xl p-6 shadow-2xl shadow-cyan-900/20">
+                             <div className="flex items-center gap-3 mb-6">
+                                 <div className="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center">
+                                     <Wand2 size={20} className="text-white" />
+                                 </div>
+                                 <div>
+                                     <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">Groq Content Engine</h3>
+                                     <p className="text-xs text-cyan-400">Manual generation of automated content types</p>
+                                 </div>
+                             </div>
+
+                             <div className="space-y-4">
+                                 {/* Content Type Selector */}
+                                 <div>
+                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Content Type</label>
+                                     <select
+                                         className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                         value={generationMode}
+                                         onChange={(e) => setGenerationMode(e.target.value as any)}
+                                     >
+                                         <option value="TOPIC">Top 5 Storylines</option>
+                                         <option value="PLAYERS_WATCH">Players to Watch</option>
+                                         <option value="INJURY_ROUNDUP">Injury Roundup</option>
+                                         <option value="POWER_RANKINGS">Power Rankings</option>
+                                         <option value="PRE_MATCH">Pre-Match Preview</option>
+                                         <option value="POST_MATCH">Post-Match Recap</option>
+                                     </select>
+                                 </div>
+
+                                 {/* Dynamic Inputs Based on Content Type */}
+                                 {generationMode === 'PRE_MATCH' && (
+                                     <>
+                                         <div>
+                                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">League</label>
+                                             <input
+                                                 className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                                 placeholder="Premier League"
+                                                 value={localLeagueName}
+                                                 onChange={(e) => setLocalLeagueName(e.target.value)}
+                                             />
+                                         </div>
+                                         <div>
+                                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Home Team</label>
+                                             <input
+                                                 className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                                 placeholder="Arsenal"
+                                                 value={customTopic}
+                                                 onChange={(e) => setCustomTopic(e.target.value)}
+                                             />
+                                         </div>
+                                         <div>
+                                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Away Team</label>
+                                             <input
+                                                 className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                                 placeholder="Chelsea"
+                                                 value={externalLink}
+                                                 onChange={(e) => setExternalLink(e.target.value)}
+                                             />
+                                         </div>
+                                     </>
+                                 )}
+
+                                 {generationMode === 'POST_MATCH' && (
+                                     <>
+                                         <div>
+                                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">League</label>
+                                             <input
+                                                 className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                                 placeholder="Premier League"
+                                                 value={localLeagueName}
+                                                 onChange={(e) => setLocalLeagueName(e.target.value)}
+                                             />
+                                         </div>
+                                         <div>
+                                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Home Team</label>
+                                             <input
+                                                 className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                                 placeholder="Arsenal"
+                                                 value={customTopic}
+                                                 onChange={(e) => setCustomTopic(e.target.value)}
+                                             />
+                                         </div>
+                                         <div>
+                                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Away Team</label>
+                                             <input
+                                                 className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                                 placeholder="Chelsea"
+                                                 value={externalLink}
+                                                 onChange={(e) => setExternalLink(e.target.value)}
+                                             />
+                                         </div>
+                                         <div>
+                                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Final Score</label>
+                                             <input
+                                                 className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                                 placeholder="2-1"
+                                                 value={localCountry}
+                                                 onChange={(e) => setLocalCountry(e.target.value)}
+                                             />
+                                         </div>
+                                     </>
+                                 )}
+
+                                 {generationMode === 'POWER_RANKINGS' && (
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">League</label>
+                                         <input
+                                             className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-cyan-500"
+                                             placeholder="Premier League"
+                                             value={localLeagueName}
+                                             onChange={(e) => setLocalLeagueName(e.target.value)}
+                                         />
+                                     </div>
+                                 )}
+
+                                 <button
+                                     onClick={async () => {
+                                         setIsGenerating(true);
+                                         try {
+                                             const contentTypeMap = {
+                                                 'TOPIC': 'top-storylines',
+                                                 'PLAYERS_WATCH': 'players-to-watch',
+                                                 'INJURY_ROUNDUP': 'injury-roundup',
+                                                 'POWER_RANKINGS': 'power-rankings',
+                                                 'PRE_MATCH': 'pre-match',
+                                                 'POST_MATCH': 'post-match'
+                                             };
+
+                                             const payload: any = {
+                                                 content_type: contentTypeMap[generationMode as keyof typeof contentTypeMap],
+                                                 input_data: {}
+                                             };
+
+                                             if (generationMode === 'PRE_MATCH' || generationMode === 'POST_MATCH') {
+                                                 payload.league = localLeagueName;
+                                                 payload.home_team = customTopic;
+                                                 payload.away_team = externalLink;
+                                                 if (generationMode === 'POST_MATCH') {
+                                                     payload.input_data.final_score = localCountry;
+                                                 }
+                                             } else if (generationMode === 'POWER_RANKINGS') {
+                                                 payload.league = localLeagueName;
+                                             }
+
+                                             const response = await fetch(
+                                                 `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/generate-news-groq`,
+                                                 {
+                                                     method: 'POST',
+                                                     headers: {
+                                                         'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                                                         'Content-Type': 'application/json',
+                                                     },
+                                                     body: JSON.stringify(payload)
+                                                 }
+                                             );
+
+                                             if (response.ok) {
+                                                 const result = await response.json();
+                                                 setNewsTitle(result.article?.title || 'Generated Content');
+                                                 setNewsSummary(result.article?.excerpt || 'Content generated successfully');
+                                                 setNewsBody(result.article?.content || 'Check the home feed for the full article');
+                                                 setActiveTab('NEWS');
+                                                 alert('Content generated and published to home feed!');
+                                             } else {
+                                                 alert('Failed to generate content');
+                                             }
+                                         } catch (error) {
+                                             console.error('Generation error:', error);
+                                             alert('Error generating content');
+                                         }
+                                         setIsGenerating(false);
+                                     }}
+                                     disabled={isGenerating}
+                                     className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                 >
+                                     {isGenerating ? (
+                                         <><RefreshCw size={16} className="animate-spin" /> Generating...</>
+                                     ) : (
+                                         <><Wand2 size={16} /> Generate Content</>
+                                     )}
+                                 </button>
+                             </div>
+                         </div>
+                     </div>
+                 )}
+
+                 {/* --- FEATURED VIDEO MANAGEMENT --- */}
+                 {activeTab === 'FEATURED_VIDEO' && (
+                     <div className="col-span-2 max-w-[600px] mx-auto w-full">
+                         <div className="bg-[#121212] border border-red-500/50 rounded-xl p-6 shadow-2xl shadow-red-900/20">
+                             <div className="flex items-center gap-3 mb-6">
+                                 <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                                     <Youtube size={20} className="text-white" />
+                                 </div>
+                                 <div>
+                                     <h3 className="font-condensed font-black text-2xl uppercase text-white leading-none">Featured Video</h3>
+                                     <p className="text-xs text-red-400">Manual YouTube video management for home feed</p>
+                                 </div>
+                             </div>
+
+                             <div className="space-y-4">
+                                 {/* Video URL Input */}
+                                 <div>
+                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">YouTube Video URL</label>
+                                     <input
+                                         className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500"
+                                         placeholder="https://www.youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID"
+                                         value={linkUrl}
+                                         onChange={(e) => setLinkUrl(e.target.value)}
+                                     />
+                                 </div>
+
+                                 {/* Video Title */}
+                                 <div>
+                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Video Title</label>
+                                     <input
+                                         className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500"
+                                         placeholder="Enter video title..."
+                                         value={linkTitle}
+                                         onChange={(e) => setLinkTitle(e.target.value)}
+                                     />
+                                 </div>
+
+                                 {/* Video Description */}
+                                 <div>
+                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Video Description</label>
+                                     <textarea
+                                         className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500 h-24 resize-none"
+                                         placeholder="Brief description of the video..."
+                                         value={linkDescription}
+                                         onChange={(e) => setLinkDescription(e.target.value)}
+                                     />
+                                 </div>
+
+                                 {/* Video Tags */}
+                                 <div>
+                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tags</label>
+                                     <select
+                                         className="w-full bg-black border border-[#333] p-3 rounded text-white outline-none focus:border-red-500"
+                                         value={linkTag}
+                                         onChange={(e) => setLinkTag(e.target.value)}
+                                     >
+                                         <option value="Featured">Featured Video</option>
+                                         <option value="Highlights">Match Highlights</option>
+                                         <option value="Analysis">Analysis</option>
+                                         <option value="Interview">Interview</option>
+                                         <option value="Documentary">Documentary</option>
+                                     </select>
+                                 </div>
+
+                                 <button
+                                     onClick={async () => {
+                                         if (!linkUrl || !linkTitle) {
+                                             alert("Please enter both video URL and title");
+                                             return;
+                                         }
+
+                                         // Extract video ID from URL
+                                         let videoId = '';
+                                         const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+                                         const match = linkUrl.match(youtubeRegex);
+                                         if (match) {
+                                             videoId = match[1];
+                                         } else {
+                                             alert("Please enter a valid YouTube URL");
+                                             return;
+                                         }
+
+                                         const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+
+                                         const videoBlock = {
+                                             type: 'VIDEO' as const,
+                                             url: linkUrl,
+                                             title: linkTitle,
+                                             thumbnail: thumbnailUrl,
+                                             description: linkDescription
+                                         };
+
+                                         const story: NewsStory = {
+                                             id: `video_${Date.now()}`,
+                                             type: 'NEWS',
+                                             title: linkTitle,
+                                             summary: linkDescription || 'Watch this featured video',
+                                             imageUrl: thumbnailUrl,
+                                             source: 'Sheena Featured',
+                                             timestamp: 'Just Now',
+                                             likes: 0,
+                                             comments: 0,
+                                             tags: [linkTag],
+                                             contentBlocks: [videoBlock]
+                                         };
+
+                                         await addNewsStory(story);
+                                         alert('Featured video published to home feed!');
+
+                                         // Reset form
+                                         setLinkUrl('');
+                                         setLinkTitle('');
+                                         setLinkDescription('');
+                                         setLinkTag('Featured');
+                                     }}
+                                     className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                 >
+                                     <Youtube size={16} /> Publish Featured Video
+                                 </button>
+                             </div>
+                         </div>
                      </div>
                  )}
 

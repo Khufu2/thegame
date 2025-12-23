@@ -486,7 +486,7 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
 
           {/* TABS SCROLL */}
           <div className="flex items-center gap-6 px-6 overflow-x-auto no-scrollbar border-t border-[#2C2C2C]">
-              {['STREAM', 'NEWS', 'TIMELINE', 'BOX SCORE', 'STATS', 'LINEUPS', 'ODDS', 'TABLE', 'COMMUNITY'].map(tab => (
+              {['STREAM', 'NEWS', 'TIMELINE', 'BOX SCORE', 'STATS', 'LINEUPS', 'ODDS', 'TABLE', 'HIGHLIGHTS', 'COMMUNITY'].map(tab => (
                   <button 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -1248,6 +1248,21 @@ export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ match, onOpenP
               </div>
           )}
 
+          {/* TAB: HIGHLIGHTS */}
+          {activeTab === 'HIGHLIGHTS' && (
+              <div className="p-4 animate-in fade-in">
+                  {match.status === MatchStatus.FINISHED ? (
+                      <YouTubeHighlights matchId={match.id} />
+                  ) : (
+                      <div className="py-20 text-center text-gray-500">
+                          <PlayCircle size={40} className="mx-auto mb-3 opacity-20" />
+                          <p className="font-condensed font-bold uppercase">Highlights Available After Match</p>
+                          <p className="text-sm text-gray-600 mt-1">Match highlights will be available once the game concludes</p>
+                      </div>
+                  )}
+              </div>
+          )}
+
           {/* TAB: COMMUNITY */}
           {activeTab === 'COMMUNITY' && (
               <div className="p-4 animate-in fade-in">
@@ -1451,6 +1466,87 @@ const StatGroup: React.FC<{ title: string, stats: { label: string, home: number,
         </div>
     </div>
 );
+
+const YouTubeHighlights: React.FC<{ matchId: string }> = ({ matchId }) => {
+    const [videos, setVideos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchHighlights = async () => {
+            try {
+                // Fetch feeds with video_url for this match
+                const response = await fetch(
+                    `https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/get-feeds-by-match?matchId=${matchId}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+                if (response.ok) {
+                    const feeds = await response.json();
+                    const highlightVideos = feeds
+                        .filter((feed: any) => feed.video_url)
+                        .map((feed: any) => ({
+                            id: feed.id,
+                            title: feed.title,
+                            url: feed.video_url,
+                            thumbnail: feed.video_url.includes('youtube.com') || feed.video_url.includes('youtu.be')
+                                ? `https://img.youtube.com/vi/${feed.video_url.split('v=')[1]?.split('&')[0] || feed.video_url.split('/').pop()}/maxresdefault.jpg`
+                                : null
+                        }));
+                    setVideos(highlightVideos);
+                }
+            } catch (error) {
+                console.error('Error fetching highlights:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchHighlights();
+    }, [matchId]);
+
+    if (loading) {
+        return (
+            <div className="py-20 text-center">
+                <RefreshCw size={24} className="mx-auto mb-3 animate-spin text-gray-500" />
+                <p className="text-gray-500 text-sm">Loading highlights...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            {videos.map(video => (
+                <div key={video.id} className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl overflow-hidden cursor-pointer hover:border-indigo-500/50 transition-colors">
+                    <a href={video.url} target="_blank" rel="noopener noreferrer">
+                        {video.thumbnail && (
+                            <img src={video.thumbnail} alt={video.title} className="w-full aspect-video object-cover" />
+                        )}
+                        <div className="p-4">
+                            <h3 className="font-condensed font-bold text-base text-white leading-tight line-clamp-2">
+                                {video.title}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+                                <PlayCircle size={16} />
+                                <span>Watch on YouTube</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            ))}
+            {videos.length === 0 && (
+                <div className="py-20 text-center text-gray-500">
+                    <PlayCircle size={40} className="mx-auto mb-3 opacity-20" />
+                    <p className="font-condensed font-bold uppercase">No Highlights Available</p>
+                    <p className="text-sm text-gray-600 mt-1">Highlights will be added after match analysis</p>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const SoccerPitch: React.FC<{ lineup: TeamLineup, teamName: string }> = ({ lineup, teamName }) => {
     return (

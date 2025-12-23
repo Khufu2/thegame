@@ -111,6 +111,41 @@ async function resolveMatchPredictions(matchId: string): Promise<{ resolved: num
       }
     }
 
+    // Generate post-match news content with Groq
+    if (resolvedCount > 0) {
+      try {
+        console.log(`📰 Generating post-match news for ${match.home_team} vs ${match.away_team}`);
+
+        const newsResponse = await fetch('https://ebfhyyznuzxwhirwlcds.supabase.co/functions/v1/generate-news-groq', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViZmh5eXpudXp4d2hpcndsY2RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMTY3NzMsImV4cCI6MjA4MDY5Mjc3M30.qbLe9x8PBrg8smjcx03MiStS6fNAqfF_jWZqFfOwyPA`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content_type: 'post-match',
+            league: 'Premier League', // You might want to get this from match data
+            match_id: matchId,
+            home_team: match.home_team,
+            away_team: match.away_team,
+            input_data: {
+              final_score: `${match.home_score}-${match.away_score}`,
+              key_events: [], // You can populate this from match timeline if available
+              standout_players: [] // You can populate this from box score if available
+            }
+          })
+        });
+
+        if (newsResponse.ok) {
+          console.log(`✅ Post-match news generated for ${match.home_team} vs ${match.away_team}`);
+        } else {
+          console.error(`❌ Failed to generate news: ${newsResponse.status}`);
+        }
+      } catch (newsError) {
+        console.error('Error generating post-match news:', newsError);
+      }
+    }
+
     console.log(`Match ${matchId} resolution complete: ${resolvedCount} resolved, ${errorCount} errors`);
     return { resolved: resolvedCount, errors: errorCount };
 

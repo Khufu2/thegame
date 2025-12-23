@@ -66,16 +66,38 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedStory, setSelectedStory] = useState<NewsStory | null>(null);
 
-  // NEW BLEACHER REPORT STYLE STATE
-  const [featuredVideo, setFeaturedVideo] = useState({
-    id: 'featured_1',
-    title: 'Incredible Last-Minute Winner! ⚽️',
-    thumbnail: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop',
-    duration: '2:34',
-    views: '125K',
-    source: 'Premier League',
-    url: '#'
-  });
+  // DYNAMIC FEATURED VIDEO - Find the most recent video from feeds
+  const featuredVideo = useMemo(() => {
+    // Look for news stories with video_url (featured videos from admin)
+    const videoStories = items.filter(item =>
+      'source' in item && (item as NewsStory).video_url
+    ) as NewsStory[];
+
+    if (videoStories.length > 0) {
+      const latestVideo = videoStories[0]; // Assuming items are sorted by recency
+      return {
+        id: latestVideo.id,
+        title: latestVideo.title,
+        thumbnail: latestVideo.imageUrl || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop',
+        duration: '2:34', // Could be extracted from video metadata
+        views: 'Featured',
+        source: latestVideo.source,
+        url: latestVideo.video_url,
+        story: latestVideo
+      };
+    }
+
+    // Fallback to default
+    return {
+      id: 'featured_1',
+      title: 'Incredible Last-Minute Winner! ⚽️',
+      thumbnail: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop',
+      duration: '2:34',
+      views: '125K',
+      source: 'Premier League',
+      url: '#'
+    };
+  }, [items]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showYesterday, setShowYesterday] = useState(false);
 
@@ -459,6 +481,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                   duration={featuredVideo.duration}
                   views={featuredVideo.views}
                   source={featuredVideo.source}
+                  videoUrl={featuredVideo.url}
                 />
               </div>
             </div>
@@ -1376,27 +1399,63 @@ const VideoCard: React.FC<{
     duration: string;
     views: string;
     source: string;
-}> = ({ title, thumbnail, duration, views, source }) => (
-    <div className="relative rounded-lg overflow-hidden cursor-pointer group">
-        <div className="aspect-video bg-gray-800 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/50 group-hover:scale-110 transition-transform">
-                    <PlayCircle size={24} className="text-white fill-white ml-1" />
+    videoUrl?: string;
+    onClick?: () => void;
+}> = ({ title, thumbnail, duration, views, source, videoUrl, onClick }) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    const handleClick = () => {
+        if (videoUrl && videoUrl !== '#') {
+            setIsPlaying(true);
+            if (onClick) onClick();
+        } else {
+            // Fallback: open in new tab
+            window.open(videoUrl, '_blank');
+        }
+    };
+
+    return (
+        <div className="relative rounded-lg overflow-hidden cursor-pointer group" onClick={handleClick}>
+            <div className="aspect-video bg-gray-800 flex items-center justify-center relative">
+                {!isPlaying ? (
+                    <>
+                        <img
+                            src={thumbnail}
+                            alt={title}
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/50 group-hover:scale-110 transition-transform">
+                                <PlayCircle size={24} className="text-white fill-white ml-1" />
+                            </div>
+                        </div>
+                        <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
+                            {duration}
+                        </div>
+                    </>
+                ) : (
+                    <iframe
+                        src={`https://www.youtube.com/embed/${videoUrl?.split('v=')[1]?.split('&')[0]}?autoplay=1`}
+                        className="w-full h-full"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={title}
+                    />
+                )}
+            </div>
+            {!isPlaying && (
+                <div className="p-3 bg-[#121212]">
+                    <h4 className="text-sm font-bold text-white line-clamp-2 leading-tight mb-1">{title}</h4>
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-400">{source}</span>
+                        <span className="text-xs text-gray-500">{views} views</span>
+                    </div>
                 </div>
-            </div>
-            <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
-                {duration}
-            </div>
+            )}
         </div>
-        <div className="p-3 bg-[#121212]">
-            <h4 className="text-sm font-bold text-white line-clamp-2 leading-tight mb-1">{title}</h4>
-            <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">{source}</span>
-                <span className="text-xs text-gray-500">{views} views</span>
-            </div>
-        </div>
-    </div>
-);
+    );
+};
 
 // CLEAN LEAGUE SECTION - PRIORITIZE NEWS OVER MATCHES
 const LeagueSection: React.FC<{

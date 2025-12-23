@@ -284,6 +284,7 @@ export interface NewsStory {
   wordCount?: number;
   readingTimeMinutes?: number;
   excerpt?: string;
+  video_url?: string; // For featured videos
 
   // Legacy support (optional)
   body?: string[];
