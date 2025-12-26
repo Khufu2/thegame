@@ -60,24 +60,378 @@ const WeatherIcon = ({ condition, size = 14 }: { condition?: string, size?: numb
 
 // ===== NEW FEED STRUCTURE COMPONENTS =====
 
-// SECTION 1: FEATURED MOMENT (Hero)
-const FeaturedMoment: React.FC<{
-  featuredItem: FeedItem | null;
-  onItemClick: (item: FeedItem) => void;
-}> = ({ featuredItem, onItemClick }) => {
-  if (!featuredItem) return null;
+// Mock data for demonstration
+const mockFeaturedStory: NewsStory = {
+  id: 'featured_1',
+  title: 'INCREDIBLE LAST-SECOND GAME-WINNER! ⚽️',
+  summary: 'A historic moment that will be remembered forever in Premier League history',
+  excerpt: 'A historic moment that will be remembered forever in Premier League history',
+  source: 'Sky Sports',
+  author: 'John Smith',
+  timestamp: '2 hours ago',
+  imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop',
+  video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  type: 'HIGHLIGHT',
+  tags: ['game-winner', 'historic', 'highlight'],
+  likes: 15420,
+  comments: 2340
+};
 
-  const isVideo = 'video_url' in featuredItem && featuredItem.video_url;
-  const imageUrl = 'imageUrl' in featuredItem ? featuredItem.imageUrl :
-                   'video_url' in featuredItem ? `https://img.youtube.com/vi/${featuredItem.video_url?.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg` : '';
+const mockTrendingItems: FeedItem[] = [
+  {
+    id: 'trend_1',
+    title: 'Massive upset: Underdogs stun champions in thriller!',
+    summary: 'A shock result that shakes the league standings',
+    excerpt: 'A shock result that shakes the league standings',
+    source: 'ESPN',
+    timestamp: '1 hour ago',
+    imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=400&auto=format&fit=crop',
+    tags: ['upset', 'breaking'],
+    likes: 1200,
+    comments: 89
+  } as NewsStory,
+  {
+    id: 'trend_2',
+    title: 'Star player suffers season-ending injury',
+    summary: 'Breaking news from training ground',
+    excerpt: 'Breaking news from training ground',
+    source: 'BBC Sport',
+    timestamp: '30 min ago',
+    imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=400&auto=format&fit=crop',
+    tags: ['injury', 'breaking'],
+    likes: 850,
+    comments: 156
+  } as NewsStory,
+  {
+    id: 'match_1',
+    homeTeam: { id: '1', name: 'Arsenal', logo: 'https://media.api-sports.io/football/teams/42.png' },
+    awayTeam: { id: '2', name: 'Chelsea', logo: 'https://media.api-sports.io/football/teams/49.png' },
+    league: 'EPL',
+    time: new Date(Date.now() + 3600000).toISOString(),
+    status: MatchStatus.FINISHED,
+    score: { home: 3, away: 1 }
+  } as Match
+];
+
+const mockTodaysPicks: Match[] = [
+  {
+    id: 'pick_1',
+    homeTeam: { id: '1', name: 'Liverpool', logo: 'https://media.api-sports.io/football/teams/40.png' },
+    awayTeam: { id: '2', name: 'Manchester City', logo: 'https://media.api-sports.io/football/teams/50.png' },
+    league: 'EPL',
+    time: new Date(Date.now() + 7200000).toISOString(),
+    status: MatchStatus.SCHEDULED,
+    prediction: {
+      outcome: 'HOME',
+      confidence: 85,
+      scorePrediction: '2-1',
+      aiReasoning: 'Liverpool has strong home form and City is dealing with injuries',
+      keyInsight: 'Liverpool averages 2.1 goals at home, City defense vulnerable',
+      odds: { home: 2.10, draw: 3.40, away: 3.20 }
+    }
+  } as Match,
+  {
+    id: 'pick_2',
+    homeTeam: { id: '3', name: 'Barcelona', logo: 'https://media.api-sports.io/football/teams/529.png' },
+    awayTeam: { id: '4', name: 'Real Madrid', logo: 'https://media.api-sports.io/football/teams/541.png' },
+    league: 'LaLiga',
+    time: new Date(Date.now() + 10800000).toISOString(),
+    status: MatchStatus.SCHEDULED,
+    prediction: {
+      outcome: 'AWAY',
+      confidence: 72,
+      scorePrediction: '1-2',
+      aiReasoning: 'Real Madrid has better recent form and key players returning',
+      keyInsight: 'Madrid won 4 of last 5 away games',
+      odds: { home: 2.80, draw: 3.10, away: 2.60 }
+    }
+  } as Match,
+  {
+    id: 'pick_3',
+    homeTeam: { id: '5', name: 'Lakers', logo: 'https://media.api-sports.io/basketball/teams/132.png' },
+    awayTeam: { id: '6', name: 'Warriors', logo: 'https://media.api-sports.io/basketball/teams/134.png' },
+    league: 'NBA',
+    time: new Date(Date.now() + 14400000).toISOString(),
+    status: MatchStatus.SCHEDULED,
+    prediction: {
+      outcome: 'HOME',
+      confidence: 68,
+      scorePrediction: '115-108',
+      aiReasoning: 'Lakers have home advantage and better defensive stats',
+      keyInsight: 'Lakers allow 105.2 PPG at home vs Warriors 112.8 PPG away',
+      odds: { home: 1.85, draw: 0, away: 2.05 }
+    }
+  } as Match
+];
+
+// Mock data for league spotlights
+const mockLeagueNews: Record<string, NewsStory[]> = {
+  'EPL': [
+    {
+      id: 'epl_hero',
+      title: 'Premier League Title Race Heating Up!',
+      summary: 'Top teams battle for supremacy as season reaches climax',
+      excerpt: 'Top teams battle for supremacy as season reaches climax',
+      source: 'Sky Sports',
+      timestamp: '3 hours ago',
+      imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=600&auto=format&fit=crop',
+      type: 'NEWS',
+      tags: ['EPL', 'title-race'],
+      likes: 2500,
+      comments: 340
+    },
+    {
+      id: 'epl_quick1',
+      title: 'Arsenal secure crucial victory',
+      summary: 'Gunners maintain pressure on top four',
+      excerpt: 'Gunners maintain pressure on top four',
+      source: 'BBC Sport',
+      timestamp: '2 hours ago',
+      type: 'NEWS',
+      imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=400&auto=format&fit=crop',
+      tags: ['EPL', 'results'],
+      likes: 1200,
+      comments: 89
+    },
+    {
+      id: 'epl_quick2',
+      title: 'Chelsea injury concerns mount',
+      summary: 'Key defender ruled out for 3 weeks',
+      excerpt: 'Key defender ruled out for 3 weeks',
+      source: 'The Guardian',
+      timestamp: '1 hour ago',
+      type: 'NEWS',
+      imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=400&auto=format&fit=crop',
+      tags: ['EPL', 'injuries'],
+      likes: 890,
+      comments: 67
+    }
+  ],
+  'Bundesliga': [
+    {
+      id: 'bund_hero',
+      title: 'Bayern Munich dominates Bundesliga!',
+      summary: 'Record-breaking season continues for Bavarian giants',
+      excerpt: 'Record-breaking season continues for Bavarian giants',
+      source: 'Bild',
+      timestamp: '4 hours ago',
+      imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=600&auto=format&fit=crop',
+      type: 'NEWS',
+      tags: ['Bundesliga', 'dominance'],
+      likes: 1800,
+      comments: 245
+    }
+  ],
+  'Serie A': [
+    {
+      id: 'serie_hero',
+      title: 'Juventus makes stunning comeback!',
+      summary: 'Old Lady fights back from 2-0 down to win 3-2',
+      excerpt: 'Old Lady fights back from 2-0 down to win 3-2',
+      source: ' Gazzetta dello Sport',
+      timestamp: '5 hours ago',
+      imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=600&auto=format&fit=crop',
+      type: 'NEWS',
+      tags: ['Serie A', 'comeback'],
+      likes: 1600,
+      comments: 198
+    }
+  ],
+  'NBA': [
+    {
+      id: 'nba_hero',
+      title: 'NBA Playoffs Race Intensifies!',
+      summary: 'Western Conference battle reaches fever pitch',
+      excerpt: 'Western Conference battle reaches fever pitch',
+      source: 'ESPN',
+      timestamp: '6 hours ago',
+      imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=600&auto=format&fit=crop',
+      type: 'NEWS',
+      tags: ['NBA', 'playoffs'],
+      likes: 3200,
+      comments: 456
+    }
+  ]
+};
+
+const mockMetaContent: NewsStory[] = [
+  {
+    id: 'power_rankings_1',
+    title: 'Premier League Power Rankings: Manchester City Reigns Supreme',
+    summary: 'Our weekly power rankings show City maintaining their dominance at the top',
+    excerpt: 'Our weekly power rankings show City maintaining their dominance at the top',
+    source: 'Sheena Sports',
+    timestamp: '2 days ago',
+    imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=600&auto=format&fit=crop',
+    type: 'NEWS',
+    tags: ['power-rankings', 'EPL'],
+    likes: 1200,
+    comments: 89
+  },
+  {
+    id: 'storylines_1',
+    title: 'Top 5 Storylines to Watch This Weekend',
+    summary: 'From title races to relegation battles, here are the biggest narratives',
+    excerpt: 'From title races to relegation battles, here are the biggest narratives',
+    source: 'Sheena Sports',
+    timestamp: '1 day ago',
+    imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=600&auto=format&fit=crop',
+    type: 'NEWS',
+    tags: ['top-storylines', 'analysis'],
+    likes: 950,
+    comments: 67
+  },
+  {
+    id: 'injuries_1',
+    title: 'Injury Roundup: Key Players Set to Miss Weekend Action',
+    summary: 'Latest updates on injured stars across European leagues',
+    excerpt: 'Latest updates on injured stars across European leagues',
+    source: 'Sheena Sports',
+    timestamp: '12 hours ago',
+    imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=600&auto=format&fit=crop',
+    type: 'NEWS',
+    tags: ['injury-roundup', 'breaking'],
+    likes: 780,
+    comments: 45
+  },
+  {
+    id: 'players_watch_1',
+    title: 'Players to Watch: Rising Stars Making Their Mark',
+    summary: 'Young talents who could change the game this season',
+    excerpt: 'Young talents who could change the game this season',
+    source: 'Sheena Sports',
+    timestamp: '18 hours ago',
+    imageUrl: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=600&auto=format&fit=crop',
+    type: 'NEWS',
+    tags: ['players-to-watch', 'analysis'],
+    likes: 1100,
+    comments: 78
+  }
+];
+
+const mockLeagueMatches: Record<string, Match[]> = {
+  'EPL': [
+    {
+      id: 'epl_match1',
+      homeTeam: { id: '1', name: 'Tottenham', logo: 'https://media.api-sports.io/football/teams/47.png' },
+      awayTeam: { id: '2', name: 'Newcastle', logo: 'https://media.api-sports.io/football/teams/34.png' },
+      league: 'EPL',
+      time: new Date(Date.now() + 3600000).toISOString(),
+      status: MatchStatus.SCHEDULED,
+      prediction: {
+        outcome: 'HOME',
+        confidence: 78,
+        scorePrediction: '2-0',
+        aiReasoning: 'Tottenham strong at home, Newcastle struggling away',
+        keyInsight: 'Spurs won 6 of last 7 home games',
+        odds: { home: 1.95, draw: 3.60, away: 3.80 }
+      }
+    } as Match
+  ],
+  'Bundesliga': [
+    {
+      id: 'bund_match1',
+      homeTeam: { id: '3', name: 'Dortmund', logo: 'https://media.api-sports.io/football/teams/165.png' },
+      awayTeam: { id: '4', name: 'Leverkusen', logo: 'https://media.api-sports.io/football/teams/168.png' },
+      league: 'Bundesliga',
+      time: new Date(Date.now() + 7200000).toISOString(),
+      status: MatchStatus.SCHEDULED,
+      prediction: {
+        outcome: 'AWAY',
+        confidence: 82,
+        scorePrediction: '1-3',
+        aiReasoning: 'Leverkusen unbeaten in 34 matches, Dortmund inconsistent',
+        keyInsight: 'Leverkusen scored in last 28 consecutive matches',
+        odds: { home: 3.20, draw: 3.80, away: 2.05 }
+      }
+    } as Match
+  ],
+  'Serie A': [
+    {
+      id: 'serie_match1',
+      homeTeam: { id: '5', name: 'Inter Milan', logo: 'https://media.api-sports.io/football/teams/505.png' },
+      awayTeam: { id: '6', name: 'AC Milan', logo: 'https://media.api-sports.io/football/teams/489.png' },
+      league: 'Serie A',
+      time: new Date(Date.now() + 10800000).toISOString(),
+      status: MatchStatus.SCHEDULED,
+      prediction: {
+        outcome: 'HOME',
+        confidence: 75,
+        scorePrediction: '2-1',
+        aiReasoning: 'Inter has better home form in derby matches',
+        keyInsight: 'Inter won 4 of last 5 Milan derbies',
+        odds: { home: 2.15, draw: 3.30, away: 3.40 }
+      }
+    } as Match
+  ],
+  'NBA': [
+    {
+      id: 'nba_match1',
+      homeTeam: { id: '7', name: 'Celtics', logo: 'https://media.api-sports.io/basketball/teams/139.png' },
+      awayTeam: { id: '8', name: '76ers', logo: 'https://media.api-sports.io/basketball/teams/143.png' },
+      league: 'NBA',
+      time: new Date(Date.now() + 14400000).toISOString(),
+      status: MatchStatus.SCHEDULED,
+      prediction: {
+        outcome: 'HOME',
+        confidence: 80,
+        scorePrediction: '118-112',
+        aiReasoning: 'Celtics have dominant home court advantage',
+        keyInsight: 'Boston won 15 of last 16 home games',
+        odds: { home: 1.75, draw: 0, away: 2.20 }
+      }
+    } as Match
+  ]
+};
+
+// SECTION 1: FEATURED MOMENT (HERO) - ONE item only
+const FeaturedMoment: React.FC<{
+  items: FeedItem[];
+  onItemClick: (item: FeedItem) => void;
+}> = ({ items, onItemClick }) => {
+  // Use mock data if no real featured item
+  const featuredItem = React.useMemo(() => {
+    // Selection logic: Find biggest moment across all leagues
+    const candidates = items.filter(item => {
+      if ('source' in item) {
+        const story = item as NewsStory;
+        // Look for content types: full-time highlight, game-winner, historic performance, massive upset
+        const isHighlight = story.type === 'HIGHLIGHT' ||
+                            story.tags?.includes('game-winner') ||
+                            story.tags?.includes('historic') ||
+                            story.tags?.includes('upset') ||
+                            story.tags?.includes('highlight');
+        return isHighlight && (story.imageUrl || story.video_url);
+      }
+      return false;
+    });
+
+    // Return mock data if no candidates found
+    return candidates.length > 0 ? candidates[0] : mockFeaturedStory;
+  }, [items]);
+
+  const story = featuredItem as NewsStory;
+  const isVideo = story.video_url;
+  const mediaUrl = isVideo ?
+    `https://img.youtube.com/vi/${story.video_url?.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg` :
+    story.imageUrl;
+
+  // Generate 1-line context ("why it matters")
+  const whyItMatters = React.useMemo(() => {
+    if (story.tags?.includes('upset')) return "A massive upset that shook the league standings";
+    if (story.tags?.includes('game-winner')) return "A dramatic game-winner that will be remembered forever";
+    if (story.tags?.includes('historic')) return "A historic performance for the ages";
+    if (story.tags?.includes('highlight')) return "The highlight reel moment of the season";
+    return "A moment that changed everything";
+  }, [story.tags]);
 
   return (
     <section className="px-4 py-6">
       <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-900/20 to-black shadow-2xl">
-        {/* Background Image/Video */}
-        {imageUrl && (
+        {/* Full-width media background */}
+        {mediaUrl && (
           <img
-            src={imageUrl}
+            src={mediaUrl}
             alt="Featured Moment"
             className="w-full h-full object-cover"
           />
@@ -89,26 +443,28 @@ const FeaturedMoment: React.FC<{
         {/* Play Button for Videos */}
         {isVideo && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-20 h-20 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/30 hover:scale-110 transition-transform cursor-pointer">
-              <PlayCircle size={40} className="text-white fill-white ml-1" />
+            <div className="w-24 h-24 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/30 hover:scale-110 transition-transform cursor-pointer">
+              <PlayCircle size={48} className="text-white fill-white ml-1" />
             </div>
           </div>
         )}
 
         {/* Content Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="bg-red-600 text-white text-xs font-black uppercase px-3 py-1 rounded-full tracking-wide">
+        <div className="absolute bottom-0 left-0 right-0 p-8">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="bg-red-600 text-white text-sm font-black uppercase px-4 py-2 rounded-full tracking-wide">
               FEATURED MOMENT
             </span>
           </div>
 
-          <h1 className="font-condensed font-black text-4xl md:text-5xl uppercase text-white leading-[0.9] mb-2 tracking-tight">
-            {'title' in featuredItem ? featuredItem.title : 'Breaking Moment'}
+          {/* Big emotional headline */}
+          <h1 className="font-condensed font-black text-5xl md:text-6xl uppercase text-white leading-[0.9] mb-3 tracking-tight max-w-4xl">
+            {story.title}
           </h1>
 
-          <p className="text-gray-300 text-lg leading-relaxed max-w-2xl">
-            {'summary' in featuredItem ? featuredItem.summary : 'A moment that changed the game'}
+          {/* 1-line context ("why it matters") */}
+          <p className="text-gray-200 text-xl leading-relaxed max-w-3xl font-medium">
+            {whyItMatters}
           </p>
         </div>
 
@@ -122,13 +478,31 @@ const FeaturedMoment: React.FC<{
   );
 };
 
-// SECTION 2: WHAT JUST HAPPENED (Trending Feed)
+// SECTION 2: WHAT JUST HAPPENED (TRENDING FEED)
 const WhatJustHappened: React.FC<{
   items: FeedItem[];
   onItemClick: (item: FeedItem) => void;
 }> = ({ items, onItemClick }) => {
-  // Get latest 8 items, mixed leagues, chronological
-  const trendingItems = items.slice(0, 8);
+  // Get 6-10 short cards, mixed leagues, chronological (latest first)
+  const trendingItems = React.useMemo(() => {
+    // Filter for trending content: post-match summaries, breaking injuries, red cards, buzzer beaters, shock results
+    const trendingContent = items.filter(item => {
+      if ('source' in item) {
+        const story = item as NewsStory;
+        return story.tags?.some(tag =>
+          ['post-match', 'breaking', 'injury', 'red-card', 'buzzer-beater', 'shock', 'upset'].includes(tag)
+        );
+      }
+      if ('homeTeam' in item) {
+        const match = item as Match;
+        return match.status === MatchStatus.FINISHED; // Recent finished matches
+      }
+      return false;
+    });
+
+    // Use mock data if no real trending content
+    return trendingContent.length > 0 ? trendingContent.slice(0, 8) : mockTrendingItems;
+  }, [items]);
 
   return (
     <section className="px-4 py-4">
@@ -139,9 +513,10 @@ const WhatJustHappened: React.FC<{
         </h2>
       </div>
 
-      <div className="space-y-3">
+      {/* Horizontal scroll like X/Twitter timeline */}
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
         {trendingItems.map((item, index) => (
-          <TrendingItemCard
+          <TrendingCard
             key={index}
             item={item}
             onClick={() => onItemClick(item)}
@@ -152,48 +527,51 @@ const WhatJustHappened: React.FC<{
   );
 };
 
-// Individual trending item card - Twitter/X style
-const TrendingItemCard: React.FC<{
+// Individual trending card - X/Twitter timeline style
+const TrendingCard: React.FC<{
   item: FeedItem;
   onClick: () => void;
 }> = ({ item, onClick }) => {
   const isMatch = 'homeTeam' in item;
   const isNews = 'source' in item;
 
-  let title = '';
-  let subtitle = '';
+  let headline = '';
   let league = '';
   let timestamp = 'Just now';
+  let thumbnail = '';
 
   if (isMatch) {
     const match = item as Match;
-    title = `${match.homeTeam.name} vs ${match.awayTeam.name}`;
-    subtitle = match.status === MatchStatus.FINISHED ?
-      `Final: ${match.score?.home ?? 0}-${match.score?.away ?? 0}` :
-      formatMatchTime(match.time);
+    // Keep headline ≤ 10 words
+    headline = `${match.homeTeam.name} vs ${match.awayTeam.name}`;
     league = match.league;
+    thumbnail = match.homeTeam.logo;
   } else if (isNews) {
     const news = item as NewsStory;
-    title = news.title;
-    subtitle = news.excerpt || '';
-    league = news.tags?.[0] || '';
+    // Truncate headline to ≤ 10 words
+    const words = news.title.split(' ');
+    headline = words.length > 10 ? words.slice(0, 10).join(' ') + '...' : news.title;
+    league = news.tags?.[0] || news.source;
     timestamp = news.timestamp;
+    thumbnail = news.imageUrl;
   }
 
   return (
     <div
       onClick={onClick}
-      className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 cursor-pointer hover:border-blue-500/50 transition-colors"
+      className="min-w-[280px] bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-blue-500/50 transition-colors"
     >
       <div className="flex items-start gap-3">
-        {/* League/Icon indicator */}
-        <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-          {isMatch ? (
-            <Trophy size={16} className="text-blue-400" />
-          ) : (
-            <Newspaper size={16} className="text-blue-400" />
-          )}
-        </div>
+        {/* Small thumbnail */}
+        {thumbnail && (
+          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+            <img
+              src={thumbnail}
+              alt="thumbnail"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -205,27 +583,10 @@ const TrendingItemCard: React.FC<{
             <span className="text-xs text-gray-500">{timestamp}</span>
           </div>
 
-          <h3 className="font-condensed font-bold text-white text-sm leading-tight line-clamp-2 mb-1">
-            {title}
+          <h3 className="font-condensed font-bold text-white text-sm leading-tight line-clamp-2">
+            {headline}
           </h3>
-
-          {subtitle && (
-            <p className="text-xs text-gray-400 line-clamp-1">
-              {subtitle}
-            </p>
-          )}
         </div>
-
-        {/* Thumbnail if available */}
-        {isNews && (item as NewsStory).imageUrl && (
-          <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-            <img
-              src={(item as NewsStory).imageUrl}
-              alt="thumbnail"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -561,7 +922,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
         {/* 4. PREMIUM PREDICTIONS (THE LOCKS - RAIL) */}
         {topPicks.length > 0 && (
         <section className="py-2 space-y-4">
-             <div className="flex items-center justify-between px-4">
+              <div className="flex items-center justify-between px-4">
                 <div className="flex items-center gap-2">
                     <Sparkles size={16} className="text-sheena-primary" />
                     <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
@@ -569,7 +930,7 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                     </h2>
                 </div>
             </div>
-             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-4">
+              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-4">
                 {topPicks.map(match => (
                     match && <PremiumPredictionCard
                         key={match.id}
@@ -579,47 +940,57 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
                         isLocked={!user}
                     />
                 ))}
-             </div>
+              </div>
         </section>
         )}
 
         {/* 5. VALUE RADAR (UPDATED: 4-ROW HIGH DENSITY GRID) */}
         {valuePicks.length > 0 && (
         <section className="py-2 space-y-4">
-             <div className="flex items-center justify-between px-4">
-                 <div className="flex items-center gap-2">
-                     <Radar size={16} className="text-[#00FFB2]" />
-                     <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
-                         Value Radar
-                     </h2>
-                 </div>
-                 <button
-                    onClick={() => navigate('/scores')}
-                    className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 hover:text-[#00FFB2] transition-colors"
-                >
-                    View All <ArrowRight size={12} />
-                </button>
-             </div>
+              <div className="flex items-center justify-between px-4">
+                  <div className="flex items-center gap-2">
+                      <Radar size={16} className="text-[#00FFB2]" />
+                      <h2 className="font-condensed font-black text-xl text-black md:text-white uppercase tracking-tighter italic">
+                          Value Radar
+                      </h2>
+                  </div>
+                  <button
+                     onClick={() => navigate('/scores')}
+                     className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 hover:text-[#00FFB2] transition-colors"
+                 >
+                     View All <ArrowRight size={12} />
+                 </button>
+              </div>
 
-             {/*
-                 HORIZONTAL SCROLL CONTAINER WITH GRID
-                 Rows: 4 (Denser)
-                 Flow: Column
-                 Auto Columns: 240px (Compact Cards)
-             */}
-             <div className="grid grid-rows-4 grid-flow-col gap-2 px-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4 auto-cols-[240px]">
-                 {valuePicks.map(match => (
-                     match && <div className="snap-start h-[60px]" key={match.id}>
-                        <CompactPredictionCard
-                            match={match}
-                            onClick={() => handleMatchClick(match.id)}
-                            isLocked={!user}
-                        />
-                     </div>
-                 ))}
-             </div>
+              {/*
+                  HORIZONTAL SCROLL CONTAINER WITH GRID
+                  Rows: 4 (Denser)
+                  Flow: Column
+                  Auto Columns: 240px (Compact Cards)
+              */}
+              <div className="grid grid-rows-4 grid-flow-col gap-2 px-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4 auto-cols-[240px]">
+                  {valuePicks.map(match => (
+                      match && <div className="snap-start h-[60px]" key={match.id}>
+                         <CompactPredictionCard
+                             match={match}
+                             onClick={() => handleMatchClick(match.id)}
+                             isLocked={!user}
+                         />
+                      </div>
+                  ))}
+              </div>
         </section>
         )}
+
+        {/* FEATURED MOMENT (Hero) */}
+        <FeaturedMoment
+          items={items}
+          onItemClick={(item) => {
+            if ('source' in item) {
+              onArticleClick?.((item as NewsStory).id);
+            }
+          }}
+        />
 
         {/* WHAT JUST HAPPENED (Trending Feed) */}
         <WhatJustHappened
@@ -646,12 +1017,16 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
           const leagueMatches = Array.isArray(matches) ? matches.filter(m => m.league === league) : [];
           const leagueNews = items.filter(item => 'tags' in item && (item as NewsStory).tags?.includes(league)).slice(0, 3) as NewsStory[];
 
+          // Use mock data if no real data
+          const finalMatches = leagueMatches.length > 0 ? leagueMatches : (mockLeagueMatches[league] || []);
+          const finalNews = leagueNews.length > 0 ? leagueNews : (mockLeagueNews[league] || []);
+
           return (
             <LeagueSpotlight
               key={league}
               league={league}
-              matches={leagueMatches}
-              news={leagueNews}
+              matches={finalMatches}
+              news={finalNews}
               onMatchClick={handleMatchClick}
               onNewsClick={onArticleClick}
               onOpenPweza={openPwezaForMatch}
@@ -660,15 +1035,105 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
           );
         })}
 
-        {/* DEEP DIVE (Meta Content Hub) */}
-        <DeeperContext
-          items={items}
-          onItemClick={(item) => {
-            if ('source' in item) {
-              onArticleClick?.((item as NewsStory).id);
-            }
-          }}
-        />
+        {/* DEEP DIVE - Tiny Cards Carousel */}
+        <section className="px-4 py-4">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart2 size={20} className="text-purple-400" />
+            <h2 className="font-condensed font-black text-xl uppercase text-white tracking-tighter">
+              Deep Dive
+            </h2>
+          </div>
+
+          <div className="space-y-3">
+            {/* Power Rankings */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy size={16} className="text-amber-400" />
+                <span className="font-condensed font-bold text-sm uppercase text-white tracking-wide">Power Rankings</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {[1,2,3,4,5].map((i) => (
+                  <div key={i} className="min-w-[160px] bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg overflow-hidden cursor-pointer hover:border-amber-500/50 transition-colors">
+                    <div className="relative aspect-[4/3] bg-gray-800">
+                      <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" />
+                      <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center text-[10px] font-black text-white">{i}</div>
+                    </div>
+                    <div className="p-2">
+                      <h4 className="text-xs font-bold text-white line-clamp-2 leading-tight">Team {i} dominates the league</h4>
+                      <span className="text-[10px] text-gray-500 uppercase">Sheena</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top Storylines */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp size={16} className="text-blue-400" />
+                <span className="font-condensed font-bold text-sm uppercase text-white tracking-wide">Top Storylines</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {[1,2,3,4,5].map((i) => (
+                  <div key={i} className="min-w-[160px] bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg overflow-hidden cursor-pointer hover:border-blue-500/50 transition-colors">
+                    <div className="relative aspect-[4/3] bg-gray-800">
+                      <img src="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" />
+                      <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[10px] font-black text-white">{i}</div>
+                    </div>
+                    <div className="p-2">
+                      <h4 className="text-xs font-bold text-white line-clamp-2 leading-tight">Storyline {i}: Major plot twist</h4>
+                      <span className="text-[10px] text-gray-500 uppercase">Sheena</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Players to Watch */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Users size={16} className="text-emerald-400" />
+                <span className="font-condensed font-bold text-sm uppercase text-white tracking-wide">Players to Watch</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {[1,2,3,4,5].map((i) => (
+                  <div key={i} className="min-w-[160px] bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-colors">
+                    <div className="relative aspect-[4/3] bg-gray-800">
+                      <img src="https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" />
+                      <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-black text-white">{i}</div>
+                    </div>
+                    <div className="p-2">
+                      <h4 className="text-xs font-bold text-white line-clamp-2 leading-tight">Player {i} breaking records</h4>
+                      <span className="text-[10px] text-gray-500 uppercase">Sheena</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Injury Report */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Activity size={16} className="text-red-400" />
+                <span className="font-condensed font-bold text-sm uppercase text-white tracking-wide">Injury Report</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {[1,2,3,4,5].map((i) => (
+                  <div key={i} className="min-w-[160px] bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg overflow-hidden cursor-pointer hover:border-red-500/50 transition-colors">
+                    <div className="relative aspect-[4/3] bg-gray-800">
+                      <img src="https://images.unsplash.com/photo-1519861531473-9200262188bf?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" />
+                      <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-black text-white">{i}</div>
+                    </div>
+                    <div className="p-2">
+                      <h4 className="text-xs font-bold text-white line-clamp-2 leading-tight">Injury update {i}</h4>
+                      <span className="text-[10px] text-gray-500 uppercase">Sheena</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* CONTINUOUS FEED (Endless Scroll) */}
         <ContinuousFeed
@@ -786,11 +1251,16 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
       user: any;
     }> = ({ matches, onMatchClick, onOpenPweza, user }) => {
       // Get top 5 matches with predictions for today
-      const todaysPicks = matches
-        .filter(match => match.prediction)
-        .sort((a, b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0))
-        .slice(0, 5);
-    
+      const todaysPicks = React.useMemo(() => {
+        const realPicks = matches
+          .filter(match => match.prediction)
+          .sort((a, b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0))
+          .slice(0, 5);
+
+        // Use mock data if no real predictions
+        return realPicks.length > 0 ? realPicks : mockTodaysPicks;
+      }, [matches]);
+
       if (todaysPicks.length === 0) return null;
     
       return (
@@ -801,24 +1271,26 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
               Today's Picks
             </h2>
           </div>
-    
-          <div className="space-y-3">
+
+          {/* Horizontal Carousel */}
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
             {todaysPicks.map((match, index) => (
-              <PredictionCard
-                key={match.id}
-                match={match}
-                onClick={() => onMatchClick(match.id)}
-                onOpenPweza={() => onOpenPweza(match)}
-                isLocked={!user}
-                showVerdict={false} // Will be handled separately
-              />
+              <div key={match.id} className="snap-start min-w-[300px]">
+                <PredictionCard
+                  match={match}
+                  onClick={() => onMatchClick(match.id)}
+                  onOpenPweza={() => onOpenPweza(match)}
+                  isLocked={!user}
+                  showVerdict={false} // Will be handled separately
+                />
+              </div>
             ))}
           </div>
         </section>
       );
     };
     
-    // Enhanced Prediction Card for Today's Picks
+    // Compact Prediction Card for Today's Picks (Carousel)
     const PredictionCard: React.FC<{
       match: Match;
       onClick: () => void;
@@ -828,35 +1300,35 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
     }> = ({ match, onClick, onOpenPweza, isLocked, showVerdict = false }) => {
       const confidence = match.prediction?.confidence || 0;
       const outcome = match.prediction?.outcome;
-    
+
       const getConfidenceColor = (conf: number) => {
         if (conf >= 80) return 'text-green-400 border-green-400/30 bg-green-400/10';
         if (conf >= 60) return 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10';
         return 'text-red-400 border-red-400/30 bg-red-400/10';
       };
-    
+
       const getConfidenceLabel = (conf: number) => {
         if (conf >= 80) return 'Lock';
         if (conf >= 60) return 'Safe';
         return 'Risk';
       };
-    
+
       return (
         <div
           onClick={onClick}
-          className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 cursor-pointer hover:border-indigo-500/50 transition-colors relative"
+          className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-3 cursor-pointer hover:border-indigo-500/50 transition-colors relative"
         >
           {/* GUEST LOCK OVERLAY */}
           {isLocked && (
             <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] flex items-center justify-center gap-2 rounded-xl">
-              <Lock size={16} className="text-white/70" />
-              <span className="font-condensed font-black text-sm uppercase text-white tracking-wide">Member Access Only</span>
+              <Lock size={14} className="text-white/70" />
+              <span className="font-condensed font-black text-xs uppercase text-white tracking-wide">Member Only</span>
             </div>
           )}
-    
+
           <div className={`relative z-10 ${isLocked ? 'blur-sm select-none' : ''}`}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-3">
+            {/* Header - Compact */}
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
                   {match.league}
@@ -864,67 +1336,67 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
                 <span className="text-xs text-gray-600">•</span>
                 <span className="text-xs text-gray-500">{formatMatchTime(match.time)}</span>
               </div>
-    
-              <div className={`px-2 py-1 rounded border text-xs font-bold uppercase ${getConfidenceColor(confidence)}`}>
+
+              <div className={`px-1.5 py-0.5 rounded border text-[10px] font-bold uppercase ${getConfidenceColor(confidence)}`}>
                 {getConfidenceLabel(confidence)}
               </div>
             </div>
-    
-            {/* Teams */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <img src={match.homeTeam.logo} className="w-8 h-8 object-contain" />
-                <span className="font-condensed font-bold text-white text-lg uppercase">
+
+            {/* Teams - More Compact */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <img src={match.homeTeam.logo} className="w-6 h-6 object-contain" />
+                <span className="font-condensed font-bold text-white text-sm uppercase truncate max-w-[80px]">
                   {match.homeTeam.name}
                 </span>
               </div>
-    
-              <span className="font-serif italic text-gray-500 text-sm">vs</span>
-    
-              <div className="flex items-center gap-3">
-                <span className="font-condensed font-bold text-white text-lg uppercase">
+
+              <span className="font-serif italic text-gray-500 text-xs">vs</span>
+
+              <div className="flex items-center gap-2">
+                <span className="font-condensed font-bold text-white text-sm uppercase truncate max-w-[80px]">
                   {match.awayTeam.name}
                 </span>
-                <img src={match.awayTeam.logo} className="w-8 h-8 object-contain" />
+                <img src={match.awayTeam.logo} className="w-6 h-6 object-contain" />
               </div>
             </div>
-    
-            {/* Prediction */}
+
+            {/* Prediction - Compact */}
             <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm text-gray-400">Sheena's Pick:</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-condensed font-black text-xl text-white uppercase">
-                    {outcome === 'HOME' ? match.homeTeam.name :
-                     outcome === 'AWAY' ? match.awayTeam.name :
-                     outcome === 'DRAW' ? 'Draw' : 'Analyzing...'}
+              <div className="flex-1">
+                <span className="text-xs text-gray-400">Pick:</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="font-condensed font-black text-lg text-white uppercase truncate">
+                    {outcome === 'HOME' ? match.homeTeam.name.substring(0, 8) :
+                     outcome === 'AWAY' ? match.awayTeam.name.substring(0, 8) :
+                     outcome === 'DRAW' ? 'Draw' : '—'}
                   </span>
                   {match.prediction?.odds && (
-                    <span className="font-mono text-sm font-bold text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded">
+                    <span className="font-mono text-xs font-bold text-indigo-400 bg-indigo-400/10 px-1.5 py-0.5 rounded">
                       {outcome === 'HOME' ? match.prediction.odds.home :
                        outcome === 'AWAY' ? match.prediction.odds.away :
-                       outcome === 'DRAW' ? match.prediction.odds.draw : '—'} odds
+                       outcome === 'DRAW' ? match.prediction.odds.draw : '—'}
                     </span>
                   )}
                 </div>
               </div>
-    
+
               <button
                 onClick={(e) => { e.stopPropagation(); onOpenPweza(); }}
-                className="w-10 h-10 rounded-full bg-indigo-600/20 hover:bg-indigo-600/30 flex items-center justify-center text-indigo-400 transition-colors"
+                className="w-8 h-8 rounded-full bg-indigo-600/20 hover:bg-indigo-600/30 flex items-center justify-center text-indigo-400 transition-colors ml-2"
               >
                 🐙
               </button>
             </div>
-    
+
             {/* Verdict Overlay (if match is finished) */}
             {showVerdict && match.status === MatchStatus.FINISHED && match.prediction && (
-              <div className="absolute top-2 right-2 bg-black/80 backdrop-blur rounded-lg px-2 py-1">
-                <span className="text-xs font-bold text-white">
-                  {match.prediction.outcome === 'HOME' && match.score?.home! > match.score?.away! ? '✅ Correct' :
-                   match.prediction.outcome === 'AWAY' && match.score?.away! > match.score?.home! ? '✅ Correct' :
-                   match.prediction.outcome === 'DRAW' && match.score?.home === match.score?.away ? '✅ Correct' :
-                   '❌ Incorrect'}
+              <div className="absolute top-1 right-1 bg-black/80 backdrop-blur rounded px-1.5 py-0.5">
+                <span className="text-[10px] font-bold text-white">
+                  {match.prediction.outcome === 'HOME' && match.score?.home! > match.score?.away! ? '✅' :
+                   match.prediction.outcome === 'AWAY' && match.score?.away! > match.score?.home! ? '✅' :
+                   match.prediction.outcome === 'DRAW' && match.score?.home === match.score?.away ? '✅' :
+                   '❌'}
                 </span>
               </div>
             )}
@@ -948,15 +1420,18 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
           (item as NewsStory).tags?.includes('analysis')
         )
       ) as NewsStory[];
-    
-      if (metaContent.length === 0) return null;
+
+      // Use mock data if no real meta content
+      const finalMetaContent = metaContent.length > 0 ? metaContent : mockMetaContent;
+
+      if (finalMetaContent.length === 0) return null;
     
       // Group by type
-      const groupedContent = metaContent.reduce((acc, item) => {
+      const groupedContent = finalMetaContent.reduce((acc, item) => {
         const type = item.tags?.find(tag =>
           ['power-rankings', 'top-storylines', 'players-to-watch', 'injury-roundup'].includes(tag)
         ) || 'analysis';
-    
+
         if (!acc[type]) acc[type] = [];
         acc[type].push(item);
         return acc;
@@ -985,7 +1460,7 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
       );
     };
     
-    // Meta Content Card - For deeper analysis content
+    // Clean Meta Content Card - No backgrounds, carousel layout
     const MetaContentCard: React.FC<{
       type: string;
       stories: NewsStory[];
@@ -994,53 +1469,79 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
       const getTypeLabel = (type: string) => {
         switch (type) {
           case 'power-rankings': return 'Power Rankings';
-          case 'top-storylines': return 'Top 5 Storylines';
+          case 'top-storylines': return 'Top Storylines';
           case 'players-to-watch': return 'Players to Watch';
-          case 'injury-roundup': return 'Injury Roundup';
+          case 'injury-roundup': return 'Injury Report';
           default: return 'Analysis';
         }
       };
-    
+
       const getTypeIcon = (type: string) => {
         switch (type) {
-          case 'power-rankings': return <Trophy size={16} className="text-yellow-400" />;
-          case 'top-storylines': return <TrendingUp size={16} className="text-blue-400" />;
-          case 'players-to-watch': return <Users size={16} className="text-green-400" />;
-          case 'injury-roundup': return <Activity size={16} className="text-red-400" />;
-          default: return <Brain size={16} className="text-purple-400" />;
+          case 'power-rankings': return <Trophy size={20} className="text-amber-400" />;
+          case 'top-storylines': return <TrendingUp size={20} className="text-blue-400" />;
+          case 'players-to-watch': return <Users size={20} className="text-emerald-400" />;
+          case 'injury-roundup': return <Activity size={20} className="text-red-400" />;
+          default: return <Brain size={20} className="text-violet-400" />;
         }
       };
-    
+
+      const getRankBadgeColor = (type: string) => {
+        switch (type) {
+          case 'power-rankings': return 'from-amber-500 to-amber-600';
+          case 'top-storylines': return 'from-blue-500 to-blue-600';
+          case 'players-to-watch': return 'from-emerald-500 to-emerald-600';
+          case 'injury-roundup': return 'from-red-500 to-red-600';
+          default: return 'from-violet-500 to-violet-600';
+        }
+      };
+
       return (
-        <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-4">
-            {getTypeIcon(type)}
-            <h3 className="font-condensed font-bold text-lg uppercase text-white tracking-wide">
+        <div className="py-4">
+          {/* Clean Header - No Background */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+              {getTypeIcon(type)}
+            </div>
+            <h3 className="font-condensed font-black text-xl uppercase text-white tracking-tight">
               {getTypeLabel(type)}
             </h3>
           </div>
-    
-          <div className="space-y-3">
-            {stories.slice(0, 3).map((story, index) => (
+
+          {/* Compact Horizontal Carousel */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
+            {stories.slice(0, 6).map((story, index) => (
               <div
                 key={story.id}
                 onClick={() => onItemClick(story)}
-                className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#252525] cursor-pointer transition-colors"
+                className="snap-start min-w-[220px] cursor-pointer group"
               >
-                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 text-sm font-bold text-gray-300">
-                  {index + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-condensed font-bold text-sm text-white line-clamp-2 leading-tight">
-                    {story.title}
-                  </h4>
-                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                    {story.excerpt}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs text-gray-500">{story.timestamp}</span>
-                    <span className="text-xs text-gray-600">•</span>
-                    <span className="text-xs text-gray-500">{story.source}</span>
+                {/* Sleek Card Design */}
+                <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg overflow-hidden hover:border-indigo-500/50 transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/10">
+                  {/* Image Section */}
+                  <div className="relative aspect-[4/3] bg-gray-800">
+                    {story.imageUrl && (
+                      <img
+                        src={story.imageUrl}
+                        alt={story.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
+                    {/* Ranking Badge */}
+                    <div className={`absolute top-2 left-2 w-5 h-5 rounded-full bg-gradient-to-br ${getRankBadgeColor(type)} flex items-center justify-center text-xs font-black text-white shadow-md`}>
+                      {index + 1}
+                    </div>
+                  </div>
+
+                  {/* Content Section - Compact */}
+                  <div className="p-3">
+                    <h4 className="font-condensed font-bold text-sm text-white leading-tight line-clamp-2 mb-1 group-hover:text-indigo-300 transition-colors">
+                      {story.title}
+                    </h4>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-gray-500 uppercase tracking-wide">{story.source}</span>
+                      <span className="text-gray-600">{story.timestamp}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1314,14 +1815,12 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
         <section className="px-4 py-6 border-t border-[#2C2C2C]">
           {/* A) League Header */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
-              <span className="text-white font-black text-lg">
-                {league === 'EPL' ? '⚽' :
-                 league === 'Bundesliga' ? '🇩🇪' :
-                 league === 'Serie A' ? '🇮🇹' :
-                 league === 'NBA' ? '🏀' : '⚽'}
-              </span>
-            </div>
+            <span className="text-2xl">
+              {league === 'EPL' ? '⚽' :
+               league === 'Bundesliga' ? '🇩🇪' :
+               league === 'Serie A' ? '🇮🇹' :
+               league === 'NBA' ? '🏀' : '⚽'}
+            </span>
             <h2 className="font-condensed font-black text-2xl uppercase text-white tracking-tighter">
               {league === 'EPL' ? 'Premier League' : league}
             </h2>
@@ -1363,23 +1862,24 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
             </div>
           )}
     
-          {/* League Picks (Predictions) */}
+          {/* League Picks (Predictions) - Horizontal Carousel */}
           {leagueMatches.filter(m => m.prediction).length > 0 && (
             <div>
               <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 mb-3 tracking-wide">
                 {league} Picks
               </h3>
-              <div className="space-y-2">
+              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
                 {leagueMatches
                   .filter(m => m.prediction)
                   .slice(0, 3)
                   .map(match => (
-                    <CompactPredictionCard
-                      key={match.id}
-                      match={match}
-                      onClick={() => onMatchClick(match.id)}
-                      isLocked={!user}
-                    />
+                    <div key={match.id} className="snap-start min-w-[280px]">
+                      <CompactPredictionCard
+                        match={match}
+                        onClick={() => onMatchClick(match.id)}
+                        isLocked={!user}
+                      />
+                    </div>
                   ))}
               </div>
             </div>
@@ -1388,73 +1888,89 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
       );
     };
     
-    // League Hero Card - Featured story for the league
+    // ESPN-Style League Hero Card - Modern, premium design
     const LeagueHeroCard: React.FC<{
       story: NewsStory;
       onClick: () => void;
     }> = ({ story, onClick }) => (
       <div
         onClick={onClick}
-        className="relative aspect-[16/9] rounded-xl overflow-hidden cursor-pointer group shadow-lg"
+        className="relative aspect-[16/9] rounded-2xl overflow-hidden cursor-pointer group shadow-2xl bg-gradient-to-br from-indigo-900/20 to-black"
       >
         {story.imageUrl && (
           <img
             src={story.imageUrl}
             alt={story.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <h3 className="font-condensed font-black text-xl uppercase text-white leading-tight line-clamp-2 mb-2">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+        {/* Premium overlay elements */}
+        <div className="absolute top-4 left-4">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1">
+            <span className="text-xs font-bold text-white uppercase tracking-wide">Featured</span>
+          </div>
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 p-6">
+          <h3 className="font-condensed font-black text-2xl uppercase text-white leading-tight line-clamp-2 mb-3 group-hover:text-indigo-300 transition-colors">
             {story.title}
           </h3>
-          <p className="text-sm text-gray-300 line-clamp-2">
+          <p className="text-sm text-gray-200 line-clamp-2 leading-relaxed font-medium">
             {story.excerpt}
           </p>
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-xs font-medium text-gray-300 uppercase tracking-wide">{story.source}</span>
+            <span className="text-xs text-gray-400">•</span>
+            <span className="text-xs text-gray-400">{story.timestamp}</span>
+          </div>
         </div>
       </div>
     );
     
-    // Quick Hit Card - Small cards for recent activity
+    // ESPN-Style Quick Hit Card - Modern, clean design
     const QuickHitCard: React.FC<{
       item: FeedItem;
       onClick: () => void;
     }> = ({ item, onClick }) => {
       const isMatch = 'homeTeam' in item;
       const isNews = 'source' in item;
-    
+
       let title = '';
       let subtitle = '';
       let icon = <Trophy size={16} className="text-blue-400" />;
-    
+      let bgGradient = 'from-blue-500/10 to-blue-600/5';
+
       if (isMatch) {
         const match = item as Match;
         title = `${match.homeTeam.name} vs ${match.awayTeam.name}`;
         subtitle = match.status === MatchStatus.FINISHED ?
           `Final: ${match.score?.home ?? 0}-${match.score?.away ?? 0}` :
           formatMatchTime(match.time);
+        bgGradient = 'from-indigo-500/10 to-indigo-600/5';
       } else if (isNews) {
         const news = item as NewsStory;
         title = news.title;
         subtitle = news.timestamp;
         icon = <Newspaper size={16} className="text-green-400" />;
+        bgGradient = 'from-green-500/10 to-green-600/5';
       }
-    
+
       return (
         <div
           onClick={onClick}
-          className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-indigo-500/50 transition-colors"
+          className={`bg-gradient-to-br ${bgGradient} border border-white/10 rounded-xl p-4 cursor-pointer hover:border-white/20 hover:bg-white/5 transition-all duration-200 group`}
         >
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-white/20 transition-colors">
               {icon}
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-condensed font-bold text-sm text-white line-clamp-2 leading-tight">
+              <h4 className="font-condensed font-bold text-sm text-white line-clamp-2 leading-tight group-hover:text-indigo-300 transition-colors">
                 {title}
               </h4>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 mt-1 font-medium">
                 {subtitle}
               </p>
             </div>
@@ -1463,41 +1979,87 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
       );
     };
     
-    // League Social Pulse - Fan reactions section
+    // League Social Pulse - Fan reactions section (Bleacher Report style)
     const LeagueSocialPulse: React.FC<{
       league: string;
     }> = ({ league }) => {
-      // Mock social reactions - in real app, fetch from API
-      const reactions = [
-        { text: "That refereeing was criminal...", likes: 1240, time: "2h" },
-        { text: "Best performance of the season", likes: 892, time: "4h" },
-        { text: "Unbelievable comeback! 🔥", likes: 654, time: "6h" }
+      // Mock social reactions - Bleacher Report style fan quotes
+      const buzzCards = [
+        {
+          source: { name: `${league} Fans`, verified: true, logo: "B·R" },
+          time: "2h",
+          image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=400&auto=format&fit=crop",
+          isVideo: false,
+          caption: `🔥 ${league} fans are fired up! Who wins the league this season?`,
+        },
+        {
+          source: { name: "Bleacher Report", verified: true, logo: "B·R" },
+          time: "3h",
+          image: "https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=400&auto=format&fit=crop",
+          isVideo: false,
+          caption: `Key stats heading into this ${league} matchup 📊`,
+        },
+        {
+          source: { name: `${league} Central`, verified: false, logo: "B·R" },
+          time: "4h",
+          image: "https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=400&auto=format&fit=crop",
+          isVideo: false,
+          caption: `Injury update: ${league} squad news 🏥`,
+        },
+        {
+          source: { name: "Fan Pulse", verified: true, logo: "B·R" },
+          time: "5h",
+          image: "https://images.unsplash.com/photo-1519861531473-9200262188bf?q=80&w=400&auto=format&fit=crop",
+          isVideo: false,
+          caption: `Fan predictions are in! 🗳️ Who do you back in ${league}?`,
+        },
       ];
-    
+
       return (
-        <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4">
+        <div className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <MessageSquare size={16} className="text-pink-400" />
             <span className="font-bold text-white text-sm uppercase tracking-wide">Fan Reactions</span>
           </div>
-    
-          <div className="space-y-3">
-            {reactions.map((reaction, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs font-bold">F</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    "{reaction.text}"
-                  </p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="flex items-center gap-1 text-gray-500">
-                      <Flame size={12} />
-                      <span className="text-xs">{reaction.likes.toLocaleString()}</span>
-                    </div>
-                    <span className="text-xs text-gray-600">{reaction.time}</span>
+
+          {/* Bleacher Report Style Buzz Cards */}
+          <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+            {buzzCards.map((card, index) => (
+              <div key={index} className="snap-start shrink-0 w-[200px] bg-[#252525] rounded-lg overflow-hidden cursor-pointer hover:bg-[#2a2a2a] transition-colors">
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                    <span className="text-white text-[8px] font-black">{card.source.logo}</span>
                   </div>
+                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                    <span className="text-white text-xs font-medium truncate">{card.source.name}</span>
+                    {card.source.verified && (
+                      <svg className="w-3 h-3 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-gray-500 text-[10px] shrink-0">{card.time}</span>
+                </div>
+
+                <div className="relative aspect-[4/3] bg-gradient-to-br from-indigo-900/50 to-black">
+                  <img
+                    src={card.image}
+                    alt="Buzz content"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="px-3 py-2">
+                  <p className="text-white text-xs leading-relaxed line-clamp-2">
+                    {card.caption}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-700">
+                  <span className="text-gray-400 text-[10px]">View on X</span>
+                  <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
                 </div>
               </div>
             ))}
@@ -1965,36 +2527,6 @@ const HeroMatchCard: React.FC<{ match: Match, onClick: () => void, onOpenPweza: 
     </div>
 );
 
-const TrendingCard: React.FC<{ item: FeedItem, onClick: () => void }> = ({ item, onClick }) => {
-    if ('homeTeam' in item) {
-        const match = item as Match;
-        return (
-            <div onClick={onClick} className="min-w-[200px] bg-[#121212] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-[#00FFB2]/50 transition-colors">
-                <div className="flex items-center gap-2 mb-2">
-                    <img src={match.homeTeam.logo} className="w-4 h-4 object-contain" />
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">{match.league}</span>
-                </div>
-                <div className="text-xs text-white font-bold truncate">
-                    {match.homeTeam.name} vs {match.awayTeam.name}
-                </div>
-                <div className="text-[10px] text-gray-500 mt-1">{formatMatchTime(match.time)}</div>
-            </div>
-        );
-    } else {
-        const story = item as NewsStory;
-        return (
-            <div onClick={onClick} className="min-w-[200px] bg-[#121212] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-[#00FFB2]/50 transition-colors">
-                <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">{story.source}</span>
-                </div>
-                <div className="text-xs text-white font-bold line-clamp-2 leading-tight">
-                    {story.title}
-                </div>
-                <div className="text-[10px] text-gray-500 mt-1">{story.timestamp}</div>
-            </div>
-        );
-    }
-};
 
 const SocialBuzzCard: React.FC<{ item: FeedItem, onClick: () => void }> = ({ item, onClick }) => {
     if ('homeTeam' in item) {
