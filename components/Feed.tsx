@@ -1,8 +1,8 @@
 
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Match, NewsStory, MatchStatus, SystemAlert, FeedItem } from '../types';
-import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, ChevronLeft, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper, Share2, Twitter, Facebook, Link, Youtube, Calendar, Users, Star } from 'lucide-react';
+import { TrendingUp, Zap, Sun, MoreHorizontal, Flame, MessageSquare, PlayCircle, ArrowRight, ChevronRight, ChevronLeft, Sparkles, Filter, CloudRain, Wind, Thermometer, Info, Activity, Cloud, CloudSnow, Droplets, TrendingDown, Brain, Trophy, DollarSign, Clock, Play, BarChart2, Target, AlertTriangle, Terminal, Siren, Radar, Plus, ArrowUpRight, ChevronDown, LayoutGrid, Lock, ImageOff, Newspaper, Share2, Twitter, Facebook, Link, Youtube, Calendar, Users, Star, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSports } from '../context/SportsContext';
 import { formatMatchTime } from './utils/formatTime';
@@ -49,14 +49,187 @@ const LEAGUES = ["All", "NFL", "NBA", "EPL", "LaLiga", "Serie A", "UFC"];
 
 // Helper for Weather Icon
 const WeatherIcon = ({ condition, size = 14 }: { condition?: string, size?: number }) => {
-    if (!condition) return <Sun size={size} className="text-yellow-500" />;
-    const c = condition.toLowerCase();
-    if (c.includes('rain')) return <CloudRain size={size} className="text-blue-400" />;
-    if (c.includes('snow')) return <CloudSnow size={size} className="text-white" />;
-    if (c.includes('cloud')) return <Cloud size={size} className="text-gray-400" />;
-    if (c.includes('indoor')) return <Thermometer size={size} className="text-orange-500" />;
-    return <Sun size={size} className="text-yellow-500" />;
+  if (!condition) return <Sun size={size} className="text-yellow-500" />;
+  const c = condition.toLowerCase();
+  if (c.includes('rain')) return <CloudRain size={size} className="text-blue-400" />;
+  if (c.includes('snow')) return <CloudSnow size={size} className="text-white" />;
+  if (c.includes('cloud')) return <Cloud size={size} className="text-gray-400" />;
+  if (c.includes('indoor')) return <Thermometer size={size} className="text-orange-500" />;
+  return <Sun size={size} className="text-yellow-500" />;
 }
+
+// ===== NEW FEED STRUCTURE COMPONENTS =====
+
+// SECTION 1: FEATURED MOMENT (Hero)
+const FeaturedMoment: React.FC<{
+  featuredItem: FeedItem | null;
+  onItemClick: (item: FeedItem) => void;
+}> = ({ featuredItem, onItemClick }) => {
+  if (!featuredItem) return null;
+
+  const isVideo = 'video_url' in featuredItem && featuredItem.video_url;
+  const imageUrl = 'imageUrl' in featuredItem ? featuredItem.imageUrl :
+                   'video_url' in featuredItem ? `https://img.youtube.com/vi/${featuredItem.video_url?.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg` : '';
+
+  return (
+    <section className="px-4 py-6">
+      <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-900/20 to-black shadow-2xl">
+        {/* Background Image/Video */}
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt="Featured Moment"
+            className="w-full h-full object-cover"
+          />
+        )}
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+
+        {/* Play Button for Videos */}
+        {isVideo && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-20 h-20 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/30 hover:scale-110 transition-transform cursor-pointer">
+              <PlayCircle size={40} className="text-white fill-white ml-1" />
+            </div>
+          </div>
+        )}
+
+        {/* Content Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="bg-red-600 text-white text-xs font-black uppercase px-3 py-1 rounded-full tracking-wide">
+              FEATURED MOMENT
+            </span>
+          </div>
+
+          <h1 className="font-condensed font-black text-4xl md:text-5xl uppercase text-white leading-[0.9] mb-2 tracking-tight">
+            {'title' in featuredItem ? featuredItem.title : 'Breaking Moment'}
+          </h1>
+
+          <p className="text-gray-300 text-lg leading-relaxed max-w-2xl">
+            {'summary' in featuredItem ? featuredItem.summary : 'A moment that changed the game'}
+          </p>
+        </div>
+
+        {/* Click Handler */}
+        <div
+          className="absolute inset-0 cursor-pointer"
+          onClick={() => onItemClick(featuredItem)}
+        />
+      </div>
+    </section>
+  );
+};
+
+// SECTION 2: WHAT JUST HAPPENED (Trending Feed)
+const WhatJustHappened: React.FC<{
+  items: FeedItem[];
+  onItemClick: (item: FeedItem) => void;
+}> = ({ items, onItemClick }) => {
+  // Get latest 8 items, mixed leagues, chronological
+  const trendingItems = items.slice(0, 8);
+
+  return (
+    <section className="px-4 py-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Newspaper size={20} className="text-blue-400" />
+        <h2 className="font-condensed font-black text-xl uppercase text-white tracking-tighter">
+          What Just Happened
+        </h2>
+      </div>
+
+      <div className="space-y-3">
+        {trendingItems.map((item, index) => (
+          <TrendingItemCard
+            key={index}
+            item={item}
+            onClick={() => onItemClick(item)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+};
+
+// Individual trending item card - Twitter/X style
+const TrendingItemCard: React.FC<{
+  item: FeedItem;
+  onClick: () => void;
+}> = ({ item, onClick }) => {
+  const isMatch = 'homeTeam' in item;
+  const isNews = 'source' in item;
+
+  let title = '';
+  let subtitle = '';
+  let league = '';
+  let timestamp = 'Just now';
+
+  if (isMatch) {
+    const match = item as Match;
+    title = `${match.homeTeam.name} vs ${match.awayTeam.name}`;
+    subtitle = match.status === MatchStatus.FINISHED ?
+      `Final: ${match.score?.home ?? 0}-${match.score?.away ?? 0}` :
+      formatMatchTime(match.time);
+    league = match.league;
+  } else if (isNews) {
+    const news = item as NewsStory;
+    title = news.title;
+    subtitle = news.excerpt || '';
+    league = news.tags?.[0] || '';
+    timestamp = news.timestamp;
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 cursor-pointer hover:border-blue-500/50 transition-colors"
+    >
+      <div className="flex items-start gap-3">
+        {/* League/Icon indicator */}
+        <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+          {isMatch ? (
+            <Trophy size={16} className="text-blue-400" />
+          ) : (
+            <Newspaper size={16} className="text-blue-400" />
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+              {league}
+            </span>
+            <span className="text-xs text-gray-600">•</span>
+            <span className="text-xs text-gray-500">{timestamp}</span>
+          </div>
+
+          <h3 className="font-condensed font-bold text-white text-sm leading-tight line-clamp-2 mb-1">
+            {title}
+          </h3>
+
+          {subtitle && (
+            <p className="text-xs text-gray-400 line-clamp-1">
+              {subtitle}
+            </p>
+          )}
+        </div>
+
+        {/* Thumbnail if available */}
+        {isNews && (item as NewsStory).imageUrl && (
+          <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+            <img
+              src={(item as NewsStory).imageUrl}
+              alt="thumbnail"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOpenPweza, onTailBet }) => {
   const { user } = useSports();
@@ -448,143 +621,70 @@ export const Feed: React.FC<FeedProps> = ({ items, matches, onArticleClick, onOp
         </section>
         )}
 
-        {/* 6. THE WIRE - BLEACHER REPORT STYLE */}
-        <section className="px-4 py-2 pb-20">
-            {/* HEADER */}
-            <div className="flex items-center justify-between mb-6 mt-4">
-                <div className="flex items-center gap-2">
-                    <Terminal size={18} className="text-[#00FFB2]" />
-                    <h2 className="font-condensed font-black text-2xl text-white uppercase tracking-tighter italic">
-                        The Wire
-                    </h2>
-                </div>
-                <button
-                   onClick={() => navigate('/explore')}
-                   className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1 hover:text-[#00FFB2] transition-colors"
-               >
-                   Explore All <ArrowRight size={12} />
-               </button>
-            </div>
+        {/* WHAT JUST HAPPENED (Trending Feed) */}
+        <WhatJustHappened
+          items={items}
+          onItemClick={(item) => {
+            if ('source' in item) {
+              onArticleClick?.((item as NewsStory).id);
+            } else {
+              handleMatchClick((item as Match).id);
+            }
+          }}
+        />
 
-            {/* FEATURED VIDEO - STICKY ON SCROLL */}
-            <div className="sticky top-[120px] z-20 mb-6">
-              <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] shadow-2xl">
-                <div className="flex items-center gap-2 mb-4">
-                  <Youtube size={20} className="text-red-500" />
-                  <h3 className="font-condensed font-black text-xl text-white uppercase tracking-tighter">
-                    Featured Video
-                  </h3>
-                </div>
-                <VideoCard
-                  title={featuredVideo.title}
-                  thumbnail={featuredVideo.thumbnail}
-                  duration={featuredVideo.duration}
-                  views={featuredVideo.views}
-                  source={featuredVideo.source}
-                  videoUrl={featuredVideo.url}
-                />
-              </div>
-            </div>
+        {/* TODAY'S PREDICTIONS */}
+        <TodaysPredictions
+          matches={matches}
+          onMatchClick={handleMatchClick}
+          onOpenPweza={openPwezaForMatch}
+          user={user}
+        />
 
-            {/* TRENDING HEADLINES */}
-            <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp size={16} className="text-red-500" />
-                    <span className="font-bold text-white text-sm uppercase tracking-wide">Trending Headlines</span>
-                </div>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar">
-                    {filteredStreamItems.filter(item => 'source' in item).slice(0, 8).map((item) => (
-                        <TrendingNewsCard key={item.id} story={item as NewsStory} onClick={() => onArticleClick?.((item as NewsStory).id)} />
-                    ))}
-                </div>
-            </div>
+        {/* LEAGUE SPOTLIGHT BLOCKS */}
+        {['EPL', 'Bundesliga', 'Serie A', 'NBA'].map((league) => {
+          const leagueMatches = Array.isArray(matches) ? matches.filter(m => m.league === league) : [];
+          const leagueNews = items.filter(item => 'tags' in item && (item as NewsStory).tags?.includes(league)).slice(0, 3) as NewsStory[];
 
-            {/* TOMORROW'S GAMES / THIS WEEKEND */}
-            <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                    <Calendar size={16} className="text-blue-400" />
-                    <span className="font-bold text-white text-sm uppercase tracking-wide">Tomorrow's Games</span>
-                </div>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar">
-                    {topPicks.slice(0, 6).map(match => (
-                        match && <PremiumPredictionCard
-                            key={match.id}
-                            match={match}
-                            onClick={() => handleMatchClick(match.id)}
-                            onOpenPweza={() => openPwezaForMatch(match)}
-                            isLocked={!user}
-                        />
-                    ))}
-                </div>
-            </div>
+          return (
+            <LeagueSpotlight
+              key={league}
+              league={league}
+              matches={leagueMatches}
+              news={leagueNews}
+              onMatchClick={handleMatchClick}
+              onNewsClick={onArticleClick}
+              onOpenPweza={openPwezaForMatch}
+              user={user}
+            />
+          );
+        })}
 
-            {/* AROUND THE LEAGUES - DYNAMIC PRIORITIZATION */}
-            {getPrioritizedLeagues.slice(0, 4).map((leagueData) => {
-              const leagueMatches = Array.isArray(matches) ? matches.filter(m => m.league === leagueData.league) : [];
-              const leagueNews = items.filter(item => 'tags' in item && (item as NewsStory).tags?.includes(leagueData.league)).slice(0, 3) as NewsStory[];
+        {/* DEEP DIVE (Meta Content Hub) */}
+        <DeeperContext
+          items={items}
+          onItemClick={(item) => {
+            if ('source' in item) {
+              onArticleClick?.((item as NewsStory).id);
+            }
+          }}
+        />
 
-              return (
-                <LeagueSection
-                  key={leagueData.league}
-                  league={leagueData.league}
-                  matches={leagueMatches}
-                  news={leagueNews}
-                  onMatchClick={handleMatchClick}
-                  onNewsClick={onArticleClick}
-                  onOpenPweza={openPwezaForMatch}
-                  user={user}
-                />
-              );
-            })}
-
-            {/* MAIN NEWS GRID - Focus on content */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredStreamItems.filter(item => 'source' in item).slice(2, 14).map((item, index) => {
-                    const story = item as NewsStory;
-                    // Alternate between different card styles
-                    if (index % 4 === 0) return <HeroNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} />;
-                    if (index % 3 === 0 && story.type === 'HIGHLIGHT') return <HighlightCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} />;
-                    return <StandardNewsCard key={story.id} story={story} onClick={() => onArticleClick?.(story.id)} dataSaver={dataSaver} onShare={(story) => { setSelectedStory(story); setShareModalOpen(true); }} />;
-                })}
-            </div>
-
-            {/* WHAT'S BUZZING - BLEACHER REPORT STYLE */}
-            <WhatsBuzzingSection />
-
-            {/* VIDEO HIGHLIGHTS SECTION */}
-            <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#2C2C2C] mt-6">
-                <div className="flex items-center gap-2 mb-4">
-                    <PlayCircle size={16} className="text-red-500" />
-                    <span className="font-bold text-white text-sm uppercase tracking-wide">Latest Highlights</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <VideoCard
-                        title="Incredible Last-Minute Winner!"
-                        thumbnail="https://example.com/thumb1.jpg"
-                        duration="2:34"
-                        views="125K"
-                        source="Premier League"
-                    />
-                    <VideoCard
-                        title="Top 10 Goals of the Season"
-                        thumbnail="https://example.com/thumb2.jpg"
-                        duration="8:12"
-                        views="89K"
-                        source="Champions League"
-                    />
-                </div>
-            </div>
-
-            {/* LOAD MORE */}
-            <div className="text-center py-8">
-                <button
-                    onClick={() => navigate('/explore')}
-                    className="bg-[#1E1E1E] hover:bg-[#252525] text-white font-bold uppercase text-sm px-8 py-3 rounded-lg border border-[#2C2C2C] hover:border-[#00FFB2]/50 transition-colors"
-                >
-                    Load More Stories
-                </button>
-            </div>
-        </section>
+        {/* CONTINUOUS FEED (Endless Scroll) */}
+        <ContinuousFeed
+          items={items}
+          matches={matches}
+          onItemClick={(item) => {
+            if ('source' in item) {
+              onArticleClick?.((item as NewsStory).id);
+            } else {
+              handleMatchClick((item as Match).id);
+            }
+          }}
+          onMatchClick={handleMatchClick}
+          onOpenPweza={openPwezaForMatch}
+          user={user}
+        />
 
       </div>
 
@@ -675,8 +775,762 @@ const LivePulseCard: React.FC<{ match: Match, onClick: () => void }> = ({ match,
                 </div>
             )}
         </div>
+      );
+    };
+    
+    // SECTION 3: TODAY'S PREDICTIONS
+    const TodaysPredictions: React.FC<{
+      matches: Match[];
+      onMatchClick: (id: string) => void;
+      onOpenPweza: (match: Match) => void;
+      user: any;
+    }> = ({ matches, onMatchClick, onOpenPweza, user }) => {
+      // Get top 5 matches with predictions for today
+      const todaysPicks = matches
+        .filter(match => match.prediction)
+        .sort((a, b) => (b.prediction?.confidence || 0) - (a.prediction?.confidence || 0))
+        .slice(0, 5);
+    
+      if (todaysPicks.length === 0) return null;
+    
+      return (
+        <section className="px-4 py-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Target size={20} className="text-green-400" />
+            <h2 className="font-condensed font-black text-xl uppercase text-white tracking-tighter">
+              Today's Picks
+            </h2>
+          </div>
+    
+          <div className="space-y-3">
+            {todaysPicks.map((match, index) => (
+              <PredictionCard
+                key={match.id}
+                match={match}
+                onClick={() => onMatchClick(match.id)}
+                onOpenPweza={() => onOpenPweza(match)}
+                isLocked={!user}
+                showVerdict={false} // Will be handled separately
+              />
+            ))}
+          </div>
+        </section>
+      );
+    };
+    
+    // Enhanced Prediction Card for Today's Picks
+    const PredictionCard: React.FC<{
+      match: Match;
+      onClick: () => void;
+      onOpenPweza: () => void;
+      isLocked?: boolean;
+      showVerdict?: boolean;
+    }> = ({ match, onClick, onOpenPweza, isLocked, showVerdict = false }) => {
+      const confidence = match.prediction?.confidence || 0;
+      const outcome = match.prediction?.outcome;
+    
+      const getConfidenceColor = (conf: number) => {
+        if (conf >= 80) return 'text-green-400 border-green-400/30 bg-green-400/10';
+        if (conf >= 60) return 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10';
+        return 'text-red-400 border-red-400/30 bg-red-400/10';
+      };
+    
+      const getConfidenceLabel = (conf: number) => {
+        if (conf >= 80) return 'Lock';
+        if (conf >= 60) return 'Safe';
+        return 'Risk';
+      };
+    
+      return (
+        <div
+          onClick={onClick}
+          className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 cursor-pointer hover:border-indigo-500/50 transition-colors relative"
+        >
+          {/* GUEST LOCK OVERLAY */}
+          {isLocked && (
+            <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] flex items-center justify-center gap-2 rounded-xl">
+              <Lock size={16} className="text-white/70" />
+              <span className="font-condensed font-black text-sm uppercase text-white tracking-wide">Member Access Only</span>
+            </div>
+          )}
+    
+          <div className={`relative z-10 ${isLocked ? 'blur-sm select-none' : ''}`}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  {match.league}
+                </span>
+                <span className="text-xs text-gray-600">•</span>
+                <span className="text-xs text-gray-500">{formatMatchTime(match.time)}</span>
+              </div>
+    
+              <div className={`px-2 py-1 rounded border text-xs font-bold uppercase ${getConfidenceColor(confidence)}`}>
+                {getConfidenceLabel(confidence)}
+              </div>
+            </div>
+    
+            {/* Teams */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <img src={match.homeTeam.logo} className="w-8 h-8 object-contain" />
+                <span className="font-condensed font-bold text-white text-lg uppercase">
+                  {match.homeTeam.name}
+                </span>
+              </div>
+    
+              <span className="font-serif italic text-gray-500 text-sm">vs</span>
+    
+              <div className="flex items-center gap-3">
+                <span className="font-condensed font-bold text-white text-lg uppercase">
+                  {match.awayTeam.name}
+                </span>
+                <img src={match.awayTeam.logo} className="w-8 h-8 object-contain" />
+              </div>
+            </div>
+    
+            {/* Prediction */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm text-gray-400">Sheena's Pick:</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-condensed font-black text-xl text-white uppercase">
+                    {outcome === 'HOME' ? match.homeTeam.name :
+                     outcome === 'AWAY' ? match.awayTeam.name :
+                     outcome === 'DRAW' ? 'Draw' : 'Analyzing...'}
+                  </span>
+                  {match.prediction?.odds && (
+                    <span className="font-mono text-sm font-bold text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded">
+                      {outcome === 'HOME' ? match.prediction.odds.home :
+                       outcome === 'AWAY' ? match.prediction.odds.away :
+                       outcome === 'DRAW' ? match.prediction.odds.draw : '—'} odds
+                    </span>
+                  )}
+                </div>
+              </div>
+    
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenPweza(); }}
+                className="w-10 h-10 rounded-full bg-indigo-600/20 hover:bg-indigo-600/30 flex items-center justify-center text-indigo-400 transition-colors"
+              >
+                🐙
+              </button>
+            </div>
+    
+            {/* Verdict Overlay (if match is finished) */}
+            {showVerdict && match.status === MatchStatus.FINISHED && match.prediction && (
+              <div className="absolute top-2 right-2 bg-black/80 backdrop-blur rounded-lg px-2 py-1">
+                <span className="text-xs font-bold text-white">
+                  {match.prediction.outcome === 'HOME' && match.score?.home! > match.score?.away! ? '✅ Correct' :
+                   match.prediction.outcome === 'AWAY' && match.score?.away! > match.score?.home! ? '✅ Correct' :
+                   match.prediction.outcome === 'DRAW' && match.score?.home === match.score?.away ? '✅ Correct' :
+                   '❌ Incorrect'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+    
+    // SECTION 5: DEEPER CONTEXT (Meta Content Hub)
+    const DeeperContext: React.FC<{
+      items: FeedItem[];
+      onItemClick: (item: FeedItem) => void;
+    }> = ({ items, onItemClick }) => {
+      // Filter for meta content (power rankings, storylines, players to watch, injury roundups)
+      const metaContent = items.filter(item =>
+        'tags' in item && (
+          (item as NewsStory).tags?.includes('power-rankings') ||
+          (item as NewsStory).tags?.includes('top-storylines') ||
+          (item as NewsStory).tags?.includes('players-to-watch') ||
+          (item as NewsStory).tags?.includes('injury-roundup') ||
+          (item as NewsStory).tags?.includes('analysis')
+        )
+      ) as NewsStory[];
+    
+      if (metaContent.length === 0) return null;
+    
+      // Group by type
+      const groupedContent = metaContent.reduce((acc, item) => {
+        const type = item.tags?.find(tag =>
+          ['power-rankings', 'top-storylines', 'players-to-watch', 'injury-roundup'].includes(tag)
+        ) || 'analysis';
+    
+        if (!acc[type]) acc[type] = [];
+        acc[type].push(item);
+        return acc;
+      }, {} as Record<string, NewsStory[]>);
+    
+      return (
+        <section className="px-4 py-6 border-t border-[#2C2C2C]">
+          <div className="flex items-center gap-2 mb-6">
+            <BarChart2 size={20} className="text-purple-400" />
+            <h2 className="font-condensed font-black text-xl uppercase text-white tracking-tighter">
+              Deep Dive
+            </h2>
+          </div>
+    
+          <div className="space-y-4">
+            {Object.entries(groupedContent).map(([type, stories]) => (
+              <MetaContentCard
+                key={type}
+                type={type}
+                stories={stories}
+                onItemClick={onItemClick}
+              />
+            ))}
+          </div>
+        </section>
+      );
+    };
+    
+    // Meta Content Card - For deeper analysis content
+    const MetaContentCard: React.FC<{
+      type: string;
+      stories: NewsStory[];
+      onItemClick: (item: FeedItem) => void;
+    }> = ({ type, stories, onItemClick }) => {
+      const getTypeLabel = (type: string) => {
+        switch (type) {
+          case 'power-rankings': return 'Power Rankings';
+          case 'top-storylines': return 'Top 5 Storylines';
+          case 'players-to-watch': return 'Players to Watch';
+          case 'injury-roundup': return 'Injury Roundup';
+          default: return 'Analysis';
+        }
+      };
+    
+      const getTypeIcon = (type: string) => {
+        switch (type) {
+          case 'power-rankings': return <Trophy size={16} className="text-yellow-400" />;
+          case 'top-storylines': return <TrendingUp size={16} className="text-blue-400" />;
+          case 'players-to-watch': return <Users size={16} className="text-green-400" />;
+          case 'injury-roundup': return <Activity size={16} className="text-red-400" />;
+          default: return <Brain size={16} className="text-purple-400" />;
+        }
+      };
+    
+      return (
+        <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-4">
+            {getTypeIcon(type)}
+            <h3 className="font-condensed font-bold text-lg uppercase text-white tracking-wide">
+              {getTypeLabel(type)}
+            </h3>
+          </div>
+    
+          <div className="space-y-3">
+            {stories.slice(0, 3).map((story, index) => (
+              <div
+                key={story.id}
+                onClick={() => onItemClick(story)}
+                className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#252525] cursor-pointer transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 text-sm font-bold text-gray-300">
+                  {index + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-condensed font-bold text-sm text-white line-clamp-2 leading-tight">
+                    {story.title}
+                  </h4>
+                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                    {story.excerpt}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-gray-500">{story.timestamp}</span>
+                    <span className="text-xs text-gray-600">•</span>
+                    <span className="text-xs text-gray-500">{story.source}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+    
+    // SECTION 6: CONTINUOUS FEED (Endless Scroll)
+    const ContinuousFeed: React.FC<{
+      items: FeedItem[];
+      matches: Match[];
+      onItemClick: (item: FeedItem) => void;
+      onMatchClick: (id: string) => void;
+      onOpenPweza: (match: Match) => void;
+      user: any;
+    }> = ({ items, matches, onItemClick, onMatchClick, onOpenPweza, user }) => {
+      const [visibleItems, setVisibleItems] = useState<FeedItem[]>([]);
+      const [loading, setLoading] = useState(false);
+      const [hasMore, setHasMore] = useState(true);
+    
+      // Organize remaining content by priority tiers
+      const organizeContent = useMemo(() => {
+        const remainingItems = items.slice(8); // Skip items used in main sections
+        const remainingMatches = matches.filter(m => !m.prediction || m.prediction.confidence < 70); // Skip top predictions
+    
+        // Tier 1: Hot content (older post-match, recent verdicts, injuries)
+        const tier1 = [
+          ...remainingItems.filter(item =>
+            'source' in item && (
+              (item as NewsStory).tags?.includes('post-match') ||
+              (item as NewsStory).tags?.includes('verdict') ||
+              (item as NewsStory).tags?.includes('injury')
+            )
+          ),
+          ...remainingMatches.filter(m => m.status === MatchStatus.FINISHED).slice(0, 5)
+        ];
+    
+        // Tier 2: Relevant content (previews, explainers, features)
+        const tier2 = [
+          ...remainingItems.filter(item =>
+            'source' in item && (
+              (item as NewsStory).tags?.includes('preview') ||
+              (item as NewsStory).tags?.includes('analysis') ||
+              (item as NewsStory).tags?.includes('feature')
+            )
+          ),
+          ...remainingMatches.filter(m => m.status === MatchStatus.SCHEDULED).slice(0, 5)
+        ];
+    
+        // Tier 3: Archive content (old recaps, historical)
+        const tier3 = [
+          ...remainingItems.filter(item =>
+            'source' in item && (
+              (item as NewsStory).tags?.includes('recap') ||
+              (item as NewsStory).tags?.includes('historical') ||
+              (item as NewsStory).tags?.includes('long-form')
+            )
+          ),
+          ...remainingMatches.slice(10) // Very old matches
+        ];
+    
+        return { tier1, tier2, tier3 };
+      }, [items, matches]);
+    
+      // Load initial content
+      useEffect(() => {
+        const initialLoad = [
+          ...organizeContent.tier1.slice(0, 6),
+          ...organizeContent.tier2.slice(0, 4),
+          ...organizeContent.tier3.slice(0, 2)
+        ];
+        setVisibleItems(initialLoad);
+      }, [organizeContent]);
+    
+      // Load more content
+      const loadMore = useCallback(() => {
+        if (loading || !hasMore) return;
+    
+        setLoading(true);
+    
+        // Simulate API delay
+        setTimeout(() => {
+          const currentLength = visibleItems.length;
+          const nextBatch = [
+            ...organizeContent.tier1.slice(currentLength, currentLength + 3),
+            ...organizeContent.tier2.slice(Math.max(0, currentLength - organizeContent.tier1.length), currentLength - organizeContent.tier1.length + 3),
+            ...organizeContent.tier3.slice(Math.max(0, currentLength - organizeContent.tier1.length - organizeContent.tier2.length), currentLength - organizeContent.tier1.length - organizeContent.tier2.length + 2)
+          ];
+    
+          if (nextBatch.length === 0) {
+            setHasMore(false);
+          } else {
+            setVisibleItems(prev => [...prev, ...nextBatch]);
+          }
+    
+          setLoading(false);
+        }, 1000);
+      }, [visibleItems, organizeContent, loading, hasMore]);
+    
+      // Infinite scroll trigger
+      useEffect(() => {
+        const handleScroll = () => {
+          if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000) {
+            loadMore();
+          }
+        };
+    
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+      }, [loadMore]);
+    
+      // Group items with section dividers every 6-8 items
+      const groupedItems = useMemo(() => {
+        const groups = [];
+        for (let i = 0; i < visibleItems.length; i += 7) {
+          const sectionType = ['news', 'prediction', 'insight'][i % 3];
+          groups.push({
+            type: sectionType,
+            items: visibleItems.slice(i, i + 7)
+          });
+        }
+        return groups;
+      }, [visibleItems]);
+    
+      return (
+        <section className="px-4 py-6 border-t border-[#2C2C2C]">
+          <div className="flex items-center gap-2 mb-6">
+            <RefreshCw size={20} className="text-gray-400" />
+            <h2 className="font-condensed font-black text-xl uppercase text-white tracking-tighter">
+              More Stories
+            </h2>
+          </div>
+    
+          <div className="space-y-8">
+            {groupedItems.map((group, groupIndex) => (
+              <div key={groupIndex}>
+                {/* Section Divider */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent flex-1" />
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 py-1 bg-[#1E1E1E] rounded-full">
+                    {group.type === 'news' ? 'Latest News' :
+                     group.type === 'prediction' ? 'Prediction Hub' :
+                     'Deep Analysis'}
+                  </span>
+                  <div className="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent flex-1" />
+                </div>
+    
+                {/* Items */}
+                <div className="space-y-4">
+                  {group.items.map((item, itemIndex) => {
+                    if ('homeTeam' in item) {
+                      const match = item as Match;
+                      return (
+                        <div key={match.id} className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-bold text-gray-400 uppercase">{match.league}</span>
+                            <span className="text-xs text-gray-500">{formatMatchTime(match.time)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <img src={match.homeTeam.logo} className="w-8 h-8 object-contain" />
+                              <span className="font-condensed font-bold text-white">{match.homeTeam.name}</span>
+                            </div>
+                            <span className="font-serif italic text-gray-500 text-sm">vs</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-condensed font-bold text-white">{match.awayTeam.name}</span>
+                              <img src={match.awayTeam.logo} className="w-8 h-8 object-contain" />
+                            </div>
+                          </div>
+                          {match.prediction && (
+                            <div className="mt-3 pt-3 border-t border-[#2C2C2C]">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-400">Prediction:</span>
+                                <span className="font-condensed font-bold text-indigo-400">
+                                  {match.prediction.outcome === 'HOME' ? match.homeTeam.name :
+                                   match.prediction.outcome === 'AWAY' ? match.awayTeam.name : 'Draw'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      const story = item as NewsStory;
+                      return (
+                        <div
+                          key={story.id}
+                          onClick={() => onItemClick(story)}
+                          className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 cursor-pointer hover:border-indigo-500/50 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            {story.imageUrl && (
+                              <img
+                                src={story.imageUrl}
+                                alt={story.title}
+                                className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-bold text-gray-400 uppercase">{story.source}</span>
+                                <span className="text-xs text-gray-600">•</span>
+                                <span className="text-xs text-gray-500">{story.timestamp}</span>
+                              </div>
+                              <h3 className="font-condensed font-bold text-lg text-white line-clamp-2 leading-tight">
+                                {story.title}
+                              </h3>
+                              <p className="text-sm text-gray-400 mt-2 line-clamp-2">
+                                {story.excerpt}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+    
+          {/* Loading indicator */}
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw size={24} className="animate-spin text-gray-500" />
+              <span className="ml-3 text-gray-500">Loading more stories...</span>
+            </div>
+          )}
+    
+          {/* End of content */}
+          {!hasMore && visibleItems.length > 0 && (
+            <div className="text-center py-8">
+              <div className="text-gray-500 text-sm">
+                You've reached the end of today's content
+              </div>
+              <div className="text-gray-600 text-xs mt-1">
+                Check back tomorrow for fresh updates
+              </div>
+            </div>
+          )}
+        </section>
+      );
+    };
+    
+    // SECTION 4: LEAGUE SPOTLIGHT (Repeatable Structure)
+    const LeagueSpotlight: React.FC<{
+      league: string;
+      matches: Match[];
+      news: NewsStory[];
+      onMatchClick: (id: string) => void;
+      onNewsClick: (id: string) => void;
+      onOpenPweza: (match: Match) => void;
+      user: any;
+    }> = ({ league, matches, news, onMatchClick, onNewsClick, onOpenPweza, user }) => {
+      // Get league-specific data
+      const leagueMatches = matches.filter(m => m.league === league);
+      const leagueNews = news.filter(n => n.tags?.includes(league));
+    
+      // League hero: most recent important story
+      const leagueHero = leagueNews.find(n => n.type === 'HIGHLIGHT') || leagueNews[0];
+    
+      // Quick hits: 2-4 recent items
+      const quickHits = [...leagueMatches.slice(0, 2), ...leagueNews.slice(0, 2)].slice(0, 4);
+    
+      // League insight: power rankings or key stat
+      const leagueInsight = leagueNews.find(n => n.tags?.includes('power-rankings') || n.tags?.includes('analysis'));
+    
+      return (
+        <section className="px-4 py-6 border-t border-[#2C2C2C]">
+          {/* A) League Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
+              <span className="text-white font-black text-lg">
+                {league === 'EPL' ? '⚽' :
+                 league === 'Bundesliga' ? '🇩🇪' :
+                 league === 'Serie A' ? '🇮🇹' :
+                 league === 'NBA' ? '🏀' : '⚽'}
+              </span>
+            </div>
+            <h2 className="font-condensed font-black text-2xl uppercase text-white tracking-tighter">
+              {league === 'EPL' ? 'Premier League' : league}
+            </h2>
+          </div>
+    
+          {/* B) League Hero Highlight */}
+          {leagueHero && (
+            <div className="mb-6">
+              <LeagueHeroCard
+                story={leagueHero}
+                onClick={() => onNewsClick(leagueHero.id)}
+              />
+            </div>
+          )}
+    
+          {/* C) League Quick Hits */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+            {quickHits.map((item, index) => (
+              <QuickHitCard
+                key={index}
+                item={item}
+                onClick={() => 'homeTeam' in item ? onMatchClick((item as Match).id) : onNewsClick((item as NewsStory).id)}
+              />
+            ))}
+          </div>
+    
+          {/* D) League Social/X Pulse */}
+          <div className="mb-6">
+            <LeagueSocialPulse league={league} />
+          </div>
+    
+          {/* E) League Insight/Meta */}
+          {leagueInsight && (
+            <div className="mb-6">
+              <LeagueInsightCard
+                story={leagueInsight}
+                onClick={() => onNewsClick(leagueInsight.id)}
+              />
+            </div>
+          )}
+    
+          {/* League Picks (Predictions) */}
+          {leagueMatches.filter(m => m.prediction).length > 0 && (
+            <div>
+              <h3 className="font-condensed font-bold text-lg uppercase text-gray-400 mb-3 tracking-wide">
+                {league} Picks
+              </h3>
+              <div className="space-y-2">
+                {leagueMatches
+                  .filter(m => m.prediction)
+                  .slice(0, 3)
+                  .map(match => (
+                    <CompactPredictionCard
+                      key={match.id}
+                      match={match}
+                      onClick={() => onMatchClick(match.id)}
+                      isLocked={!user}
+                    />
+                  ))}
+              </div>
+            </div>
+          )}
+        </section>
+      );
+    };
+    
+    // League Hero Card - Featured story for the league
+    const LeagueHeroCard: React.FC<{
+      story: NewsStory;
+      onClick: () => void;
+    }> = ({ story, onClick }) => (
+      <div
+        onClick={onClick}
+        className="relative aspect-[16/9] rounded-xl overflow-hidden cursor-pointer group shadow-lg"
+      >
+        {story.imageUrl && (
+          <img
+            src={story.imageUrl}
+            alt={story.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <h3 className="font-condensed font-black text-xl uppercase text-white leading-tight line-clamp-2 mb-2">
+            {story.title}
+          </h3>
+          <p className="text-sm text-gray-300 line-clamp-2">
+            {story.excerpt}
+          </p>
+        </div>
+      </div>
     );
-};
+    
+    // Quick Hit Card - Small cards for recent activity
+    const QuickHitCard: React.FC<{
+      item: FeedItem;
+      onClick: () => void;
+    }> = ({ item, onClick }) => {
+      const isMatch = 'homeTeam' in item;
+      const isNews = 'source' in item;
+    
+      let title = '';
+      let subtitle = '';
+      let icon = <Trophy size={16} className="text-blue-400" />;
+    
+      if (isMatch) {
+        const match = item as Match;
+        title = `${match.homeTeam.name} vs ${match.awayTeam.name}`;
+        subtitle = match.status === MatchStatus.FINISHED ?
+          `Final: ${match.score?.home ?? 0}-${match.score?.away ?? 0}` :
+          formatMatchTime(match.time);
+      } else if (isNews) {
+        const news = item as NewsStory;
+        title = news.title;
+        subtitle = news.timestamp;
+        icon = <Newspaper size={16} className="text-green-400" />;
+      }
+    
+      return (
+        <div
+          onClick={onClick}
+          className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg p-3 cursor-pointer hover:border-indigo-500/50 transition-colors"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0">
+              {icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-condensed font-bold text-sm text-white line-clamp-2 leading-tight">
+                {title}
+              </h4>
+              <p className="text-xs text-gray-400 mt-1">
+                {subtitle}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    };
+    
+    // League Social Pulse - Fan reactions section
+    const LeagueSocialPulse: React.FC<{
+      league: string;
+    }> = ({ league }) => {
+      // Mock social reactions - in real app, fetch from API
+      const reactions = [
+        { text: "That refereeing was criminal...", likes: 1240, time: "2h" },
+        { text: "Best performance of the season", likes: 892, time: "4h" },
+        { text: "Unbelievable comeback! 🔥", likes: 654, time: "6h" }
+      ];
+    
+      return (
+        <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <MessageSquare size={16} className="text-pink-400" />
+            <span className="font-bold text-white text-sm uppercase tracking-wide">Fan Reactions</span>
+          </div>
+    
+          <div className="space-y-3">
+            {reactions.map((reaction, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xs font-bold">F</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    "{reaction.text}"
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <Flame size={12} />
+                      <span className="text-xs">{reaction.likes.toLocaleString()}</span>
+                    </div>
+                    <span className="text-xs text-gray-600">{reaction.time}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+    
+    // League Insight Card - Power rankings, analysis, etc.
+    const LeagueInsightCard: React.FC<{
+      story: NewsStory;
+      onClick: () => void;
+    }> = ({ story, onClick }) => (
+      <div
+        onClick={onClick}
+        className="bg-gradient-to-r from-indigo-900/20 to-purple-900/20 border border-indigo-500/30 rounded-xl p-4 cursor-pointer hover:border-indigo-500/50 transition-colors"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Brain size={16} className="text-indigo-400" />
+          <span className="font-bold text-indigo-400 text-sm uppercase tracking-wide">
+            {story.tags?.includes('power-rankings') ? 'Power Rankings' : 'League Insight'}
+          </span>
+        </div>
+    
+        <h3 className="font-condensed font-bold text-lg text-white leading-tight line-clamp-2 mb-2">
+          {story.title}
+        </h3>
+    
+        <p className="text-sm text-gray-300 line-clamp-3">
+          {story.excerpt}
+        </p>
+      </div>
+    );
 
 const PremiumPredictionCard: React.FC<{ match: Match, onClick: () => void, onOpenPweza: () => void, isLocked?: boolean }> = ({ match, onClick, onOpenPweza, isLocked }) => {
     const leagueStyle = getLeagueStyle(match.league);
